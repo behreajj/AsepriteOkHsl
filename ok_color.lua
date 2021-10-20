@@ -5,9 +5,11 @@
 -- the Software without restriction, including without limitation the rights to
 -- use, copy, modify, merge, publish, distribute, sublicense, and /or sell copies
 -- of the Software, and to permit persons to whom the Software is furnished to do
--- so, subject to the following conditions :
+-- so, subject to the following conditions:
+--
 -- The above copyright noticeand this permission notice shall be included in all
 -- copies or substantial portions of the Software.
+--
 -- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 -- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 -- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE
@@ -153,7 +155,7 @@ function ok_color.compute_max_saturation(a, b)
 
     -- Do one step Halley's method to get closer
 	-- this gives an error less than 10e6, except for some blue hues where the dS/dh is close to infinite
-	-- this should be sufficient for most applications, otherwise do two/three steps 
+	-- this should be sufficient for most applications, otherwise do two/three steps
 
     local k_l = 0.3963377774 * a + 0.2158037573 * b
     local k_m = -0.1055613458 * a - 0.0638541728 * b
@@ -200,14 +202,14 @@ function ok_color.find_cusp(a, b)
     return { L = L_cusp, C = C_cusp }
 end
 
--- Finds intersection of the line defined by 
+-- Finds intersection of the line defined by
 -- L = L0 * (1 - t) + t * L1
 -- C = t * C1
 -- a and b must be normalized so a^2 + b^2 == 1
 function ok_color.find_gamut_intersection(a, b, L1, C1, L0, x)
     -- Find the cusp of the gamut triangle
     local cusp = x or ok_color.find_cusp(a, b)
-    
+
     -- Find the intersection for upper and lower half separately
     local t = 0.0
     if ((L1 - L0) * cusp.C - (cusp.L - L0) * C1) <= 0.0 then
@@ -392,7 +394,7 @@ function ok_color.gamut_clip_adaptive_L0_0_5(rgb, x)
         and rgb.b > 0 then
         return rgb
     end
-    
+
     local lab = ok_color.linear_srgb_to_oklab(rgb)
 
     local L = lab.L
@@ -662,7 +664,7 @@ function ok_color.okhsv_to_srgb(hsv)
     --then we compensate for both toe and the curved top part of the triangle:
     local L_vt = ok_color.toe_inv(L_v)
     local C_vt = C_v * L_vt / L_v
-    
+
     -- TODO: Reduce number of toe_inv calls.
     local L_new = ok_color.toe_inv(L)
     C = C * L_new / L

@@ -7,9 +7,11 @@ dofile("./ok_color.lua")
 -- the Software without restriction, including without limitation the rights to
 -- use, copy, modify, merge, publish, distribute, sublicense, and /or sell copies
 -- of the Software, and to permit persons to whom the Software is furnished to do
--- so, subject to the following conditions :
+-- so, subject to the following conditions:
+--
 -- The above copyright noticeand this permission notice shall be included in all
 -- copies or substantial portions of the Software.
+--
 -- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 -- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 -- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE
@@ -45,7 +47,7 @@ local function createNewFrames(sprite, count, duration)
             return {}
         end
     end
-    
+
     local valDur = duration or 1
     local valCount = count or 1
     if valCount < 1 then valCount = 1 end
@@ -273,7 +275,7 @@ dlg:button {
 
         -- Offset by 30 degrees to match Aseprite's color wheel.
         local angleOffset = math.rad(30.0)
-        
+
         minLight = minLight * 0.01
         maxLight = maxLight * 0.01
 
