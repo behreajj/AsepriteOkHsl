@@ -20,6 +20,29 @@ dofile("./ok_color.lua")
 -- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 -- SOFTWARE.
 
+local function copyColorByValue(aseColor)
+    return Color(
+        aseColor.red,
+        aseColor.green,
+        aseColor.blue,
+        aseColor.alpha)
+end
+
+local function assignColor(aseColor)
+    if aseColor.alpha > 0 then
+        return copyColorByValue(aseColor)
+    else
+        return Color(0, 0, 0, 0)
+    end
+end
+
+local function colorToHexWeb(aseColor)
+    return string.format("%06x",
+        aseColor.red << 0x10
+        | aseColor.green << 0x08
+        | aseColor.blue)
+end
+
 local function createNewFrames(sprite, count, duration)
     if not sprite then
         app.alert("Sprite could not be found.")
@@ -81,6 +104,115 @@ local function quantizeUnsigned(a, levels)
     end
 end
 
+local function rgb01ToAseColor(rgb, alpha)
+    return Color(
+        math.tointeger(0.5 + 0xff * rgb.r),
+        math.tointeger(0.5 + 0xff * rgb.g),
+        math.tointeger(0.5 + 0xff * rgb.b),
+        alpha or 255)
+end
+
+local function setFromAse(dialog, aseColor, primary)
+    primary = copyColorByValue(aseColor)
+    dialog:modify { id = "baseColor", colors = { primary } }
+    dialog:modify { id = "alpha", value = primary.alpha }
+    dialog:modify { id = "hexCode", text = colorToHexWeb(primary) }
+
+    local sr01 = primary.red * 0.00392156862745098
+    local sg01 = primary.green * 0.00392156862745098
+    local sb01 = primary.blue * 0.00392156862745098
+    local srgb = { r = sr01, g = sg01, b = sb01 }
+
+    -- TODO This could be more efficient if srgb is
+    -- converted to lab, then lab is converted to hsl,hsv.
+    local lab = ok_color.linear_srgb_to_oklab({
+		r = ok_color.srgb_transfer_function_inv(sr01),
+		g = ok_color.srgb_transfer_function_inv(sg01),
+		b = ok_color.srgb_transfer_function_inv(sb01)
+		})
+    -- print(string.format(
+    --     "L: %.6f a: %.6f b: %.6f",
+    --     lab.L, lab.a, lab.b))
+
+    local labLgtInt = math.tointeger(0.5 + 100.0 * lab.L)
+    local labAInt = math.tointeger(0.5 + 100.0 * lab.a)
+    local labBInt = math.tointeger(0.5 + 100.0 * lab.b)
+    dialog:modify { id = "labLgt", value = labLgtInt }
+    dialog:modify { id = "labA", value = labAInt }
+    dialog:modify { id = "labB", value = labBInt }
+
+    local hsl = ok_color.srgb_to_okhsl(srgb)
+    local hslHueInt = math.tointeger(0.5 + 360.0 * hsl.h)
+    local hslSatInt = math.tointeger(0.5 + 100.0 * hsl.s)
+    local hslLgtInt = math.tointeger(0.5 + 100.0 * hsl.l)
+
+    if hslSatInt > 0 then
+        dialog:modify { id = "hslHue", value = hslHueInt }
+    end
+    dialog:modify { id = "hslSat", value = hslSatInt }
+    dialog:modify { id = "hslLgt", value = hslLgtInt }
+
+    local hsv = ok_color.srgb_to_okhsv(srgb)
+    local hsvHueInt = math.tointeger(0.5 + 360.0 * hsv.h)
+    local hsvSatInt = math.tointeger(0.5 + 100.0 * hsv.s)
+    local hsvValInt = math.tointeger(0.5 + 100.0 * hsv.v)
+
+    if hsvSatInt > 0 then
+        dialog:modify { id = "hsvHue", value = hsvHueInt }
+    end
+    dialog:modify { id = "hsvSat", value = hsvSatInt }
+    dialog:modify { id = "hsvVal", value = hsvValInt }
+end
+
+local function updateColor(dialog, primary)
+    local args = dialog.data
+    local alpha = args.alpha
+    -- if alpha > 0 then
+    local colorMode = args.colorMode
+    if colorMode == "HSV" then
+        local h = args.hsvHue
+        local s = args.hsvSat
+        local v = args.hsvVal
+
+        local rgb01 = ok_color.okhsv_to_srgb({
+            h = h * 0.002777777777777778,
+            s = s * 0.01,
+            v = v * 0.01
+        })
+        primary = rgb01ToAseColor(rgb01, alpha)
+    elseif colorMode == "LAB" then
+        local l = args.labLgt
+        local a = args.labA
+        local b = args.labB
+
+        -- TODO Implement.
+    else
+        local h = args.hslHue
+        local s = args.hslSat
+        local l = args.hslLgt
+
+        local rgb01 = ok_color.okhsl_to_srgb({
+            h = h * 0.002777777777777778,
+            s = s * 0.01,
+            l = l * 0.01
+        })
+        primary = rgb01ToAseColor(rgb01, alpha)
+    end
+    -- else
+    --     primary = Color(0, 0, 0, 0)
+    -- end
+
+    dialog:modify {
+        id = "baseColor",
+        colors = { primary }
+    }
+
+    dialog:modify {
+        id = "hexCode",
+        text = colorToHexWeb(primary)
+    }
+end
+
 local palColors = {
     Color(  0,   0,   0,   0),
     Color(  0,   0,   0, 255),
@@ -95,14 +227,19 @@ local palColors = {
 
 local colorModes = { "HSL", "HSV", "LAB" }
 
+local primary = Color(255, 0, 0, 255)
+
 local defaults = {
+    base = Color(255, 0, 0, 255),
+
     colorMode = "HSL",
+    alpha = 255,
 
-    hslHue = 0,
+    hslHue = 29,
     hslSat = 100,
-    hslLgt = 50,
+    hslLgt = 57,
 
-    hsvHue = 0,
+    hsvHue = 29,
     hsvSat = 100,
     hsvVal = 100,
 
@@ -121,6 +258,57 @@ local defaults = {
 }
 
 local dlg = Dialog { title = "OkLab Color Picker" }
+
+dlg:button {
+    id = "fgGet",
+    label = "Get:",
+    text = "&FORE",
+    focus = false,
+    onclick = function()
+       setFromAse(dlg, app.fgColor, primary)
+    end
+}
+
+dlg:button {
+    id = "bgGet",
+    text = "&BACK",
+    focus = false,
+    onclick = function()
+       app.command.SwitchColors()
+       setFromAse(dlg, app.fgColor, primary)
+       app.command.SwitchColors()
+    end
+}
+
+dlg:newrow { always = false }
+
+dlg:entry {
+    id = "hexCode",
+    label = "Hex: #",
+    text = "ff0000",
+    focus = false
+}
+
+dlg:newrow { always = false }
+
+dlg:shades {
+    id = "baseColor",
+    label = "Color:",
+    mode = "pick",
+    colors = { defaults.base },
+    onclick = function(ev)
+        local button = ev.button
+        if button == MouseButton.LEFT then
+            app.fgColor = assignColor(ev.color)
+        elseif button == MouseButton.RIGHT then
+            app.command.SwitchColors()
+            app.fgColor = assignColor(ev.color)
+            app.command.SwitchColors()
+        end
+    end
+}
+
+dlg:newrow { always = false }
 
 dlg:combobox {
     id = "colorMode",
@@ -156,7 +344,10 @@ dlg:slider {
     min = 0,
     max = 360,
     value = defaults.hslHue,
-    visible = defaults.colorMode == "HSL"
+    visible = defaults.colorMode == "HSL",
+    onchange = function()
+        updateColor(dlg, primary)
+    end
 }
 
 dlg:newrow { always = false }
@@ -167,7 +358,10 @@ dlg:slider {
     min = 0,
     max = 100,
     value = defaults.hslSat,
-    visible = defaults.colorMode == "HSL"
+    visible = defaults.colorMode == "HSL",
+    onchange = function()
+        updateColor(dlg, primary)
+    end
 }
 
 dlg:newrow { always = false }
@@ -178,7 +372,10 @@ dlg:slider {
     min = 0,
     max = 100,
     value = defaults.hslLgt,
-    visible = defaults.colorMode == "HSL"
+    visible = defaults.colorMode == "HSL",
+    onchange = function()
+        updateColor(dlg, primary)
+    end
 }
 
 dlg:newrow { always = false }
@@ -189,7 +386,10 @@ dlg:slider {
     min = 0,
     max = 360,
     value = defaults.hsvHue,
-    visible = defaults.colorMode == "HSV"
+    visible = defaults.colorMode == "HSV",
+    onchange = function()
+        updateColor(dlg, primary)
+    end
 }
 
 dlg:newrow { always = false }
@@ -200,7 +400,10 @@ dlg:slider {
     min = 0,
     max = 100,
     value = defaults.hsvSat,
-    visible = defaults.colorMode == "HSV"
+    visible = defaults.colorMode == "HSV",
+    onchange = function()
+        updateColor(dlg, primary)
+    end
 }
 
 dlg:newrow { always = false }
@@ -211,7 +414,10 @@ dlg:slider {
     min = 0,
     max = 100,
     value = defaults.hsvVal,
-    visible = defaults.colorMode == "HSV"
+    visible = defaults.colorMode == "HSV",
+    onchange = function()
+        updateColor(dlg, primary)
+    end
 }
 
 dlg:newrow { always = false }
@@ -222,7 +428,10 @@ dlg:slider {
     min = 0,
     max = 100,
     value = defaults.labLgt,
-    visible = defaults.colorMode == "LAB"
+    visible = defaults.colorMode == "LAB",
+    onchange = function()
+        updateColor(dlg, primary)
+    end
 }
 
 dlg:newrow { always = false }
@@ -230,10 +439,13 @@ dlg:newrow { always = false }
 dlg:slider {
     id = "labA",
     label = "A:",
-    min = -110,
-    max = 110,
+    min = -32,
+    max = 32,
     value = defaults.labA,
-    visible = defaults.colorMode == "LAB"
+    visible = defaults.colorMode == "LAB",
+    onchange = function()
+        updateColor(dlg, primary)
+    end
 }
 
 dlg:newrow { always = false }
@@ -241,10 +453,119 @@ dlg:newrow { always = false }
 dlg:slider {
     id = "labB",
     label = "B:",
-    min = -110,
-    max = 110,
+    min = -32,
+    max = 32,
     value = defaults.labB,
-    visible = defaults.colorMode == "LAB"
+    visible = defaults.colorMode == "LAB",
+    onchange = function()
+        updateColor(dlg, primary)
+    end
+}
+
+dlg:newrow { always = false }
+
+dlg:slider {
+    id = "alpha",
+    label = "Alpha:",
+    min = 0,
+    max = 255,
+    value = defaults.alpha,
+    onchange = function()
+        updateColor(dlg, primary)
+    end
+}
+
+dlg:newrow { always = false }
+
+dlg:slider {
+    id = "size",
+    label = "Size:",
+    min = 64,
+    max = 512,
+    value = defaults.size,
+    visible = defaults.showWheelSettings
+}
+
+dlg:newrow { always = false }
+
+dlg:slider {
+    id = "minLight",
+    label = "Light:",
+    min = 1,
+    max = 98,
+    value = defaults.minLight,
+    visible = defaults.showWheelSettings
+}
+
+dlg:slider {
+    id = "maxLight",
+    min = 2,
+    max = 99,
+    value = defaults.maxLight,
+    visible = defaults.showWheelSettings
+}
+
+dlg:newrow { always = false }
+
+dlg:slider {
+    id = "frames",
+    label = "Frames:",
+    min = 1,
+    max = 96,
+    value = defaults.frames,
+    visible = defaults.showWheelSettings
+}
+
+-- dlg:newrow { always = false }
+
+-- dlg:slider {
+--     id = "fps",
+--     label = "FPS:",
+--     min = 1,
+--     max = 90,
+--     value = defaults.fps,
+--     visible = defaults.showWheelSettings
+-- }
+
+dlg:newrow { always = false }
+
+dlg:slider {
+    id = "sectorCount",
+    label = "Sectors:",
+    min = 0,
+    max = 32,
+    value = defaults.sectorCount,
+    visible = defaults.showWheelSettings
+}
+
+dlg:newrow { always = false }
+
+dlg:slider {
+    id = "ringCount",
+    label = "Rings:",
+    min = 0,
+    max = 32,
+    value = defaults.ringCount,
+    visible = defaults.showWheelSettings
+}
+
+dlg:newrow { always = false }
+
+dlg:check {
+    id = "showWheelSettings",
+    label = "Show:",
+    text = "Wheel Settings",
+    selected = defaults.showWheelSettings,
+    onclick = function()
+        local state = dlg.data.showWheelSettings
+        dlg:modify { id = "size", visible = state }
+        dlg:modify { id = "minLight", visible = state }
+        dlg:modify { id = "maxLight", visible = state }
+        dlg:modify { id = "frames", visible = state }
+        -- dlg:modify { id = "fps", visible = state }
+        dlg:modify { id = "sectorCount", visible = state }
+        dlg:modify { id = "ringCount", visible = state }
+    end
 }
 
 dlg:newrow { always = false }
