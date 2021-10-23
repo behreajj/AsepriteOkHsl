@@ -28,6 +28,13 @@ local function copyColorByValue(aseColor)
         aseColor.alpha)
 end
 
+local function aseColorToRgb01(ase)
+    return {
+        r = ase.red * 0.00392156862745098,
+        g = ase.green * 0.00392156862745098,
+        b = ase.blue * 0.00392156862745098 }
+end
+
 local function assignColor(aseColor)
     if aseColor.alpha > 0 then
         return copyColorByValue(aseColor)
@@ -106,10 +113,66 @@ end
 
 local function rgb01ToAseColor(rgb, alpha)
     return Color(
-        math.tointeger(0.5 + 0xff * rgb.r),
-        math.tointeger(0.5 + 0xff * rgb.g),
-        math.tointeger(0.5 + 0xff * rgb.b),
+        math.tointeger(0.5 + 0xff * math.min(math.max(rgb.r, 0.0), 1.0)),
+        math.tointeger(0.5 + 0xff * math.min(math.max(rgb.g, 0.0), 1.0)),
+        math.tointeger(0.5 + 0xff * math.min(math.max(rgb.b, 0.0), 1.0)),
         alpha or 255)
+end
+
+local function updateHarmonies(dialog, primary)
+    local srgb = aseColorToRgb01(primary)
+    local srcHsl = ok_color.srgb_to_okhsl(srgb)
+    local h = srcHsl.h
+    local s = srcHsl.s
+    local l = srcHsl.l
+
+    local h30 = 0.08333333333333333
+    local h90 = 0.25
+    local h120 = 0.3333333333333333
+    local h150 = 0.4166666666666667
+    local h180 = 0.5
+    local h210 = 0.5833333333333334
+    local h270 = 0.75
+
+    local ana0 = ok_color.okhsl_to_srgb({ h = h - h30, s = s, l = l })
+    local ana1 = ok_color.okhsl_to_srgb({ h = h + h30, s = s, l = l })
+
+    local tri0 = ok_color.okhsl_to_srgb({ h = h - h120, s = s, l = l })
+    local tri1 = ok_color.okhsl_to_srgb({ h = h + h120, s = s, l = l })
+
+    local split0 = ok_color.okhsl_to_srgb({ h = h + h150, s = s, l = l })
+    local split1 = ok_color.okhsl_to_srgb({ h = h + h210, s = s, l = l })
+
+    local square0 = ok_color.okhsl_to_srgb({ h = h + h90, s = s, l = l })
+    local square1 = ok_color.okhsl_to_srgb({ h = h + h180, s = s, l = l })
+    local square2 = ok_color.okhsl_to_srgb({ h = h + h270, s = s, l = l })
+
+    local tris = {
+        rgb01ToAseColor(tri0),
+        rgb01ToAseColor(tri1)
+    }
+
+    local analogues = {
+        rgb01ToAseColor(ana0),
+        rgb01ToAseColor(ana1)
+    }
+
+    local splits = {
+        rgb01ToAseColor(split0),
+        rgb01ToAseColor(split1)
+    }
+
+    local squares = {
+        rgb01ToAseColor(square0),
+        rgb01ToAseColor(square1),
+        rgb01ToAseColor(square2)
+    }
+
+    dialog:modify { id = "complement", colors = { squares[2] } }
+    dialog:modify { id = "triadic", colors = tris }
+    dialog:modify { id = "analogous", colors = analogues }
+    dialog:modify { id = "split", colors = splits }
+    dialog:modify { id = "square", colors = squares }
 end
 
 local function setFromAse(dialog, aseColor, primary)
@@ -118,17 +181,14 @@ local function setFromAse(dialog, aseColor, primary)
     dialog:modify { id = "alpha", value = primary.alpha }
     dialog:modify { id = "hexCode", text = colorToHexWeb(primary) }
 
-    local sr01 = primary.red * 0.00392156862745098
-    local sg01 = primary.green * 0.00392156862745098
-    local sb01 = primary.blue * 0.00392156862745098
-    local srgb = { r = sr01, g = sg01, b = sb01 }
+    local srgb = aseColorToRgb01(primary)
 
     -- TODO This could be more efficient if srgb is
     -- converted to lab, then lab is converted to hsl,hsv.
     local lab = ok_color.linear_srgb_to_oklab({
-		r = ok_color.srgb_transfer_function_inv(sr01),
-		g = ok_color.srgb_transfer_function_inv(sg01),
-		b = ok_color.srgb_transfer_function_inv(sb01)
+		r = ok_color.srgb_transfer_function_inv(srgb.r),
+		g = ok_color.srgb_transfer_function_inv(srgb.g),
+		b = ok_color.srgb_transfer_function_inv(srgb.b)
 		})
     -- print(string.format(
     --     "L: %.6f a: %.6f b: %.6f",
@@ -162,13 +222,15 @@ local function setFromAse(dialog, aseColor, primary)
     end
     dialog:modify { id = "hsvSat", value = hsvSatInt }
     dialog:modify { id = "hsvVal", value = hsvValInt }
+
+    updateHarmonies(dialog, primary)
 end
 
 local function updateColor(dialog, primary)
     local args = dialog.data
     local alpha = args.alpha
-    -- if alpha > 0 then
     local colorMode = args.colorMode
+
     if colorMode == "HSV" then
         local h = args.hsvHue
         local s = args.hsvSat
@@ -198,9 +260,6 @@ local function updateColor(dialog, primary)
         })
         primary = rgb01ToAseColor(rgb01, alpha)
     end
-    -- else
-    --     primary = Color(0, 0, 0, 0)
-    -- end
 
     dialog:modify {
         id = "baseColor",
@@ -211,6 +270,8 @@ local function updateColor(dialog, primary)
         id = "hexCode",
         text = colorToHexWeb(primary)
     }
+
+    updateHarmonies(dialog, primary)
 end
 
 local palColors = {
@@ -226,6 +287,15 @@ local palColors = {
 }
 
 local colorModes = { "HSL", "HSV", "LAB" }
+
+local harmonies = {
+    "ANALOGOUS",
+    "COMPLEMENT",
+    "NONE",
+    "SPLIT",
+    "SQUARE",
+    "TRIADIC"
+}
 
 local primary = Color(255, 0, 0, 255)
 
@@ -255,6 +325,22 @@ local defaults = {
     ringCount = 0,
     frames = 32,
     fps = 24,
+
+    harmonyType = "NONE",
+    analogies = {
+        Color(244,   0, 132, 255),
+        Color(200, 110,   0, 255) },
+    complement = { Color(  0, 154, 172, 255) },
+    splits = {
+        Color(  0, 159, 138, 255),
+        Color(  0, 146, 212, 255) },
+    squares = {
+        Color(127, 148,   0, 255),
+        Color(  0, 154, 172, 255),
+        Color(160,  88, 255, 255) },
+    triads = {
+        Color( 89, 123, 255, 255),
+        Color(  0, 164,  71, 255) }
 }
 
 local dlg = Dialog { title = "OkLab Color Picker" }
@@ -477,6 +563,152 @@ dlg:slider {
 
 dlg:newrow { always = false }
 
+dlg:combobox {
+    id = "harmonyType",
+    label = "Harmony:",
+    option = defaults.harmonyType,
+    options = harmonies,
+    visible = defaults.showHarmonies,
+    onchange = function()
+        local args = dlg.data
+        local md = args.harmonyType
+        if md == "NONE" then
+            dlg:modify { id = "complement", visible = false }
+            dlg:modify { id = "triadic", visible = false }
+            dlg:modify { id = "analogous", visible = false }
+            dlg:modify { id = "split", visible = false }
+            dlg:modify { id = "square", visible = false }
+        else
+            dlg:modify { id = "complement", visible = md == "COMPLEMENT" }
+            dlg:modify { id = "triadic", visible = md == "TRIADIC" }
+            dlg:modify { id = "analogous", visible = md == "ANALOGOUS" }
+            dlg:modify { id = "split", visible = md == "SPLIT" }
+            dlg:modify { id = "square", visible = md == "SQUARE" }
+        end
+
+    end
+}
+
+dlg:newrow { always = false }
+
+dlg:shades {
+    id = "analogous",
+    label = "Analogous:",
+    mode = "pick",
+    colors = defaults.analogies,
+    visible = defaults.harmonyType == "ANALOGOUS",
+    onclick = function(ev)
+        local button = ev.button
+        if button == MouseButton.LEFT then
+            app.fgColor = assignColor(ev.color)
+        elseif button == MouseButton.RIGHT then
+            app.command.SwitchColors()
+            app.fgColor = assignColor(ev.color)
+            app.command.SwitchColors()
+        end
+    end
+}
+
+dlg:newrow { always = false }
+
+dlg:shades {
+    id = "complement",
+    label = "Complement:",
+    mode = "pick",
+    colors = defaults.complement,
+    visible = defaults.harmonyType == "COMPLEMENT",
+    onclick = function(ev)
+        local button = ev.button
+        if button == MouseButton.LEFT then
+            app.fgColor = assignColor(ev.color)
+        elseif button == MouseButton.RIGHT then
+            app.command.SwitchColors()
+            app.fgColor = assignColor(ev.color)
+            app.command.SwitchColors()
+        end
+    end
+}
+
+dlg:newrow { always = false }
+
+dlg:shades {
+    id = "split",
+    label = "Split:",
+    mode = "pick",
+    colors = defaults.splits,
+    visible = defaults.harmonyType == "SPLIT",
+    onclick = function(ev)
+        local button = ev.button
+        if button == MouseButton.LEFT then
+            app.fgColor = assignColor(ev.color)
+        elseif button == MouseButton.RIGHT then
+            app.command.SwitchColors()
+            app.fgColor = assignColor(ev.color)
+            app.command.SwitchColors()
+        end
+    end
+}
+
+dlg:newrow { always = false }
+
+dlg:shades {
+    id = "square",
+    label = "Square:",
+    mode = "pick",
+    colors = defaults.squares,
+    visible = defaults.harmonyType == "SQUARE",
+    onclick = function(ev)
+        local button = ev.button
+        if button == MouseButton.LEFT then
+            app.fgColor = assignColor(ev.color)
+        elseif button == MouseButton.RIGHT then
+            app.command.SwitchColors()
+            app.fgColor = assignColor(ev.color)
+            app.command.SwitchColors()
+        end
+    end
+}
+
+dlg:newrow { always = false }
+
+dlg:shades {
+    id = "triadic",
+    label = "Triadic:",
+    mode = "pick",
+    colors = defaults.triads,
+    visible = defaults.harmonyType == "TRIADIC",
+    onclick = function(ev)
+        local button = ev.button
+        if button == MouseButton.LEFT then
+            app.fgColor = assignColor(ev.color)
+        elseif button == MouseButton.RIGHT then
+            app.command.SwitchColors()
+            app.fgColor = assignColor(ev.color)
+            app.command.SwitchColors()
+        end
+    end
+}
+
+dlg:newrow { always = false }
+
+dlg:check {
+    id = "showWheelSettings",
+    label = "Show:",
+    text = "Wheel Settings",
+    selected = defaults.showWheelSettings,
+    onclick = function()
+        local state = dlg.data.showWheelSettings
+        dlg:modify { id = "size", visible = state }
+        dlg:modify { id = "minLight", visible = state }
+        dlg:modify { id = "maxLight", visible = state }
+        dlg:modify { id = "frames", visible = state }
+        dlg:modify { id = "sectorCount", visible = state }
+        dlg:modify { id = "ringCount", visible = state }
+    end
+}
+
+dlg:newrow { always = false }
+
 dlg:slider {
     id = "size",
     label = "Size:",
@@ -516,17 +748,6 @@ dlg:slider {
     visible = defaults.showWheelSettings
 }
 
--- dlg:newrow { always = false }
-
--- dlg:slider {
---     id = "fps",
---     label = "FPS:",
---     min = 1,
---     max = 90,
---     value = defaults.fps,
---     visible = defaults.showWheelSettings
--- }
-
 dlg:newrow { always = false }
 
 dlg:slider {
@@ -551,25 +772,6 @@ dlg:slider {
 
 dlg:newrow { always = false }
 
-dlg:check {
-    id = "showWheelSettings",
-    label = "Show:",
-    text = "Wheel Settings",
-    selected = defaults.showWheelSettings,
-    onclick = function()
-        local state = dlg.data.showWheelSettings
-        dlg:modify { id = "size", visible = state }
-        dlg:modify { id = "minLight", visible = state }
-        dlg:modify { id = "maxLight", visible = state }
-        dlg:modify { id = "frames", visible = state }
-        -- dlg:modify { id = "fps", visible = state }
-        dlg:modify { id = "sectorCount", visible = state }
-        dlg:modify { id = "ringCount", visible = state }
-    end
-}
-
-dlg:newrow { always = false }
-
 dlg:button {
     id = "wheel",
     text = "&WHEEL",
@@ -578,7 +780,6 @@ dlg:button {
         local args = dlg.data
 
         -- Cache methods.
-        -- atan is atan2 in newer Lua; older atan2 is deprecated.
         local atan2 = math.atan
         local sqrt = math.sqrt
         local trunc = math.tointeger
@@ -626,7 +827,7 @@ dlg:button {
                 -- Magnitude correlates with saturation.
                 local sqSat = xSgn * xSgn + ySgn * ySgn
                 if sqSat <= 1.0 then
-                    local rgbtuple = { 0.0, 0.0, 0.0 }
+                    local rgbtuple = { r = 0.0, g = 0.0, b = 0.0 }
 
                     if sqSat > 0.0 then
 
@@ -643,12 +844,9 @@ dlg:button {
                         hue = quantizeSigned(hue, sectorCount)
                         sat = quantizeUnsigned(sat, ringCount)
 
-                        -- hue = hue * 360
-                        -- sat = sat * 100
-
-                        rgbtuple = ok_color.okhsl_to_srgb({h = hue, s = sat, l = light})
+                        rgbtuple = ok_color.okhsl_to_srgb({ h = hue, s = sat, l = light })
                     else
-                        rgbtuple = ok_color.okhsl_to_srgb({h = 0.0, s = 0.0, l = light})
+                        rgbtuple = ok_color.okhsl_to_srgb({ h = 0.0, s = 0.0, l = light })
                     end
 
                     -- Round [0.0, 1.0] up to [0, 255] unsigned byte.
