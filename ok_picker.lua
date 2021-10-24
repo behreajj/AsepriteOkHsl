@@ -120,12 +120,6 @@ local function rgb01ToAseColor(rgb, alpha)
 end
 
 local function updateHarmonies(dialog, primary)
-    local srgb = aseColorToRgb01(primary)
-    local srcHsl = ok_color.srgb_to_okhsl(srgb)
-    local h = srcHsl.h
-    local s = srcHsl.s
-    local l = srcHsl.l
-
     local h30 = 0.08333333333333333
     local h90 = 0.25
     local h120 = 0.3333333333333333
@@ -133,6 +127,15 @@ local function updateHarmonies(dialog, primary)
     local h180 = 0.5
     local h210 = 0.5833333333333334
     local h270 = 0.75
+
+    local args = dialog.data
+
+    -- TODO: Try this with HSV instead of HSL.
+    local srgb = aseColorToRgb01(primary)
+    local srcHsl = ok_color.srgb_to_okhsl(srgb)
+    local h = srcHsl.h
+    local s = srcHsl.s
+    local l = srcHsl.l
 
     local ana0 = ok_color.okhsl_to_srgb({ h = h - h30, s = s, l = l })
     local ana1 = ok_color.okhsl_to_srgb({ h = h + h30, s = s, l = l })
@@ -183,17 +186,13 @@ local function setFromAse(dialog, aseColor, primary)
 
     local srgb = aseColorToRgb01(primary)
 
-    -- TODO This could be more efficient if srgb is
-    -- converted to lab, then lab is converted to hsl,hsv.
-    local lab = ok_color.linear_srgb_to_oklab({
-		r = ok_color.srgb_transfer_function_inv(srgb.r),
-		g = ok_color.srgb_transfer_function_inv(srgb.g),
-		b = ok_color.srgb_transfer_function_inv(srgb.b)
-		})
+    local lab = ok_color.srgb_to_oklab(srgb)
     -- print(string.format(
     --     "L: %.6f a: %.6f b: %.6f",
     --     lab.L, lab.a, lab.b))
 
+    -- TODO: A and B should be rounded properly, as they are
+    -- signed values.
     local labLgtInt = math.tointeger(0.5 + 100.0 * lab.L)
     local labAInt = math.tointeger(0.5 + 100.0 * lab.a)
     local labBInt = math.tointeger(0.5 + 100.0 * lab.b)
@@ -201,7 +200,7 @@ local function setFromAse(dialog, aseColor, primary)
     dialog:modify { id = "labA", value = labAInt }
     dialog:modify { id = "labB", value = labBInt }
 
-    local hsl = ok_color.srgb_to_okhsl(srgb)
+    local hsl = ok_color.oklab_to_okhsl(lab)
     local hslHueInt = math.tointeger(0.5 + 360.0 * hsl.h)
     local hslSatInt = math.tointeger(0.5 + 100.0 * hsl.s)
     local hslLgtInt = math.tointeger(0.5 + 100.0 * hsl.l)
@@ -212,7 +211,7 @@ local function setFromAse(dialog, aseColor, primary)
     dialog:modify { id = "hslSat", value = hslSatInt }
     dialog:modify { id = "hslLgt", value = hslLgtInt }
 
-    local hsv = ok_color.srgb_to_okhsv(srgb)
+    local hsv = ok_color.oklab_to_okhsv(srgb)
     local hsvHueInt = math.tointeger(0.5 + 360.0 * hsv.h)
     local hsvSatInt = math.tointeger(0.5 + 100.0 * hsv.s)
     local hsvValInt = math.tointeger(0.5 + 100.0 * hsv.v)
@@ -231,33 +230,25 @@ local function updateColor(dialog, primary)
     local alpha = args.alpha
     local colorMode = args.colorMode
 
+    -- TODO: Calculate LAB no matter what, then
+    -- convert to HSV/HSL based on switch case.
     if colorMode == "HSV" then
-        local h = args.hsvHue
-        local s = args.hsvSat
-        local v = args.hsvVal
-
         local rgb01 = ok_color.okhsv_to_srgb({
-            h = h * 0.002777777777777778,
-            s = s * 0.01,
-            v = v * 0.01
-        })
+            h = args.hsvHue * 0.002777777777777778,
+            s = args.hsvSat * 0.01,
+            v = args.hsvVal * 0.01 })
         primary = rgb01ToAseColor(rgb01, alpha)
     elseif colorMode == "LAB" then
-        local l = args.labLgt
-        local a = args.labA
-        local b = args.labB
-
-        -- TODO Implement.
+        local rgb01 = ok_color.oklab_to_srgb({
+            L = args.labLgt * 0.01,
+            a = args.labA * 0.01,
+            b = args.labB * 0.01 })
+        primary = rgb01ToAseColor(rgb01, alpha)
     else
-        local h = args.hslHue
-        local s = args.hslSat
-        local l = args.hslLgt
-
         local rgb01 = ok_color.okhsl_to_srgb({
-            h = h * 0.002777777777777778,
-            s = s * 0.01,
-            l = l * 0.01
-        })
+            h = args.hslHue * 0.002777777777777778,
+            s = args.hslSat * 0.01,
+            l = args.hslLgt * 0.01 })
         primary = rgb01ToAseColor(rgb01, alpha)
     end
 
@@ -419,6 +410,9 @@ dlg:combobox {
         dlg:modify { id = "labLgt", visible = isLab }
         dlg:modify { id = "labA", visible = isLab }
         dlg:modify { id = "labB", visible = isLab }
+
+        -- TODO: This needs to update the other two
+        -- mode sliders based on the source mode sliders.
     end
 }
 
@@ -585,7 +579,6 @@ dlg:combobox {
             dlg:modify { id = "split", visible = md == "SPLIT" }
             dlg:modify { id = "square", visible = md == "SQUARE" }
         end
-
     end
 }
 
@@ -783,6 +776,7 @@ dlg:button {
         local atan2 = math.atan
         local sqrt = math.sqrt
         local trunc = math.tointeger
+        local hsl_to_srgb = ok_color.okhsl_to_srgb
 
         -- Unpack arguments.
         local size = args.size or defaults.size
@@ -827,38 +821,29 @@ dlg:button {
                 -- Magnitude correlates with saturation.
                 local sqSat = xSgn * xSgn + ySgn * ySgn
                 if sqSat <= 1.0 then
-                    local rgbtuple = { r = 0.0, g = 0.0, b = 0.0 }
+                    local srgb = { r = 0.0, g = 0.0, b = 0.0 }
 
                     if sqSat > 0.0 then
-
-                        -- Convert square magnitude to magnitude.
-                        local sat = sqrt(sqSat)
-                        local hue = atan2(ySgn, xSgn) + angleOffset
 
                         -- Convert from [-PI, PI] to [0.0, 1.0].
                         -- 1 / TAU approximately equals 0.159.
                         -- % operator is floor modulo.
+                        local hue = atan2(ySgn, xSgn) + angleOffset
                         hue = hue * 0.15915494309189535
-                        hue = hue % 1.0
 
-                        hue = quantizeSigned(hue, sectorCount)
-                        sat = quantizeUnsigned(sat, ringCount)
-
-                        rgbtuple = ok_color.okhsl_to_srgb({ h = hue, s = sat, l = light })
+                        srgb = hsl_to_srgb({
+                            h = quantizeSigned(hue % 1.0, sectorCount),
+                            s = quantizeUnsigned(sqrt(sqSat), ringCount),
+                            l = light })
                     else
-                        rgbtuple = ok_color.okhsl_to_srgb({ h = 0.0, s = 0.0, l = light })
+                        srgb = hsl_to_srgb({ h = 0.0, s = 0.0, l = light })
                     end
-
-                    -- Round [0.0, 1.0] up to [0, 255] unsigned byte.
-                    local r255 = trunc(0.5 + rgbtuple.r * 255.0)
-                    local g255 = trunc(0.5 + rgbtuple.g * 255.0)
-                    local b255 = trunc(0.5 + rgbtuple.b * 255.0)
 
                     -- Composite into a 32-bit integer.
                     local hex = 0xff000000
-                        | b255 << 0x10
-                        | g255 << 0x08
-                        | r255
+                        | trunc(0.5 + srgb.b * 255) << 0x10
+                        | trunc(0.5 + srgb.g * 255) << 0x08
+                        | trunc(0.5 + srgb.r * 255)
 
                     -- Assign to iterator.
                     elm(hex)

@@ -48,10 +48,17 @@ end
 
 function ok_color.srgb_transfer_function_inv(a)
     if 0.04045 < a then
-        return ((a + 0.055) / 1.055) ^ 2.4
+        return ((a + 0.055) * 0.9478672985781991) ^ 2.4
     else
-        return a / 12.92
+        return a * 0.07739938080495357
     end
+end
+
+function ok_color.srgb_to_oklab(srgb)
+    return ok_color.linear_srgb_to_oklab({
+		r = ok_color.srgb_transfer_function_inv(srgb.r),
+		g = ok_color.srgb_transfer_function_inv(srgb.g),
+		b = ok_color.srgb_transfer_function_inv(srgb.b) })
 end
 
 function ok_color.linear_srgb_to_oklab(c)
@@ -80,6 +87,14 @@ function ok_color.linear_srgb_to_oklab(c)
           + 0.7827717662 * m_
           - 0.8086757660 * s_
     }
+end
+
+function ok_color.oklab_to_srgb(c)
+    local lrgb = ok_color.oklab_to_linear_srgb(c)
+	return {
+		r = ok_color.srgb_transfer_function(lrgb.r),
+		g = ok_color.srgb_transfer_function(lrgb.g),
+		b = ok_color.srgb_transfer_function(lrgb.b) }
 end
 
 function ok_color.oklab_to_linear_srgb(c)
@@ -255,26 +270,26 @@ function ok_color.find_gamut_intersection(a, b, L1, C1, L0, x)
 				local mdt2 = 6 * m_dt * m_dt * m_
 				local sdt2 = 6 * s_dt * s_dt * s_
 
-                local r = 4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s - 1
+                local r0 = 4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s - 1
 				local r1 = 4.0767416621 * ldt - 3.3077115913 * mdt + 0.2309699292 * sdt
 				local r2 = 4.0767416621 * ldt2 - 3.3077115913 * mdt2 + 0.2309699292 * sdt2
 
-                local u_r = r1 / (r1 * r1 - 0.5 * r * r2)
-				local t_r = -r * u_r
+                local u_r = r1 / (r1 * r1 - 0.5 * r0 * r2)
+				local t_r = -r0 * u_r
 
-                local g = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s - 1
+                local g0 = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s - 1
 				local g1 = -1.2684380046 * ldt + 2.6097574011 * mdt - 0.3413193965 * sdt
 				local g2 = -1.2684380046 * ldt2 + 2.6097574011 * mdt2 - 0.3413193965 * sdt2
 
-                local u_g = g1 / (g1 * g1 - 0.5 * g * g2)
-				local t_g = -g * u_g
+                local u_g = g1 / (g1 * g1 - 0.5 * g0 * g2)
+				local t_g = -g0 * u_g
 
-                local b = -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s - 1
+                local b0 = -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s - 1
 				local b1 = -0.0041960863 * ldt - 0.7034186147 * mdt + 1.7076147010 * sdt
 				local b2 = -0.0041960863 * ldt2 - 0.7034186147 * mdt2 + 1.7076147010 * sdt2
 
-                local u_b = b1 / (b1 * b1 - 0.5 * b * b2)
-				local t_b = -b * u_b
+                local u_b = b1 / (b1 * b1 - 0.5 * b0 * b2)
+				local t_b = -b0 * u_b
 
                 if u_r < 0.0 then t_r = 3.402823466e+38 end
                 if u_g < 0.0 then t_g = 3.402823466e+38 end
@@ -363,17 +378,13 @@ function ok_color.gamut_clip_project_to_L_cusp(rgb)
     local lab = ok_color.linear_srgb_to_oklab(rgb)
 
     local L = lab.L
-	local eps = 0.00001
-	local C = math.max(eps, math.sqrt(lab.a * lab.a + lab.b * lab.b))
+	local C = math.max(0.00001, math.sqrt(lab.a * lab.a + lab.b * lab.b))
 	local a_ = lab.a / C
 	local b_ = lab.b / C
 
-    -- The cusp is computed here and in find_gamut_intersection, an optimized solution would only compute it once.
     local cusp = ok_color.find_cusp(a_, b_)
-
     local L0 = cusp.L
-
-    local t = ok_color.find_gamut_intersection(a_, b_, L, C, L0)
+    local t = ok_color.find_gamut_intersection(a_, b_, L, C, L0, cusp)
 
     local L_clipped = L0 * (1 - t) + t * L
 	local C_clipped = t * C
@@ -398,8 +409,7 @@ function ok_color.gamut_clip_adaptive_L0_0_5(rgb, x)
     local lab = ok_color.linear_srgb_to_oklab(rgb)
 
     local L = lab.L
-	local eps = 0.00001
-	local C = math.max(eps, math.sqrt(lab.a * lab.a + lab.b * lab.b))
+	local C = math.max(0.00001, math.sqrt(lab.a * lab.a + lab.b * lab.b))
 	local a_ = lab.a / C
 	local b_ = lab.b / C
 
@@ -437,7 +447,6 @@ function ok_color.gamut_clip_adaptive_L0_L_cusp(rgb, x)
 	local a_ = lab.a / C
 	local b_ = lab.b / C
 
-    -- The cusp is computed here and in find_gamut_intersection, an optimized solution would only compute it once.
     local cusp = ok_color.find_cusp(a_, b_)
 
     local Ld = L - cusp.L
@@ -452,7 +461,7 @@ function ok_color.gamut_clip_adaptive_L0_L_cusp(rgb, x)
     local e1 = 0.5 * k + math.abs(Ld) + alpha * C / k
 	local L0 = cusp.L + 0.5 * (ok_color.sgn(Ld) * (e1 - math.sqrt(e1 * e1 - 2.0 * k * math.abs(Ld))))
 
-    local t = ok_color.find_gamut_intersection(a_, b_, L, C, L0)
+    local t = ok_color.find_gamut_intersection(a_, b_, L, C, L0, cusp)
 	local L_clipped = L0 * (1.0 - t) + t * L
 	local C_clipped = t * C
 
@@ -579,25 +588,18 @@ function ok_color.okhsl_to_srgb(hsl)
 		C = k_0 + t * k_1 / (1.0 - k_2 * t)
     end
 
-    local rgb = ok_color.oklab_to_linear_srgb(
+    return ok_color.oklab_to_srgb(
         { L = L,
           a = C * a_,
           b = C * b_
         })
-    return {
-        r = ok_color.srgb_transfer_function(rgb.r),
-        g = ok_color.srgb_transfer_function(rgb.g),
-        b = ok_color.srgb_transfer_function(rgb.b)
-    }
 end
 
 function ok_color.srgb_to_okhsl(rgb)
-    local lab = ok_color.linear_srgb_to_oklab({
-		r = ok_color.srgb_transfer_function_inv(rgb.r),
-		g = ok_color.srgb_transfer_function_inv(rgb.g),
-		b = ok_color.srgb_transfer_function_inv(rgb.b)
-		})
+    return ok_color.oklab_to_okhsl(ok_color.srgb_to_oklab(rgb))
+end
 
+function ok_color.oklab_to_okhsl(lab)
     local C = math.sqrt(lab.a * lab.a + lab.b * lab.b)
     local a_ = lab.a / C
     local b_ = lab.b / C
@@ -655,7 +657,7 @@ function ok_color.okhsv_to_srgb(hsv)
     -- first we compute L and V as if the gamut is a perfect triangle:
 
 	-- L, C when v==1:
-    local L_v = 1     - s * S_0 / (S_0 + T_max - T_max * k * s)
+    local L_v = 1 - s * S_0 / (S_0 + T_max - T_max * k * s)
 	local C_v = s * T_max * S_0 / (S_0 + T_max - T_max * k * s)
 
     local L = v * L_v
@@ -665,7 +667,6 @@ function ok_color.okhsv_to_srgb(hsv)
     local L_vt = ok_color.toe_inv(L_v)
     local C_vt = C_v * L_vt / L_v
 
-    -- TODO: Reduce number of toe_inv calls.
     local L_new = ok_color.toe_inv(L)
     C = C * L_new / L
     L = L_new
@@ -675,22 +676,14 @@ function ok_color.okhsv_to_srgb(hsv)
 
     L = L * scale_L
 	C = C * scale_L
-
-    local rgb = ok_color.oklab_to_linear_srgb({ L = L, a = C * a_, b = C * b_ })
-	return {
-		r = ok_color.srgb_transfer_function(rgb.r),
-		g = ok_color.srgb_transfer_function(rgb.g),
-		b = ok_color.srgb_transfer_function(rgb.b),
-	}
+    return ok_color.oklab_to_srgb({ L = L, a = C * a_, b = C * b_ })
 end
 
 function ok_color.srgb_to_okhsv(rgb)
-    local lab = ok_color.linear_srgb_to_oklab({
-		r = ok_color.srgb_transfer_function_inv(rgb.r),
-		g = ok_color.srgb_transfer_function_inv(rgb.g),
-		b = ok_color.srgb_transfer_function_inv(rgb.b)
-		})
+    return ok_color.oklab_to_okhsv(ok_color.srgb_to_oklab(rgb))
+end
 
+function ok_color.oklab_to_okhsv(lab)
     local C = math.sqrt(lab.a * lab.a + lab.b * lab.b)
     local a_ = lab.a / C
     local b_ = lab.b / C
@@ -722,9 +715,9 @@ function ok_color.srgb_to_okhsv(rgb)
     L = L / scale_L
     C = C / scale_L
 
-    -- TODO: Reduce number of toe calls.
-    C = C * ok_color.toe(L) / L
-    L = ok_color.toe(L)
+    local toel = ok_color.toe(L)
+    C = C * toel / L
+    L = toel
 
     -- we can now compute v and s:
 
