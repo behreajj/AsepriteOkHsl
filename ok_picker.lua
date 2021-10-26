@@ -20,6 +20,73 @@ dofile("./ok_color.lua")
 -- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 -- SOFTWARE.
 
+local defaults = {
+    base = Color(255, 0, 0, 255),
+
+    colorMode = "HSL",
+    alpha = 255,
+
+    hslHue = 29,
+    hslSat = 100,
+    hslLgt = 57,
+
+    hsvHue = 29,
+    hsvSat = 100,
+    hsvVal = 100,
+
+    labLgt = 50,
+    labA = 0,
+    labB = 0,
+
+    showWheelSettings = false,
+    size = 256,
+    minLight = 5,
+    maxLight = 95,
+    sectorCount = 0,
+    ringCount = 0,
+    frames = 32,
+    fps = 24,
+
+    harmonyType = "NONE",
+    analogies = {
+        Color(244,   0, 132, 255),
+        Color(200, 110,   0, 255) },
+    complement = { Color(  0, 154, 172, 255) },
+    splits = {
+        Color(  0, 159, 138, 255),
+        Color(  0, 146, 212, 255) },
+    squares = {
+        Color(127, 148,   0, 255),
+        Color(  0, 154, 172, 255),
+        Color(160,  88, 255, 255) },
+    triads = {
+        Color( 89, 123, 255, 255),
+        Color(  0, 164,  71, 255) },
+
+    shading = {
+        Color(113,   9,  30, 255),
+        Color(148,  21,  43, 255),
+        Color(183,  37,  54, 255),
+        Color(214,  62,  62, 255),
+        Color(234,  99,  78, 255),
+        Color(244, 139, 104, 255),
+        Color(248, 178, 139, 255) },
+
+    shadingCount = 7,
+    shadowLight = 0.1,
+    dayLight = 0.9,
+    hYel = 110.0 / 360.0,
+    minChroma = 0.01,
+    lgtDesatFac = 0.75,
+    shdDesatFac = 0.75,
+    srcLightWeight = 0.3333333333333333,
+    greenHue = 146 / 360.0,
+    minGreenOffset = 0.3,
+    maxGreenOffset = 0.6,
+    shadowHue = 291.0 / 360.0,
+    dayHue = 96.0 / 360.0
+}
+
 local function copyColorByValue(aseColor)
     return Color(
         aseColor.red,
@@ -93,6 +160,66 @@ local function createNewFrames(sprite, count, duration)
     return frames
 end
 
+local function distAngleUnsigned(a, b, range)
+    local valRange = range or 360.0
+    local halfRange = valRange * 0.5
+    return halfRange - math.abs(math.abs(
+        (b % valRange) - (a % valRange))
+        - halfRange)
+end
+
+local function lerpAngleNear(origin, dest, t, range)
+    local valRange = range or 360.0
+    local halfRange = valRange * 0.5
+
+    local o = origin % valRange
+    local d = dest % valRange
+    local diff = d - o
+    local u = 1.0 - t
+
+    if diff == 0.0 then
+        return o
+    elseif o < d and diff > halfRange then
+        return (u * (o + valRange) + t * d) % valRange
+    elseif o > d and diff < -halfRange then
+        return (u * o + t * (d + valRange)) % valRange
+    else
+        return u * o + t * d
+    end
+end
+
+local function lerpAngleCcw(origin, dest, t, range)
+    local valRange = range or 360.0
+    local o = origin % valRange
+    local d = dest % valRange
+    local diff = d - o
+    local u = 1.0 - t
+
+    if diff == 0.0 then
+        return o
+    elseif o > d then
+        return (u * o + t * (d + valRange)) % valRange
+    else
+        return u * o + t * d
+    end
+end
+
+local function lerpAngleCw(origin, dest, t, range)
+    local valRange = range or 360.0
+    local o = origin % valRange
+    local d = dest % valRange
+    local diff = d - o
+    local u = 1.0 - t
+
+    if diff == 0.0 then
+        return d
+    elseif o < d then
+        return (u * (o + valRange) + t * d) % valRange
+    else
+        return u * o + t * d
+    end
+end
+
 local function quantizeSigned(a, levels)
     if levels ~= 0 then
         return math.floor(0.5 + a * levels) / levels
@@ -119,13 +246,119 @@ local function rgb01ToAseColor(rgb, alpha)
         alpha or 255)
 end
 
+local function round(v)
+    if v < -0.0 then return math.tointeger(v - 0.5) end
+    if v > 0.0 then return math.tointeger(v + 0.5) end
+    return 0.0
+end
+
+local function zigZag(t)
+    local a = t * 0.5
+    local b = a - math.floor(a)
+    return 1.0 - math.abs(b + b - 1.0)
+end
+
+local function updateShades(dialog, primary)
+    local srgb = aseColorToRgb01(primary)
+    local srcHsl = ok_color.srgb_to_okhsl(srgb)
+    local h = srcHsl.h
+    local s = srcHsl.s
+    local l = srcHsl.l
+    local alpha = primary.alpha
+
+    -- Decide on clockwise or counter-clockwise based
+    -- on color's warmth or coolness.
+    -- The LCh hue for yellow is 103 degrees.
+    local hYel = defaults.hYel
+    local hBlu = hYel + 0.5
+    local lerpFunc = nil
+    if h < hYel or h >= hBlu then
+        lerpFunc = lerpAngleCcw
+    else
+        lerpFunc = lerpAngleCw
+    end
+
+    -- Minimum and maximum light based on place in loop.
+    local shadowLight = defaults.shadowLight
+    local dayLight = defaults.dayLight
+
+        -- Yellows are very saturated at high light;
+    -- Desaturate them to get a better shade.
+    -- Conversely, blues easily fall out of gamut
+    -- so the shade factor is separate.
+    local lgtDesatFac = defaults.lgtDesatFac
+    local shdDesatFac = defaults.shdDesatFac
+    local minChroma = defaults.minChroma
+    local cVal = math.max(minChroma, s)
+    local desatChromaLgt = cVal * lgtDesatFac
+    local desatChromaShd = cVal * shdDesatFac
+
+    -- Amount to mix between base light and loop light.
+    local srcLightWeight = defaults.srcLightWeight
+    local cmpLightWeight = 1.0 - srcLightWeight
+
+    -- The warm-cool dichotomy works poorly for greens.
+    -- For that reason, the closer a hue is to green,
+    -- the more it uses absolute hue shifting.
+    -- Green is approximately at hue 140.
+    local offsetMix = distAngleUnsigned(h, defaults.greenHue, 1.0)
+    local offsetScale = (1.0 - offsetMix) * defaults.maxGreenOffset
+                              + offsetMix * defaults.minGreenOffset
+
+    -- Absolute hues for shadow and light.
+    -- This could also be combined with the origin hue +/-
+    -- a shift which is then mixed with the absolute hue.
+    local shadowHue = defaults.shadowHue
+    local dayHue = defaults.dayHue
+
+    local shades = {}
+    local shadingCount = defaults.shadingCount
+    local toFac = 1.0 / (shadingCount - 1.0)
+    for i = 1, shadingCount, 1 do
+        local iFac = (i - 1) * toFac
+        local lItr = (1.0 - iFac) * shadowLight
+                           + iFac * dayLight
+
+        -- Idealized hue from violet shadow to
+        -- off-yellow daylight.
+        local hAbs = lerpFunc(shadowHue, dayHue, lItr, 1.0)
+
+        -- The middle sample should be closest to base color.
+        -- The fac needs to be 0.0. That's why zigzag is
+        -- used to convert to an oscillation.
+        local lMixed = srcLightWeight * l
+                     + cmpLightWeight * lItr
+        local lZig = zigZag(lMixed)
+        local fac = offsetScale * lZig
+        local hMixed = lerpAngleNear(h, hAbs, fac, 1.0)
+
+        -- Desaturate brights and darks.
+        -- Min chroma gives even grays a slight chroma.
+        local chromaTarget = desatChromaLgt
+        if lMixed < 0.5 then chromaTarget = desatChromaShd end
+        local cMixed = (1.0 - lZig) * cVal + lZig * chromaTarget
+        cMixed = math.max(minChroma, cMixed)
+
+        -- local clr = lchToRgb(lMixed * 100.0, cMixed, hMixed, a)
+        local clr = ok_color.okhsl_to_srgb({
+            h = hMixed,
+            s = cMixed,
+            l = lMixed
+        })
+        local aseColor = rgb01ToAseColor(clr, alpha)
+        shades[i] = aseColor
+    end
+
+    dialog:modify { id = "shading", colors = shades }
+end
+
 local function updateHarmonies(dialog, primary)
     local h30 = 0.08333333333333333
     local h90 = 0.25
     local h120 = 0.3333333333333333
     local h150 = 0.4166666666666667
     local h180 = 0.5
-    local h210 = 0.5833333333333334
+    local h210 = 0.5833333333333333
     local h270 = 0.75
 
     local args = dialog.data
@@ -191,11 +424,9 @@ local function setFromAse(dialog, aseColor, primary)
     --     "L: %.6f a: %.6f b: %.6f",
     --     lab.L, lab.a, lab.b))
 
-    -- TODO: A and B should be rounded properly, as they are
-    -- signed values.
     local labLgtInt = math.tointeger(0.5 + 100.0 * lab.L)
-    local labAInt = math.tointeger(0.5 + 100.0 * lab.a)
-    local labBInt = math.tointeger(0.5 + 100.0 * lab.b)
+    local labAInt = round(100.0 * lab.a)
+    local labBInt = round(100.0 * lab.b)
     dialog:modify { id = "labLgt", value = labLgtInt }
     dialog:modify { id = "labA", value = labAInt }
     dialog:modify { id = "labB", value = labBInt }
@@ -211,7 +442,7 @@ local function setFromAse(dialog, aseColor, primary)
     dialog:modify { id = "hslSat", value = hslSatInt }
     dialog:modify { id = "hslLgt", value = hslLgtInt }
 
-    local hsv = ok_color.oklab_to_okhsv(srgb)
+    local hsv = ok_color.oklab_to_okhsv(lab)
     local hsvHueInt = math.tointeger(0.5 + 360.0 * hsv.h)
     local hsvSatInt = math.tointeger(0.5 + 100.0 * hsv.s)
     local hsvValInt = math.tointeger(0.5 + 100.0 * hsv.v)
@@ -223,6 +454,7 @@ local function setFromAse(dialog, aseColor, primary)
     dialog:modify { id = "hsvVal", value = hsvValInt }
 
     updateHarmonies(dialog, primary)
+    updateShades(dialog, primary)
 end
 
 local function updateColor(dialog, primary)
@@ -230,8 +462,6 @@ local function updateColor(dialog, primary)
     local alpha = args.alpha
     local colorMode = args.colorMode
 
-    -- TODO: Calculate LAB no matter what, then
-    -- convert to HSV/HSL based on switch case.
     if colorMode == "HSV" then
         local rgb01 = ok_color.okhsv_to_srgb({
             h = args.hsvHue * 0.002777777777777778,
@@ -263,6 +493,7 @@ local function updateColor(dialog, primary)
     }
 
     updateHarmonies(dialog, primary)
+    updateShades(dialog, primary)
 end
 
 local palColors = {
@@ -289,51 +520,6 @@ local harmonies = {
 }
 
 local primary = Color(255, 0, 0, 255)
-
-local defaults = {
-    base = Color(255, 0, 0, 255),
-
-    colorMode = "HSL",
-    alpha = 255,
-
-    hslHue = 29,
-    hslSat = 100,
-    hslLgt = 57,
-
-    hsvHue = 29,
-    hsvSat = 100,
-    hsvVal = 100,
-
-    labLgt = 50,
-    labA = 0,
-    labB = 0,
-
-    showWheelSettings = false,
-    size = 256,
-    minLight = 5,
-    maxLight = 95,
-    sectorCount = 0,
-    ringCount = 0,
-    frames = 32,
-    fps = 24,
-
-    harmonyType = "NONE",
-    analogies = {
-        Color(244,   0, 132, 255),
-        Color(200, 110,   0, 255) },
-    complement = { Color(  0, 154, 172, 255) },
-    splits = {
-        Color(  0, 159, 138, 255),
-        Color(  0, 146, 212, 255) },
-    squares = {
-        Color(127, 148,   0, 255),
-        Color(  0, 154, 172, 255),
-        Color(160,  88, 255, 255) },
-    triads = {
-        Color( 89, 123, 255, 255),
-        Color(  0, 164,  71, 255) }
-}
-
 local dlg = Dialog { title = "OkLab Color Picker" }
 
 dlg:button {
@@ -373,6 +559,26 @@ dlg:shades {
     label = "Color:",
     mode = "pick",
     colors = { defaults.base },
+    onclick = function(ev)
+        local button = ev.button
+        if button == MouseButton.LEFT then
+            app.fgColor = assignColor(ev.color)
+        elseif button == MouseButton.RIGHT then
+            app.command.SwitchColors()
+            app.fgColor = assignColor(ev.color)
+            app.command.SwitchColors()
+        end
+    end
+}
+
+dlg:newrow { always = false }
+
+dlg:shades {
+    id = "shading",
+    label = "Shades:",
+    mode = "pick",
+    colors = defaults.shading,
+    visible = true,
     onclick = function(ev)
         local button = ev.button
         if button == MouseButton.LEFT then
