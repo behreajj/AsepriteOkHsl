@@ -514,6 +514,7 @@ local harmonies = {
     "ANALOGOUS",
     "COMPLEMENT",
     "NONE",
+    "SHADING",
     "SPLIT",
     "SQUARE",
     "TRIADIC"
@@ -559,26 +560,6 @@ dlg:shades {
     label = "Color:",
     mode = "pick",
     colors = { defaults.base },
-    onclick = function(ev)
-        local button = ev.button
-        if button == MouseButton.LEFT then
-            app.fgColor = assignColor(ev.color)
-        elseif button == MouseButton.RIGHT then
-            app.command.SwitchColors()
-            app.fgColor = assignColor(ev.color)
-            app.command.SwitchColors()
-        end
-    end
-}
-
-dlg:newrow { always = false }
-
-dlg:shades {
-    id = "shading",
-    label = "Shades:",
-    mode = "pick",
-    colors = defaults.shading,
-    visible = true,
     onclick = function(ev)
         local button = ev.button
         if button == MouseButton.LEFT then
@@ -773,17 +754,19 @@ dlg:combobox {
         local args = dlg.data
         local md = args.harmonyType
         if md == "NONE" then
-            dlg:modify { id = "complement", visible = false }
-            dlg:modify { id = "triadic", visible = false }
             dlg:modify { id = "analogous", visible = false }
+            dlg:modify { id = "complement", visible = false }
+            dlg:modify { id = "shading", visible = false }
             dlg:modify { id = "split", visible = false }
             dlg:modify { id = "square", visible = false }
+            dlg:modify { id = "triadic", visible = false }
         else
-            dlg:modify { id = "complement", visible = md == "COMPLEMENT" }
-            dlg:modify { id = "triadic", visible = md == "TRIADIC" }
             dlg:modify { id = "analogous", visible = md == "ANALOGOUS" }
+            dlg:modify { id = "complement", visible = md == "COMPLEMENT" }
+            dlg:modify { id = "shading", visible = md == "SHADING" }
             dlg:modify { id = "split", visible = md == "SPLIT" }
             dlg:modify { id = "square", visible = md == "SQUARE" }
+            dlg:modify { id = "triadic", visible = md == "TRIADIC" }
         end
     end
 }
@@ -816,6 +799,26 @@ dlg:shades {
     mode = "pick",
     colors = defaults.complement,
     visible = defaults.harmonyType == "COMPLEMENT",
+    onclick = function(ev)
+        local button = ev.button
+        if button == MouseButton.LEFT then
+            app.fgColor = assignColor(ev.color)
+        elseif button == MouseButton.RIGHT then
+            app.command.SwitchColors()
+            app.fgColor = assignColor(ev.color)
+            app.command.SwitchColors()
+        end
+    end
+}
+
+dlg:newrow { always = false }
+
+dlg:shades {
+    id = "shading",
+    label = "Shading:",
+    mode = "pick",
+    colors = defaults.shading,
+    visible = defaults.harmonyType == "SHADING",
     onclick = function(ev)
         local button = ev.button
         if button == MouseButton.LEFT then
@@ -1060,6 +1063,12 @@ dlg:button {
             wheelImgs[i] = wheelImg
         end
 
+        local pal = nil
+        local oldSprite = app.activeSprite
+        if oldSprite then
+            pal = oldSprite.palettes[1]
+        end
+
         -- Create frames.
         local sprite = Sprite(size, size)
         local oldFrameLen = #sprite.frames
@@ -1084,9 +1093,11 @@ dlg:button {
         end)
 
         -- Assign a palette.
-        local pal = Palette(#palColors)
-        for i = 1, #palColors, 1 do
-            pal:setColor(i - 1, palColors[i])
+        if not pal then
+            pal = Palette(#palColors)
+            for i = 1, #palColors, 1 do
+                pal:setColor(i - 1, palColors[i])
+            end
         end
         sprite:setPalette(pal)
 
