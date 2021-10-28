@@ -520,7 +520,7 @@ local harmonies = {
 }
 
 local primary = Color(255, 0, 0, 255)
-local dlg = Dialog { title = "OkLab Color Picker" }
+local dlg = Dialog { title = "OkHsl Color Picker" }
 
 dlg:button {
     id = "fgGet",
@@ -591,36 +591,36 @@ dlg:shades {
     end
 }
 
-dlg:newrow { always = false }
+-- dlg:newrow { always = false }
 
-dlg:combobox {
-    id = "colorMode",
-    label = "Mode:",
-    option = defaults.colorMode,
-    options = colorModes,
-    onchange = function()
-        local args = dlg.data
-        local colorMode = args.colorMode
+-- dlg:combobox {
+--     id = "colorMode",
+--     label = "Mode:",
+--     option = defaults.colorMode,
+--     options = colorModes,
+--     onchange = function()
+--         -- TODO: This needs to update the other two
+--         -- mode sliders based on the source mode sliders.
 
-        local isHsl = colorMode == "HSL"
-        dlg:modify { id = "hslHue", visible = isHsl }
-        dlg:modify { id = "hslSat", visible = isHsl }
-        dlg:modify { id = "hslLgt", visible = isHsl }
+--         local args = dlg.data
+--         local colorMode = args.colorMode
 
-        local isHsv = colorMode == "HSV"
-        dlg:modify { id = "hsvHue", visible = isHsv }
-        dlg:modify { id = "hsvSat", visible = isHsv }
-        dlg:modify { id = "hsvVal", visible = isHsv }
+--         local isHsl = colorMode == "HSL"
+--         dlg:modify { id = "hslHue", visible = isHsl }
+--         dlg:modify { id = "hslSat", visible = isHsl }
+--         dlg:modify { id = "hslLgt", visible = isHsl }
 
-        local isLab = colorMode == "LAB"
-        dlg:modify { id = "labLgt", visible = isLab }
-        dlg:modify { id = "labA", visible = isLab }
-        dlg:modify { id = "labB", visible = isLab }
+--         local isHsv = colorMode == "HSV"
+--         dlg:modify { id = "hsvHue", visible = isHsv }
+--         dlg:modify { id = "hsvSat", visible = isHsv }
+--         dlg:modify { id = "hsvVal", visible = isHsv }
 
-        -- TODO: This needs to update the other two
-        -- mode sliders based on the source mode sliders.
-    end
-}
+--         local isLab = colorMode == "LAB"
+--         dlg:modify { id = "labLgt", visible = isLab }
+--         dlg:modify { id = "labA", visible = isLab }
+--         dlg:modify { id = "labB", visible = isLab }
+--     end
+-- }
 
 dlg:newrow { always = false }
 
