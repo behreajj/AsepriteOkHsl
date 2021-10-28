@@ -1,6 +1,6 @@
 # Okhsl for Aseprite
 
-This is an [Aseprite](https://www.aseprite.org/) dialog that wraps [OKHSL](https://bottosson.github.io/posts/colorpicker/) to provide a color picker and a color wheel generator. Aseprite is an "animated sprite editor & pixel art tool." OKHSL is a color representation developed by Bjorn Ottosson to create an alternative to HSL that is based on human perception.
+This is an [Aseprite](https://www.aseprite.org/) dialog that wraps [OKHSL](https://bottosson.github.io/posts/colorpicker/) to provide a color picker and a color wheel generator. Aseprite is an "animated sprite editor & pixel art tool." OKHSL is a color representation developed by Bjorn Ottosson to create an alternative to HSL that is based on human perception. Those interested in an interactive comparison between OKHSL, HSLuv and traditional HSL may reference this [link](https://bottosson.github.io/misc/colorpicker/).
 
 ## Installation
 
@@ -36,7 +36,7 @@ To modify this script, see Aseprite's [API Reference](https://github.com/aseprit
 
 This repository uses the MIT License associated with the original implementation in C++ in Ottosson's article.
 
-> Copyright(c) 2021 Bj�rn Ottosson
+> Copyright(c) 2021 Bjorn Ottosson
 >
 > Permission is hereby granted, free of charge, to any person obtaining a copy of
 > this softwareand associated documentation files(the "Software"), to deal in
