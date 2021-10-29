@@ -1064,10 +1064,12 @@ dlg:button {
         end
 
         local pal = nil
-        local oldSprite = app.activeSprite
-        if oldSprite then
-            pal = oldSprite.palettes[1]
-        end
+        -- In case this causes pass by ref vs.
+        -- pass by value problems, comment out.
+        -- local oldSprite = app.activeSprite
+        -- if oldSprite then
+        --     pal = oldSprite.palettes[1]
+        -- end
 
         -- Create frames.
         local sprite = Sprite(size, size)
