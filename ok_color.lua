@@ -645,25 +645,24 @@ function ok_color.oklab_to_okhsl(lab)
         else
             local k_0 = C_mid
             local k_1 = 0.0
-            if C_0 ~= 0.0 then
+            -- if C_0 ~= 0.0 then
                 k_1 = (1.0 - mid) * C_mid * C_mid * mid_inv * mid_inv / C_0
-            end
+            -- end
             local C_denom = C_max - C_mid
             local k_2 = 1.0
-            if C_denom ~= 0.0 then
+            -- if C_denom ~= 0.0 then
                 k_2 = 1.0 - k_1 / C_denom
-            end
+            -- end
 
             local t_denom = k_1 + k_2 * (C - k_0)
             local t = 0.0
-            if t_denom ~= 0.0 then
+            -- if t_denom ~= 0.0 then
                 t = (C - k_0) / t_denom
-            end
+            -- end
             s = mid + (1.0 - mid) * t
         end
 
-        local l = ok_color.toe(L)
-        return { h = h, s = s, l = l }
+        return { h = h, s = s, l = ok_color.toe(L) }
     else
         return { h = 0.0, s = 0.0, l = L }
     end
@@ -718,84 +717,81 @@ function ok_color.srgb_to_okhsv(rgb)
 end
 
 function ok_color.oklab_to_okhsv(lab)
-    -- TODO: Debug for gray scale colors.
     local Csq = lab.a * lab.a + lab.b * lab.b
-    local C = 0.0
-    local a_ = 0.0
-    local b_ = 0.0
-    local h = 0.0
     if Csq > 0.0 then
-        C = math.sqrt(Csq)
-        a_ = lab.a / C
-        b_ = lab.b / C
-    end
+        local C = math.sqrt(Csq)
+        local a_ = lab.a / C
+        local b_ = lab.b / C
 
-    -- 1.0 / math.pi = 0.3183098861837907
-    h = 0.5 + 0.5 * math.atan(-lab.b, -lab.a) * 0.3183098861837907
+        -- 1.0 / math.pi = 0.3183098861837907
+        local h = 0.5 + 0.5 * math.atan(-lab.b, -lab.a) * 0.3183098861837907
 
-    local cusp = ok_color.find_cusp(a_, b_)
-	local ST_max = ok_color.to_ST(cusp)
-	local S_max = ST_max.S
-	local T_max = ST_max.T
-	local S_0 = 0.5
-    local k = 1.0
-    if S_max ~= 0.0 then
-        k = 1.0 - S_0 / S_max
-    end
+        local cusp = ok_color.find_cusp(a_, b_)
+        local ST_max = ok_color.to_ST(cusp)
+        local S_max = ST_max.S
+        local T_max = ST_max.T
+        local S_0 = 0.5
+        local k = 1.0
+        -- if S_max ~= 0.0 then
+            k = 1.0 - S_0 / S_max
+        -- end
 
-    -- first we find L_v, C_v, L_vt and C_vt
-    local L = lab.L
-    local t_denom = C + L * T_max
-	local t = 0.0
-    if t_denom ~= 0.0 then
-        t = T_max / t_denom
-    end
-	local L_v = t * L
-	local C_v = t * C
+        -- first we find L_v, C_v, L_vt and C_vt
+        local L = lab.L
+        local t_denom = C + L * T_max
+        local t = 0.0
+        -- if t_denom ~= 0.0 then
+            t = T_max / t_denom
+        -- end
+        local L_v = t * L
+        local C_v = t * C
 
-	local L_vt = ok_color.toe_inv(L_v)
-    local C_vt = 0.0
-    if L_v ~= 0.0 then
-	    C_vt = C_v * L_vt / L_v
-    end
+        local L_vt = ok_color.toe_inv(L_v)
+        local C_vt = 0.0
+        -- if L_v ~= 0.0 then
+            C_vt = C_v * L_vt / L_v
+        -- end
 
-    -- we can then use these to invert the step that compensates for the toe and the curved top part of the triangle:
-    local rgb_scale = ok_color.oklab_to_linear_srgb({ L = L_vt, a = a_ * C_vt, b = b_ * C_vt })
-    local scale_denom = math.max(rgb_scale.r, rgb_scale.g, rgb_scale.b, 0.0)
-    local scale_L = 0.0
-    if scale_denom ~= 0.0 then
-        scale_L = (1.0 / scale_denom) ^ 0.3333333333333333
-    end
+        -- we can then use these to invert the step that compensates for the toe and the curved top part of the triangle:
+        local rgb_scale = ok_color.oklab_to_linear_srgb({ L = L_vt, a = a_ * C_vt, b = b_ * C_vt })
+        local scale_denom = math.max(rgb_scale.r, rgb_scale.g, rgb_scale.b, 0.0)
+        local scale_L = 0.0
+        -- if scale_denom ~= 0.0 then
+            scale_L = (1.0 / scale_denom) ^ 0.3333333333333333
+        -- end
 
-    if scale_L ~= 0.0 then
-        L = L / scale_L
-        C = C / scale_L
+        -- if scale_L ~= 0.0 then
+            L = L / scale_L
+            C = C / scale_L
+        -- else
+            -- L = 0.0
+            -- C = 0.0
+        -- end
+
+        local toel = ok_color.toe(L)
+        -- if L ~= 0.0 then
+            C = C * toel / L
+        -- else
+            -- C = 0.0
+        -- end
+        L = toel
+
+        -- we can now compute v and s:
+        local v = 0.0
+        -- if L_v ~= 0.0 then
+            v = L / L_v
+        -- end
+
+        local s = 0.0
+        local s_denom = ((T_max * S_0) + T_max * k * C_v)
+        -- if s_denom ~= 0.0 then
+            s = (S_0 + T_max) * C_v / s_denom
+        -- end
+
+        return { h = h, s = s, v = v }
     else
-        L = 0.0
-        C = 0.0
+        return { h = 0.0, s = 0.0, v = ok_color.clamp(lab.L, 0.0, 1.0) }
     end
-
-    local toel = ok_color.toe(L)
-    if L ~= 0.0 then
-        C = C * toel / L
-    else
-        C = 0.0
-    end
-    L = toel
-
-    -- we can now compute v and s:
-    local v = 0.0
-    if L_v ~= 0.0 then
-	    v = L / L_v
-    end
-
-    local s = 0.0
-    local s_denom = ((T_max * S_0) + T_max * k * C_v)
-	if s_denom ~= 0.0 then
-        s = (S_0 + T_max) * C_v / s_denom
-    end
-
-    return { h = h, s = s, v = v }
 end
 
 return ok_color
