@@ -63,15 +63,6 @@ local defaults = {
         Color( 89, 123, 255, 255),
         Color(  0, 164,  71, 255) },
 
-    shading = {
-        Color(113,   9,  30, 255),
-        Color(148,  21,  43, 255),
-        Color(183,  37,  54, 255),
-        Color(214,  62,  62, 255),
-        Color(234,  99,  78, 255),
-        Color(244, 139, 104, 255),
-        Color(248, 178, 139, 255) },
-
     shadingCount = 7,
     shadowLight = 0.1,
     dayLight = 0.9,
@@ -258,13 +249,19 @@ local function zigZag(t)
     return 1.0 - math.abs(b + b - 1.0)
 end
 
-local function updateShades(dialog, primary)
+local function updateShades(dialog, primary, shades, reserveHue)
     local srgb = aseColorToRgb01(primary)
     local srcHsl = ok_color.srgb_to_okhsl(srgb)
-    local h = srcHsl.h
-    local s = srcHsl.s
-    local l = srcHsl.l
+
     local alpha = primary.alpha
+    local l = math.min(math.max(srcHsl.l, 0.01), 0.99)
+    local s = math.min(math.max(srcHsl.s, 0.01), 0.99)
+    local h = reserveHue
+    if srcHsl.l > 0.005
+        and srcHsl.l < 0.995
+        and srcHsl.s > 0.005 then
+        h = srcHsl.h
+    end
 
     -- Decide on clockwise or counter-clockwise based
     -- on color's warmth or coolness.
@@ -311,7 +308,6 @@ local function updateShades(dialog, primary)
     local shadowHue = defaults.shadowHue
     local dayHue = defaults.dayHue
 
-    local shades = {}
     local shadingCount = defaults.shadingCount
     local toFac = 1.0 / (shadingCount - 1.0)
     for i = 1, shadingCount, 1 do
@@ -361,9 +357,6 @@ local function updateHarmonies(dialog, primary)
     local h210 = 0.5833333333333333
     local h270 = 0.75
 
-    local args = dialog.data
-
-    -- TODO: Try this with HSV instead of HSL.
     local srgb = aseColorToRgb01(primary)
     local srcHsl = ok_color.srgb_to_okhsl(srgb)
     local h = srcHsl.h
@@ -411,7 +404,7 @@ local function updateHarmonies(dialog, primary)
     dialog:modify { id = "square", colors = squares }
 end
 
-local function setFromAse(dialog, aseColor, primary)
+local function setFromAse(dialog, aseColor, primary, shades)
     primary = copyColorByValue(aseColor)
     dialog:modify { id = "baseColor", colors = { primary } }
     dialog:modify { id = "alpha", value = primary.alpha }
@@ -432,32 +425,35 @@ local function setFromAse(dialog, aseColor, primary)
     dialog:modify { id = "labB", value = labBInt }
 
     local hsl = ok_color.oklab_to_okhsl(lab)
-    local hslHueInt = math.tointeger(0.5 + 360.0 * hsl.h)
-    local hslSatInt = math.tointeger(0.5 + 100.0 * hsl.s)
     local hslLgtInt = math.tointeger(0.5 + 100.0 * hsl.l)
+    local hslSatInt = math.tointeger(0.5 + 100.0 * hsl.s)
+    local hslHueInt = math.tointeger(0.5 + 360.0 * hsl.h)
 
-    if hslSatInt > 0 then
+    if hslSatInt > 0
+        and hslLgtInt > 0
+        and hslLgtInt < 100 then
         dialog:modify { id = "hslHue", value = hslHueInt }
     end
     dialog:modify { id = "hslSat", value = hslSatInt }
     dialog:modify { id = "hslLgt", value = hslLgtInt }
 
     local hsv = ok_color.oklab_to_okhsv(lab)
-    local hsvHueInt = math.tointeger(0.5 + 360.0 * hsv.h)
-    local hsvSatInt = math.tointeger(0.5 + 100.0 * hsv.s)
     local hsvValInt = math.tointeger(0.5 + 100.0 * hsv.v)
+    local hsvSatInt = math.tointeger(0.5 + 100.0 * hsv.s)
+    local hsvHueInt = math.tointeger(0.5 + 360.0 * hsv.h)
 
-    if hsvSatInt > 0 then
+    if hsvSatInt > 0 and hsvValInt > 0 then
         dialog:modify { id = "hsvHue", value = hsvHueInt }
     end
     dialog:modify { id = "hsvSat", value = hsvSatInt }
     dialog:modify { id = "hsvVal", value = hsvValInt }
 
     updateHarmonies(dialog, primary)
-    updateShades(dialog, primary)
+    updateShades(dialog, primary, shades,
+        dialog.data.hslHue * 0.002777777777777778)
 end
 
-local function updateColor(dialog, primary)
+local function updateColor(dialog, primary, shades)
     local args = dialog.data
     local alpha = args.alpha
     local colorMode = args.colorMode
@@ -493,7 +489,8 @@ local function updateColor(dialog, primary)
     }
 
     updateHarmonies(dialog, primary)
-    updateShades(dialog, primary)
+    updateShades(dialog, primary, shades,
+        args.hslHue * 0.002777777777777778)
 end
 
 local palColors = {
@@ -521,6 +518,15 @@ local harmonies = {
 }
 
 local primary = Color(255, 0, 0, 255)
+local shades = {
+    Color(113,   9,  30, 255),
+    Color(148,  21,  43, 255),
+    Color(183,  37,  54, 255),
+    Color(214,  62,  62, 255),
+    Color(234,  99,  78, 255),
+    Color(244, 139, 104, 255),
+    Color(248, 178, 139, 255)
+}
 local dlg = Dialog { title = "OkHsl Color Picker" }
 
 dlg:button {
@@ -529,7 +535,7 @@ dlg:button {
     text = "&FORE",
     focus = false,
     onclick = function()
-       setFromAse(dlg, app.fgColor, primary)
+       setFromAse(dlg, app.fgColor, primary, shades)
     end
 }
 
@@ -539,7 +545,7 @@ dlg:button {
     focus = false,
     onclick = function()
        app.command.SwitchColors()
-       setFromAse(dlg, app.fgColor, primary)
+       setFromAse(dlg, app.fgColor, primary, shades)
        app.command.SwitchColors()
     end
 }
@@ -613,7 +619,7 @@ dlg:slider {
     value = defaults.hslHue,
     visible = defaults.colorMode == "HSL",
     onchange = function()
-        updateColor(dlg, primary)
+        updateColor(dlg, primary, shades)
     end
 }
 
@@ -627,7 +633,7 @@ dlg:slider {
     value = defaults.hslSat,
     visible = defaults.colorMode == "HSL",
     onchange = function()
-        updateColor(dlg, primary)
+        updateColor(dlg, primary, shades)
     end
 }
 
@@ -641,7 +647,7 @@ dlg:slider {
     value = defaults.hslLgt,
     visible = defaults.colorMode == "HSL",
     onchange = function()
-        updateColor(dlg, primary)
+        updateColor(dlg, primary, shades)
     end
 }
 
@@ -655,7 +661,7 @@ dlg:slider {
     value = defaults.hsvHue,
     visible = defaults.colorMode == "HSV",
     onchange = function()
-        updateColor(dlg, primary)
+        updateColor(dlg, primary, shades)
     end
 }
 
@@ -669,7 +675,7 @@ dlg:slider {
     value = defaults.hsvSat,
     visible = defaults.colorMode == "HSV",
     onchange = function()
-        updateColor(dlg, primary)
+        updateColor(dlg, primary, shades)
     end
 }
 
@@ -683,7 +689,7 @@ dlg:slider {
     value = defaults.hsvVal,
     visible = defaults.colorMode == "HSV",
     onchange = function()
-        updateColor(dlg, primary)
+        updateColor(dlg, primary, shades)
     end
 }
 
@@ -697,7 +703,7 @@ dlg:slider {
     value = defaults.labLgt,
     visible = defaults.colorMode == "LAB",
     onchange = function()
-        updateColor(dlg, primary)
+        updateColor(dlg, primary, shades)
     end
 }
 
@@ -711,7 +717,7 @@ dlg:slider {
     value = defaults.labA,
     visible = defaults.colorMode == "LAB",
     onchange = function()
-        updateColor(dlg, primary)
+        updateColor(dlg, primary, shades)
     end
 }
 
@@ -725,7 +731,7 @@ dlg:slider {
     value = defaults.labB,
     visible = defaults.colorMode == "LAB",
     onchange = function()
-        updateColor(dlg, primary)
+        updateColor(dlg, primary, shades)
     end
 }
 
@@ -738,7 +744,7 @@ dlg:slider {
     max = 255,
     value = defaults.alpha,
     onchange = function()
-        updateColor(dlg, primary)
+        updateColor(dlg, primary, shades)
     end
 }
 
@@ -757,6 +763,7 @@ dlg:combobox {
             dlg:modify { id = "analogous", visible = false }
             dlg:modify { id = "complement", visible = false }
             dlg:modify { id = "shading", visible = false }
+            dlg:modify { id = "append", visible = false }
             dlg:modify { id = "split", visible = false }
             dlg:modify { id = "square", visible = false }
             dlg:modify { id = "triadic", visible = false }
@@ -764,6 +771,7 @@ dlg:combobox {
             dlg:modify { id = "analogous", visible = md == "ANALOGOUS" }
             dlg:modify { id = "complement", visible = md == "COMPLEMENT" }
             dlg:modify { id = "shading", visible = md == "SHADING" }
+            dlg:modify { id = "append", visible = md == "SHADING" }
             dlg:modify { id = "split", visible = md == "SPLIT" }
             dlg:modify { id = "square", visible = md == "SQUARE" }
             dlg:modify { id = "triadic", visible = md == "TRIADIC" }
@@ -811,13 +819,11 @@ dlg:shades {
     end
 }
 
-dlg:newrow { always = false }
-
 dlg:shades {
     id = "shading",
     label = "Shading:",
     mode = "pick",
-    colors = defaults.shading,
+    colors = shades,
     visible = defaults.harmonyType == "SHADING",
     onclick = function(ev)
         local button = ev.button
@@ -827,6 +833,38 @@ dlg:shades {
             app.command.SwitchColors()
             app.fgColor = assignColor(ev.color)
             app.command.SwitchColors()
+        end
+    end
+}
+
+dlg:newrow { always = false }
+
+dlg:button {
+    id = "append",
+    text = "&APPEND",
+    focus = false,
+    visible = defaults.harmonyType == "SHADING",
+    onclick = function()
+        local activeSprite = app.activeSprite
+        if activeSprite then
+            local palette = activeSprite.palettes[1]
+            local oldLen = #palette
+            local shadingCount = defaults.shadingCount
+            local newLen = oldLen + shadingCount
+
+            app.transaction(function()
+                palette:resize(newLen)
+                for i = 0, shadingCount - 1, 1 do
+                    palette:setColor(
+                        oldLen + i,
+                        copyColorByValue(
+                            shades[i + 1]))
+                end
+            end)
+
+            app.refresh()
+        else
+            app.alert("No active sprite.")
         end
     end
 }
