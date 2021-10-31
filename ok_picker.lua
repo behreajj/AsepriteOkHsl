@@ -75,7 +75,11 @@ local defaults = {
     minGreenOffset = 0.3,
     maxGreenOffset = 0.6,
     shadowHue = 291.0 / 360.0,
-    dayHue = 96.0 / 360.0
+    dayHue = 96.0 / 360.0,
+
+    gradWidth = 256,
+    gradHeight = 32,
+    swatchCount = 8
 }
 
 local function copyColorByValue(aseColor)
@@ -229,11 +233,19 @@ local function quantizeUnsigned(a, levels)
     end
 end
 
-local function rgb01ToAseColor(rgb, alpha)
+local function srgb01ToHex(srgb, alpha)
+    local va = alpha or 255
+    return (va << 0x18)
+        | math.tointeger(0.5 + 0xff * math.min(math.max(srgb.b, 0.0), 1.0)) << 0x10
+        | math.tointeger(0.5 + 0xff * math.min(math.max(srgb.g, 0.0), 1.0)) << 0x08
+        | math.tointeger(0.5 + 0xff * math.min(math.max(srgb.r, 0.0), 1.0))
+end
+
+local function srgb01ToAseColor(srgb, alpha)
     return Color(
-        math.tointeger(0.5 + 0xff * math.min(math.max(rgb.r, 0.0), 1.0)),
-        math.tointeger(0.5 + 0xff * math.min(math.max(rgb.g, 0.0), 1.0)),
-        math.tointeger(0.5 + 0xff * math.min(math.max(rgb.b, 0.0), 1.0)),
+        math.tointeger(0.5 + 0xff * math.min(math.max(srgb.r, 0.0), 1.0)),
+        math.tointeger(0.5 + 0xff * math.min(math.max(srgb.g, 0.0), 1.0)),
+        math.tointeger(0.5 + 0xff * math.min(math.max(srgb.b, 0.0), 1.0)),
         alpha or 255)
 end
 
@@ -335,7 +347,7 @@ local function updateShades(dialog, primary, shades, reserveHue)
             h = hMixed,
             s = cMixed,
             l = lMixed })
-        local aseColor = rgb01ToAseColor(clr, alpha)
+        local aseColor = srgb01ToAseColor(clr, alpha)
         shades[i] = aseColor
     end
 
@@ -371,24 +383,24 @@ local function updateHarmonies(dialog, primary)
     local square2 = ok_color.okhsl_to_srgb({ h = h + h270, s = s, l = l })
 
     local tris = {
-        rgb01ToAseColor(tri0),
-        rgb01ToAseColor(tri1)
+        srgb01ToAseColor(tri0),
+        srgb01ToAseColor(tri1)
     }
 
     local analogues = {
-        rgb01ToAseColor(ana0),
-        rgb01ToAseColor(ana1)
+        srgb01ToAseColor(ana0),
+        srgb01ToAseColor(ana1)
     }
 
     local splits = {
-        rgb01ToAseColor(split0),
-        rgb01ToAseColor(split1)
+        srgb01ToAseColor(split0),
+        srgb01ToAseColor(split1)
     }
 
     local squares = {
-        rgb01ToAseColor(square0),
-        rgb01ToAseColor(square1),
-        rgb01ToAseColor(square2)
+        srgb01ToAseColor(square0),
+        srgb01ToAseColor(square1),
+        srgb01ToAseColor(square2)
     }
 
     dialog:modify { id = "complement", colors = { squares[2] } }
@@ -466,7 +478,7 @@ local function updateColor(dialog, primary, shades)
             s = args.hsvSat * 0.01,
             v = args.hsvVal * 0.01 })
         local rgb01 = ok_color.oklab_to_srgb(lab)
-        primary = rgb01ToAseColor(rgb01, alpha)
+        primary = srgb01ToAseColor(rgb01, alpha)
 
         -- Update other color sliders.
         local hsl = ok_color.oklab_to_okhsl(lab)
@@ -478,7 +490,7 @@ local function updateColor(dialog, primary, shades)
             a = args.labA * 0.01,
             b = args.labB * 0.01 }
         local rgb01 = ok_color.oklab_to_srgb(lab)
-        primary = rgb01ToAseColor(rgb01, alpha)
+        primary = srgb01ToAseColor(rgb01, alpha)
 
         -- Update other color sliders.
         local hsl = ok_color.oklab_to_okhsl(lab)
@@ -491,7 +503,7 @@ local function updateColor(dialog, primary, shades)
             s = args.hslSat * 0.01,
             l = args.hslLgt * 0.01 })
         local rgb01 = ok_color.oklab_to_srgb(lab)
-        primary = rgb01ToAseColor(rgb01, alpha)
+        primary = srgb01ToAseColor(rgb01, alpha)
 
         -- Update other color sliders.
         local hsv = ok_color.oklab_to_okhsv(lab)
@@ -1031,19 +1043,124 @@ dlg:slider {
 dlg:newrow { always = false }
 
 dlg:button {
+    id = "gradient",
+    text = "&GRADIENT",
+    focus = false,
+    onclick = function()
+
+        local gradWidth = defaults.gradWidth
+        local gradHeight = defaults.gradHeight
+        local swatchCount = defaults.swatchCount
+
+        local args = dlg.data
+        local colorMode = args.colorMode
+
+        local foreColor = app.fgColor
+        local foreHex = 0xff000000 | foreColor.rgbaPixel
+        local foreSrgb01 = aseColorToRgb01(foreColor)
+        local foreLab = ok_color.srgb_to_oklab(foreSrgb01)
+
+        local backColor = app.bgColor
+        local backHex = 0xff000000 | backColor.rgbaPixel
+        local backSrgb01 = aseColorToRgb01(backColor)
+        local backLab = ok_color.srgb_to_oklab(backSrgb01)
+
+        local lerpLab = function(fac)
+            local u = 1.0 - fac
+            local cL = u * backLab.L + fac * foreLab.L
+            local ca = u * backLab.a + fac * foreLab.a
+            local cb = u * backLab.b + fac * foreLab.b
+            local csrgb01 = ok_color.oklab_to_srgb({ L = cL, a = ca, b = cb })
+            return srgb01ToHex(csrgb01)
+        end
+
+        local lerpFunc = lerpLab
+        if colorMode == "HSL" then
+            local foreHsl = ok_color.oklab_to_okhsl(foreLab)
+            local backHsl = ok_color.oklab_to_okhsl(backLab)
+            if foreHsl.s < 0.00001 or backHsl.s < 0.00001 then
+                lerpFunc = lerpLab
+            else
+                lerpFunc = function(fac)
+                    if fac <= 0.0 then return backHex end
+                    if fac >= 1.0 then return foreHex end
+                    local u = 1.0 - fac
+                    local ch = lerpAngleNear(backHsl.h, foreHsl.h, fac, 1.0)
+                    local cs = u * backHsl.s + fac * foreHsl.s
+                    local cl = u * backHsl.l + fac * foreHsl.l
+                    local csrgb01 = ok_color.okhsl_to_srgb({ h = ch, s = cs, l = cl })
+                    return srgb01ToHex(csrgb01)
+                end
+            end
+        elseif colorMode == "HSV" then
+            local foreHsv = ok_color.oklab_to_okhsv(foreLab)
+            local backHsv = ok_color.oklab_to_okhsv(backLab)
+            if foreHsv.s < 0.00001 or backHsv.s < 0.00001 then
+                lerpFunc = lerpLab
+            else
+                lerpFunc = function(fac)
+                    if fac <= 0.0 then return backHex end
+                    if fac >= 1.0 then return foreHex end
+                    local u = 1.0 - fac
+                    local ch = lerpAngleNear(backHsv.h, foreHsv.h, fac, 1.0)
+                    local cs = u * backHsv.s + fac * foreHsv.s
+                    local cv = u * backHsv.v + fac * foreHsv.v
+                    local csrgb01 = ok_color.okhsv_to_srgb({ h = ch, s = cs, v = cv })
+                    return srgb01ToHex(csrgb01)
+                end
+            end
+        end
+
+        local gradSprite = Sprite(gradWidth, gradHeight)
+        local firstCel = gradSprite.cels[1]
+        local gradImg = Image(gradWidth, gradHeight)
+        local gradImgPxItr = gradImg:pixels()
+        local xToFac = 1.0 / (gradWidth - 1.0)
+        for elm in gradImgPxItr do
+            elm(lerpFunc(elm.x * xToFac))
+        end
+
+        firstCel.image = gradImg
+
+        local pal = Palette(swatchCount)
+        local iToFac = 1.0 / (swatchCount - 1.0)
+        local swatchHexes = {}
+        for i = 0, swatchCount - 1, 1 do
+            local fac = i * iToFac
+            local swatchHex = lerpFunc(fac)
+            swatchHexes[1 + i] = swatchHex
+            pal:setColor(i, swatchHex)
+        end
+        gradSprite:setPalette(pal)
+
+        app.fgColor = Color(foreHex)
+        app.command.SwitchColors()
+        app.fgColor = Color(backHex)
+        app.command.SwitchColors()
+
+        app.refresh()
+    end
+}
+
+dlg:button {
     id = "wheel",
     text = "&WHEEL",
     focus = false,
     onclick = function()
-        local args = dlg.data
+        -- There is some known discontinuity for saturated dark blues.
+        -- See { h = 264.0 / 360.0, s = 100.0 / 100.0, l = 28.0 / 100.0 },
+        -- hex code #0009c5.
 
         -- Cache methods.
         local atan2 = math.atan
         local sqrt = math.sqrt
         local trunc = math.tointeger
+        local max = math.max
+        local min = math.min
         local hsl_to_srgb = ok_color.okhsl_to_srgb
 
         -- Unpack arguments.
+        local args = dlg.data
         local size = args.size or defaults.size
         local szInv = 1.0 / (size - 1.0)
         local iToStep = 1.0
@@ -1103,6 +1220,12 @@ dlg:button {
                     else
                         srgb = hsl_to_srgb({ h = 0.0, s = 0.0, l = light })
                     end
+
+                    -- Values still go out of gamut, particularly for
+                    -- saturated blues at medium light.
+                    srgb.r = min(max(srgb.r, 0.0), 1.0)
+                    srgb.g = min(max(srgb.g, 0.0), 1.0)
+                    srgb.b = min(max(srgb.b, 0.0), 1.0)
 
                     -- Composite into a 32-bit integer.
                     local hex = 0xff000000
@@ -1164,15 +1287,6 @@ dlg:button {
         app.activeFrame = sprite.frames[
             math.ceil(#sprite.frames / 2)]
         app.refresh()
-    end
-}
-
-dlg:button {
-    id = "cancel",
-    text = "&CANCEL",
-    focus = false,
-    onclick = function()
-        dlg:close()
     end
 }
 

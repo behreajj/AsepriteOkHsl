@@ -32,97 +32,6 @@ function ok_color.clamp(x, min, max)
     return x
 end
 
-function ok_color.sgn(x)
-    if x < -0.0 then return -1.0 end
-    if x > 0.0 then return 1.0 end
-    return 0.0
-end
-
-function ok_color.srgb_transfer_function(a)
-    if 0.0031308 >= a then
-        return 12.92 * a
-    else
-        return 1.055 * (a ^ 0.4166666666666667) - 0.055
-    end
-end
-
-function ok_color.srgb_transfer_function_inv(a)
-    if 0.04045 < a then
-        return ((a + 0.055) * 0.9478672985781991) ^ 2.4
-    else
-        return a * 0.07739938080495357
-    end
-end
-
-function ok_color.srgb_to_oklab(srgb)
-    return ok_color.linear_srgb_to_oklab({
-		r = ok_color.srgb_transfer_function_inv(srgb.r),
-		g = ok_color.srgb_transfer_function_inv(srgb.g),
-		b = ok_color.srgb_transfer_function_inv(srgb.b) })
-end
-
-function ok_color.linear_srgb_to_oklab(c)
-    local l = 0.4122214708 * c.r
-            + 0.5363325363 * c.g
-            + 0.0514459929 * c.b
-	local m = 0.2119034982 * c.r
-            + 0.6806995451 * c.g
-            + 0.1073969566 * c.b
-	local s = 0.0883024619 * c.r
-            + 0.2817188376 * c.g
-            + 0.6299787005 * c.b
-
-    local l_ = l ^ 0.3333333333333333
-    local m_ = m ^ 0.3333333333333333
-    local s_ = s ^ 0.3333333333333333
-
-    return {
-        L = 0.2104542553 * l_
-          + 0.7936177850 * m_
-          - 0.0040720468 * s_,
-        a = 1.9779984951 * l_
-          - 2.4285922050 * m_
-          + 0.4505937099 * s_,
-        b = 0.0259040371 * l_
-          + 0.7827717662 * m_
-          - 0.8086757660 * s_ }
-end
-
-function ok_color.oklab_to_srgb(lab)
-    local lrgb = ok_color.oklab_to_linear_srgb(lab)
-	return {
-		r = ok_color.srgb_transfer_function(lrgb.r),
-		g = ok_color.srgb_transfer_function(lrgb.g),
-		b = ok_color.srgb_transfer_function(lrgb.b) }
-end
-
-function ok_color.oklab_to_linear_srgb(lab)
-    local l_ = lab.L
-        + 0.3963377774 * lab.a
-        + 0.2158037573 * lab.b
-	local m_ = lab.L
-        - 0.1055613458 * lab.a
-        - 0.0638541728 * lab.b
-	local s_ = lab.L
-        - 0.0894841775 * lab.a
-        - 1.2914855480 * lab.b
-
-    local l = l_ * l_ * l_
-    local m = m_ * m_ * m_
-    local s = s_ * s_ * s_
-
-    return {
-        r = 4.0767416621 * l
-          - 3.3077115913 * m
-          + 0.2309699292 * s,
-        g = -1.2684380046 * l
-           + 2.6097574011 * m
-           - 0.3413193965 * s,
-        b = -0.0041960863 * l
-           - 0.7034186147 * m
-           + 1.7076147010 * s }
-end
-
 -- Finds the maximum saturation possible for a given hue that fits in sRGB
 -- Saturation here is defined as S = C/L
 -- a and b must be normalized so a^2 + b^2 == 1
@@ -304,6 +213,77 @@ function ok_color.find_gamut_intersection(a, b, L1, C1, L0, x)
     return t
 end
 
+function ok_color.gamut_clip_adaptive_L0_0_5(rgb, x)
+    if rgb.r <= 1.0
+        and rgb.g <= 1.0
+        and rgb.b <= 1.0
+        and rgb.r >= 0.0
+        and rgb.g >= 0.0
+        and rgb.b >= 0.0 then
+        return rgb
+    end
+
+    local lab = ok_color.linear_srgb_to_oklab(rgb)
+
+    local L = lab.L
+	local C = math.max(0.00001, math.sqrt(lab.a * lab.a + lab.b * lab.b))
+	local a_ = lab.a / C
+	local b_ = lab.b / C
+
+    local alpha = x or 0.05
+    local Ld = L - 0.5
+	local e1 = 0.5 + math.abs(Ld) + alpha * C
+	local L0 = 0.5 * (1.0 + ok_color.sgn(Ld) * (e1 - math.sqrt(e1 * e1 - 2.0 * math.abs(Ld))))
+
+    local t = ok_color.find_gamut_intersection(a_, b_, L, C, L0)
+	local C_clipped = t * C
+
+    return ok_color.oklab_to_linear_srgb({
+        L = L0 * (1.0 - t) + t * L,
+        a = C_clipped * a_,
+        b = C_clipped * b_ })
+end
+
+function ok_color.gamut_clip_adaptive_L0_L_cusp(rgb, x)
+    if rgb.r <= 1.0
+        and rgb.g <= 1.0
+        and rgb.b <= 1.0
+        and rgb.r >= 0.0
+        and rgb.g >= 0.0
+        and rgb.b >= 0.0 then
+        return rgb
+    end
+
+    local lab = ok_color.linear_srgb_to_oklab(rgb)
+
+    local L = lab.L
+	local C = math.max(0.00001, math.sqrt(lab.a * lab.a + lab.b * lab.b))
+	local a_ = lab.a / C
+	local b_ = lab.b / C
+
+    local cusp = ok_color.find_cusp(a_, b_)
+
+    local Ld = L - cusp.L
+    local k = 0.0
+    if Ld > 0 then
+        k = 2.0 * (1.0 - cusp.L)
+    else
+        k = 2.0 * cusp.L
+    end
+
+    local alpha = x or 0.05
+    local e1 = 0.5 * k + math.abs(Ld) + alpha * C / k
+	local L0 = cusp.L + 0.5 * (ok_color.sgn(Ld) * (e1 - math.sqrt(e1 * e1 - 2.0 * k * math.abs(Ld))))
+
+    local t = ok_color.find_gamut_intersection(a_, b_, L, C, L0, cusp)
+	local C_clipped = t * C
+
+    return ok_color.oklab_to_linear_srgb({
+        L = L0 * (1.0 - t) + t * L,
+        a = C_clipped * a_,
+        b = C_clipped * b_ })
+end
+
 function ok_color.gamut_clip_preserve_chroma(rgb)
 	if rgb.r <= 1.0
         and rgb.g <= 1.0
@@ -389,122 +369,10 @@ function ok_color.gamut_clip_project_to_L_cusp(rgb)
         b = C_clipped * b_ })
 end
 
-function ok_color.gamut_clip_adaptive_L0_0_5(rgb, x)
-    if rgb.r <= 1.0
-        and rgb.g <= 1.0
-        and rgb.b <= 1.0
-        and rgb.r >= 0.0
-        and rgb.g >= 0.0
-        and rgb.b >= 0.0 then
-        return rgb
-    end
-
-    local lab = ok_color.linear_srgb_to_oklab(rgb)
-
-    local L = lab.L
-	local C = math.max(0.00001, math.sqrt(lab.a * lab.a + lab.b * lab.b))
-	local a_ = lab.a / C
-	local b_ = lab.b / C
-
-    local alpha = x or 0.05
-    local Ld = L - 0.5
-	local e1 = 0.5 + math.abs(Ld) + alpha * C
-	local L0 = 0.5 * (1.0 + ok_color.sgn(Ld) * (e1 - math.sqrt(e1 * e1 - 2.0 * math.abs(Ld))))
-
-    local t = ok_color.find_gamut_intersection(a_, b_, L, C, L0)
-	local C_clipped = t * C
-
-    return ok_color.oklab_to_linear_srgb({
-        L = L0 * (1.0 - t) + t * L,
-        a = C_clipped * a_,
-        b = C_clipped * b_ })
-end
-
-function ok_color.gamut_clip_adaptive_L0_L_cusp(rgb, x)
-    if rgb.r <= 1.0
-        and rgb.g <= 1.0
-        and rgb.b <= 1.0
-        and rgb.r >= 0.0
-        and rgb.g >= 0.0
-        and rgb.b >= 0.0 then
-        return rgb
-    end
-
-    local lab = ok_color.linear_srgb_to_oklab(rgb)
-
-    local L = lab.L
-	local C = math.max(0.00001, math.sqrt(lab.a * lab.a + lab.b * lab.b))
-	local a_ = lab.a / C
-	local b_ = lab.b / C
-
-    local cusp = ok_color.find_cusp(a_, b_)
-
-    local Ld = L - cusp.L
-    local k = 0.0
-    if Ld > 0 then
-        k = 2.0 * (1.0 - cusp.L)
-    else
-        k = 2.0 * cusp.L
-    end
-
-    local alpha = x or 0.05
-    local e1 = 0.5 * k + math.abs(Ld) + alpha * C / k
-	local L0 = cusp.L + 0.5 * (ok_color.sgn(Ld) * (e1 - math.sqrt(e1 * e1 - 2.0 * k * math.abs(Ld))))
-
-    local t = ok_color.find_gamut_intersection(a_, b_, L, C, L0, cusp)
-	local C_clipped = t * C
-
-    return ok_color.oklab_to_linear_srgb({
-        L = L0 * (1.0 - t) + t * L,
-        a = C_clipped * a_,
-        b = C_clipped * b_ })
-end
-
-function ok_color.toe(x)
-    local k_1 = 0.206
-    local k_2 = 0.03
-    local k_3 = (1.0 + k_1) / (1.0 + k_2)
-	return 0.5 * (k_3 * x - k_1 + math.sqrt((k_3 * x - k_1) * (k_3 * x - k_1) + 4 * k_2 * k_3 * x))
-end
-
-function ok_color.toe_inv(x)
-    local k_1 = 0.206
-    local k_2 = 0.03
-    local k_3 = (1.0 + k_1) / (1.0 + k_2)
-	return (x * x + k_1 * x) / (k_3 * (x + k_2))
-end
-
-function ok_color.to_ST(cusp)
-	local L = cusp.L
-	local C = cusp.C
-    if L ~= 0.0 and L ~= 1.0 then
-    	return { S = C / L, T = C / (1.0 - L) }
-    else
-        return { S = 0.0, T = 0.0 }
-    end
-end
-
--- Returns a smooth approximation of the location of the cusp
--- This polynomial was created by an optimization process
--- It has been designed so that S_mid < S_max and T_mid < T_max
-function ok_color.get_ST_mid(a_, b_)
-    local S = 0.11516993 + 1.0 / (7.4477897 + 4.1590124 * b_
-		+ a_ * (-2.19557347 + 1.75198401 * b_
-			+ a_ * (-2.13704948 - 10.02301043 * b_
-				+ a_ * (-4.24894561 + 5.38770819 * b_ + 4.69891013 * a_))))
-
-	local T = 0.11239642 + 1.0 / (1.6132032 - 0.68124379 * b_
-		+ a_ * (0.40370612 + 0.90148123 * b_
-			+ a_ * (-0.27087943 + 0.6122399 * b_
-				+ a_ * (0.00299215 - 0.45399568 * b_ - 0.14661872 * a_))))
-
-	return { S = S, T = T }
-end
-
 function ok_color.get_Cs(L, a_, b_)
     local cusp = ok_color.find_cusp(a_, b_)
 
-    local C_max = ok_color.find_gamut_intersection(a_, b_, L, 1, L, cusp)
+    local C_max = ok_color.find_gamut_intersection(a_, b_, L, 1.0, L, cusp)
     local ST_max = ok_color.to_ST(cusp)
 
     -- Scale factor to compensate for the curved part of gamut shape:
@@ -535,8 +403,48 @@ function ok_color.get_Cs(L, a_, b_)
     return { C_0 = C_0, C_mid = C_mid, C_max = C_max }
 end
 
-function ok_color.okhsl_to_srgb(hsl)
-    return ok_color.oklab_to_srgb(ok_color.okhsl_to_oklab(hsl))
+-- Returns a smooth approximation of the location of the cusp
+-- This polynomial was created by an optimization process
+-- It has been designed so that S_mid < S_max and T_mid < T_max
+function ok_color.get_ST_mid(a_, b_)
+    local S = 0.11516993 + 1.0 / (7.4477897 + 4.1590124 * b_
+		+ a_ * (-2.19557347 + 1.75198401 * b_
+			+ a_ * (-2.13704948 - 10.02301043 * b_
+				+ a_ * (-4.24894561 + 5.38770819 * b_ + 4.69891013 * a_))))
+
+	local T = 0.11239642 + 1.0 / (1.6132032 - 0.68124379 * b_
+		+ a_ * (0.40370612 + 0.90148123 * b_
+			+ a_ * (-0.27087943 + 0.6122399 * b_
+				+ a_ * (0.00299215 - 0.45399568 * b_ - 0.14661872 * a_))))
+
+	return { S = S, T = T }
+end
+
+function ok_color.linear_srgb_to_oklab(c)
+    local l = 0.4122214708 * c.r
+            + 0.5363325363 * c.g
+            + 0.0514459929 * c.b
+	local m = 0.2119034982 * c.r
+            + 0.6806995451 * c.g
+            + 0.1073969566 * c.b
+	local s = 0.0883024619 * c.r
+            + 0.2817188376 * c.g
+            + 0.6299787005 * c.b
+
+    local l_ = l ^ 0.3333333333333333
+    local m_ = m ^ 0.3333333333333333
+    local s_ = s ^ 0.3333333333333333
+
+    return {
+        L = 0.2104542553 * l_
+          + 0.7936177850 * m_
+          - 0.0040720468 * s_,
+        a = 1.9779984951 * l_
+          - 2.4285922050 * m_
+          + 0.4505937099 * s_,
+        b = 0.0259040371 * l_
+          + 0.7827717662 * m_
+          - 0.8086757660 * s_ }
 end
 
 function ok_color.okhsl_to_oklab(hsl)
@@ -593,8 +501,88 @@ function ok_color.okhsl_to_oklab(hsl)
         b = C * b_ }
 end
 
-function ok_color.srgb_to_okhsl(rgb)
-    return ok_color.oklab_to_okhsl(ok_color.srgb_to_oklab(rgb))
+function ok_color.okhsl_to_srgb(hsl)
+    return ok_color.oklab_to_srgb(ok_color.okhsl_to_oklab(hsl))
+end
+
+function ok_color.okhsv_to_oklab(hsv)
+	local v = hsv.v
+    if v < 0.00001 then return { L = 0.0, a = 0.0, b = 0.0 } end
+
+    -- TODO: saturation should be found first and
+    -- early return for s < eps.
+    local s = hsv.s
+
+    local h_rad = hsv.h * 6.283185307179586
+    local a_ = math.cos(h_rad)
+    local b_ = math.sin(h_rad)
+
+    local cusp = ok_color.find_cusp(a_, b_)
+	local ST_max = ok_color.to_ST(cusp)
+	local S_max = ST_max.S
+	local T_max = ST_max.T
+	local S_0 = 0.5
+    local k = 1.0
+    if S_max ~= 0.0 then
+	    k = 1.0 - S_0 / S_max
+    end
+
+    -- first we compute L and V as if the gamut is a perfect triangle:
+
+	-- L, C when v==1:
+    local L_v = 1.0 - s * S_0 / (S_0 + T_max - T_max * k * s)
+	local C_v = s * T_max * S_0 / (S_0 + T_max - T_max * k * s)
+
+    local L = v * L_v
+	local C = v * C_v
+
+    --then we compensate for both toe and the curved top part of the triangle:
+    local L_vt = ok_color.toe_inv(L_v)
+    local C_vt = C_v * L_vt / L_v
+
+    local L_new = ok_color.toe_inv(L)
+    C = C * L_new / L
+    L = L_new
+
+    local rgb_scale = ok_color.oklab_to_linear_srgb({ L = L_vt, a = a_ * C_vt, b = b_ * C_vt })
+	local scale_L = (1.0 / math.max(rgb_scale.r, rgb_scale.g, rgb_scale.b, 0.0)) ^ 0.3333333333333333
+
+	C = C * scale_L
+    return {
+        L = L * scale_L,
+        a = C * a_,
+        b = C * b_ }
+end
+
+function ok_color.okhsv_to_srgb(hsv)
+    return ok_color.oklab_to_srgb(ok_color.okhsv_to_oklab(hsv))
+end
+
+function ok_color.oklab_to_linear_srgb(lab)
+    local l_ = lab.L
+        + 0.3963377774 * lab.a
+        + 0.2158037573 * lab.b
+	local m_ = lab.L
+        - 0.1055613458 * lab.a
+        - 0.0638541728 * lab.b
+	local s_ = lab.L
+        - 0.0894841775 * lab.a
+        - 1.2914855480 * lab.b
+
+    local l = l_ * l_ * l_
+    local m = m_ * m_ * m_
+    local s = s_ * s_ * s_
+
+    return {
+        r = 4.0767416621 * l
+          - 3.3077115913 * m
+          + 0.2309699292 * s,
+        g = -1.2684380046 * l
+           + 2.6097574011 * m
+           - 0.3413193965 * s,
+        b = -0.0041960863 * l
+           - 0.7034186147 * m
+           + 1.7076147010 * s }
 end
 
 function ok_color.oklab_to_okhsl(lab)
@@ -652,63 +640,6 @@ function ok_color.oklab_to_okhsl(lab)
     else
         return { h = 0.0, s = 0.0, l = L }
     end
-end
-
-function ok_color.okhsv_to_srgb(hsv)
-    return ok_color.oklab_to_srgb(ok_color.okhsv_to_oklab(hsv))
-end
-
-function ok_color.okhsv_to_oklab(hsv)
-	local v = hsv.v
-    if v < 0.00001 then return { L = 0.0, a = 0.0, b = 0.0 } end
-
-    -- TODO: saturation should be found first and
-    -- early return for s < eps.
-    local s = hsv.s
-
-    local h_rad = hsv.h * 6.283185307179586
-    local a_ = math.cos(h_rad)
-    local b_ = math.sin(h_rad)
-
-    local cusp = ok_color.find_cusp(a_, b_)
-	local ST_max = ok_color.to_ST(cusp)
-	local S_max = ST_max.S
-	local T_max = ST_max.T
-	local S_0 = 0.5
-    local k = 1.0
-    if S_max ~= 0.0 then
-	    k = 1.0 - S_0 / S_max
-    end
-
-    -- first we compute L and V as if the gamut is a perfect triangle:
-
-	-- L, C when v==1:
-    local L_v = 1.0 - s * S_0 / (S_0 + T_max - T_max * k * s)
-	local C_v = s * T_max * S_0 / (S_0 + T_max - T_max * k * s)
-
-    local L = v * L_v
-	local C = v * C_v
-
-    --then we compensate for both toe and the curved top part of the triangle:
-    local L_vt = ok_color.toe_inv(L_v)
-    local C_vt = C_v * L_vt / L_v
-
-    local L_new = ok_color.toe_inv(L)
-    C = C * L_new / L
-    L = L_new
-
-    local rgb_scale = ok_color.oklab_to_linear_srgb({ L = L_vt, a = a_ * C_vt, b = b_ * C_vt })
-	local scale_L = (1.0 / math.max(rgb_scale.r, rgb_scale.g, rgb_scale.b, 0.0)) ^ 0.3333333333333333
-
-	C = C * scale_L
-    return {
-        L = L * scale_L,
-        a = C * a_,
-        b = C * b_ }
-end
-
-function ok_color.srgb_to_okhsv(rgb)
-    return ok_color.oklab_to_okhsv(ok_color.srgb_to_oklab(rgb))
 end
 
 function ok_color.oklab_to_okhsv(lab)
@@ -787,6 +718,75 @@ function ok_color.oklab_to_okhsv(lab)
     else
         return { h = 0.0, s = 0.0, v = ok_color.clamp(lab.L, 0.0, 1.0) }
     end
+end
+
+function ok_color.oklab_to_srgb(lab)
+    local lrgb = ok_color.oklab_to_linear_srgb(lab)
+	return {
+		r = ok_color.srgb_transfer_function(lrgb.r),
+		g = ok_color.srgb_transfer_function(lrgb.g),
+		b = ok_color.srgb_transfer_function(lrgb.b) }
+end
+
+function ok_color.sgn(x)
+    if x < -0.0 then return -1.0 end
+    if x > 0.0 then return 1.0 end
+    return 0.0
+end
+
+function ok_color.srgb_to_okhsl(rgb)
+    return ok_color.oklab_to_okhsl(ok_color.srgb_to_oklab(rgb))
+end
+
+function ok_color.srgb_to_okhsv(rgb)
+    return ok_color.oklab_to_okhsv(ok_color.srgb_to_oklab(rgb))
+end
+
+function ok_color.srgb_to_oklab(srgb)
+    return ok_color.linear_srgb_to_oklab({
+		r = ok_color.srgb_transfer_function_inv(srgb.r),
+		g = ok_color.srgb_transfer_function_inv(srgb.g),
+		b = ok_color.srgb_transfer_function_inv(srgb.b) })
+end
+
+function ok_color.srgb_transfer_function(a)
+    if 0.0031308 >= a then
+        return 12.92 * a
+    else
+        return 1.055 * (a ^ 0.4166666666666667) - 0.055
+    end
+end
+
+function ok_color.srgb_transfer_function_inv(a)
+    if 0.04045 < a then
+        return ((a + 0.055) * 0.9478672985781991) ^ 2.4
+    else
+        return a * 0.07739938080495357
+    end
+end
+
+function ok_color.to_ST(cusp)
+	local L = cusp.L
+    if L ~= 0.0 and L ~= 1.0 then
+        local C = cusp.C
+        return { S = C / L, T = C / (1.0 - L) }
+    else
+        return { S = 0.0, T = 0.0 }
+    end
+end
+
+function ok_color.toe(x)
+    local k_1 = 0.206
+    local k_2 = 0.03
+    local k_3 = (1.0 + k_1) / (1.0 + k_2)
+	return 0.5 * (k_3 * x - k_1 + math.sqrt((k_3 * x - k_1) * (k_3 * x - k_1) + 4 * k_2 * k_3 * x))
+end
+
+function ok_color.toe_inv(x)
+    local k_1 = 0.206
+    local k_2 = 0.03
+    local k_3 = (1.0 + k_1) / (1.0 + k_2)
+	return (x * x + k_1 * x) / (k_3 * (x + k_2))
 end
 
 return ok_color
