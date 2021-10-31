@@ -1,6 +1,6 @@
 dofile("./ok_color.lua")
 
--- Copyright(c) 2021 Bj�rn Ottosson
+-- Copyright(c) 2021 Bjorn Ottosson
 --
 -- Permission is hereby granted, free of charge, to any person obtaining a copy of
 -- this softwareand associated documentation files(the "Software"), to deal in
@@ -254,14 +254,9 @@ local function updateShades(dialog, primary, shades, reserveHue)
     local srcHsl = ok_color.srgb_to_okhsl(srgb)
 
     local alpha = primary.alpha
-    local l = math.min(math.max(srcHsl.l, 0.01), 0.99)
-    local s = math.min(math.max(srcHsl.s, 0.01), 0.99)
-    local h = reserveHue
-    if srcHsl.l > 0.005
-        and srcHsl.l < 0.995
-        and srcHsl.s > 0.005 then
-        h = srcHsl.h
-    end
+    local l = srcHsl.l
+    local s = srcHsl.s
+    local h = srcHsl.h
 
     -- Decide on clockwise or counter-clockwise based
     -- on color's warmth or coolness.
@@ -339,8 +334,7 @@ local function updateShades(dialog, primary, shades, reserveHue)
         local clr = ok_color.okhsl_to_srgb({
             h = hMixed,
             s = cMixed,
-            l = lMixed
-        })
+            l = lMixed })
         local aseColor = rgb01ToAseColor(clr, alpha)
         shades[i] = aseColor
     end
@@ -404,31 +398,19 @@ local function updateHarmonies(dialog, primary)
     dialog:modify { id = "square", colors = squares }
 end
 
-local function setFromAse(dialog, aseColor, primary, shades)
-    primary = copyColorByValue(aseColor)
-    dialog:modify { id = "baseColor", colors = { primary } }
-    dialog:modify { id = "alpha", value = primary.alpha }
-    dialog:modify { id = "hexCode", text = colorToHexWeb(primary) }
-
-    local srgb = aseColorToRgb01(primary)
-
-    local lab = ok_color.srgb_to_oklab(srgb)
-    -- print(string.format(
-    --     "L: %.6f a: %.6f b: %.6f",
-    --     lab.L, lab.a, lab.b))
-
+local function setLab(dialog, lab)
     local labLgtInt = math.tointeger(0.5 + 100.0 * lab.L)
     local labAInt = round(100.0 * lab.a)
     local labBInt = round(100.0 * lab.b)
     dialog:modify { id = "labLgt", value = labLgtInt }
     dialog:modify { id = "labA", value = labAInt }
     dialog:modify { id = "labB", value = labBInt }
+end
 
-    local hsl = ok_color.oklab_to_okhsl(lab)
+local function setHsl(dialog, hsl)
     local hslLgtInt = math.tointeger(0.5 + 100.0 * hsl.l)
     local hslSatInt = math.tointeger(0.5 + 100.0 * hsl.s)
     local hslHueInt = math.tointeger(0.5 + 360.0 * hsl.h)
-
     if hslSatInt > 0
         and hslLgtInt > 0
         and hslLgtInt < 100 then
@@ -436,17 +418,37 @@ local function setFromAse(dialog, aseColor, primary, shades)
     end
     dialog:modify { id = "hslSat", value = hslSatInt }
     dialog:modify { id = "hslLgt", value = hslLgtInt }
+end
 
-    local hsv = ok_color.oklab_to_okhsv(lab)
+local function setHsv(dialog, hsv)
     local hsvValInt = math.tointeger(0.5 + 100.0 * hsv.v)
     local hsvSatInt = math.tointeger(0.5 + 100.0 * hsv.s)
     local hsvHueInt = math.tointeger(0.5 + 360.0 * hsv.h)
-
     if hsvSatInt > 0 and hsvValInt > 0 then
         dialog:modify { id = "hsvHue", value = hsvHueInt }
     end
     dialog:modify { id = "hsvSat", value = hsvSatInt }
     dialog:modify { id = "hsvVal", value = hsvValInt }
+end
+
+local function setFromAse(dialog, aseColor, primary, shades)
+    primary = copyColorByValue(aseColor)
+    dialog:modify { id = "baseColor", colors = { primary } }
+    dialog:modify { id = "alpha", value = primary.alpha }
+    dialog:modify { id = "hexCode", text = colorToHexWeb(primary) }
+
+    local srgb = aseColorToRgb01(primary)
+    local lab = ok_color.srgb_to_oklab(srgb)
+    local hsl = ok_color.oklab_to_okhsl(lab)
+    local hsv = ok_color.oklab_to_okhsv(lab)
+
+    -- print(string.format(
+    --     "L: %.6f a: %.6f b: %.6f",
+    --     lab.L, lab.a, lab.b))
+
+    setLab(dialog, lab)
+    setHsl(dialog, hsl)
+    setHsv(dialog, hsv)
 
     updateHarmonies(dialog, primary)
     updateShades(dialog, primary, shades,
@@ -459,23 +461,42 @@ local function updateColor(dialog, primary, shades)
     local colorMode = args.colorMode
 
     if colorMode == "HSV" then
-        local rgb01 = ok_color.okhsv_to_srgb({
+        local lab = ok_color.okhsv_to_oklab({
             h = args.hsvHue * 0.002777777777777778,
             s = args.hsvSat * 0.01,
             v = args.hsvVal * 0.01 })
+        local rgb01 = ok_color.oklab_to_srgb(lab)
         primary = rgb01ToAseColor(rgb01, alpha)
+
+        -- Update other color sliders.
+        local hsl = ok_color.oklab_to_okhsl(lab)
+        setHsl(dialog, hsl)
+        setLab(dialog, lab)
     elseif colorMode == "LAB" then
-        local rgb01 = ok_color.oklab_to_srgb({
+        local lab = {
             L = args.labLgt * 0.01,
             a = args.labA * 0.01,
-            b = args.labB * 0.01 })
+            b = args.labB * 0.01 }
+        local rgb01 = ok_color.oklab_to_srgb(lab)
         primary = rgb01ToAseColor(rgb01, alpha)
+
+        -- Update other color sliders.
+        local hsl = ok_color.oklab_to_okhsl(lab)
+        local hsv = ok_color.oklab_to_okhsv(lab)
+        setHsl(dialog, hsl)
+        setHsv(dialog, hsv)
     else
-        local rgb01 = ok_color.okhsl_to_srgb({
+        local lab = ok_color.okhsl_to_oklab({
             h = args.hslHue * 0.002777777777777778,
             s = args.hslSat * 0.01,
             l = args.hslLgt * 0.01 })
+        local rgb01 = ok_color.oklab_to_srgb(lab)
         primary = rgb01ToAseColor(rgb01, alpha)
+
+        -- Update other color sliders.
+        local hsv = ok_color.oklab_to_okhsv(lab)
+        setHsv(dialog, hsv)
+        setLab(dialog, lab)
     end
 
     dialog:modify {
@@ -578,36 +599,33 @@ dlg:shades {
     end
 }
 
--- dlg:newrow { always = false }
+dlg:newrow { always = false }
 
--- dlg:combobox {
---     id = "colorMode",
---     label = "Mode:",
---     option = defaults.colorMode,
---     options = colorModes,
---     onchange = function()
---         -- TODO: This needs to update the other two
---         -- mode sliders based on the source mode sliders.
+dlg:combobox {
+    id = "colorMode",
+    label = "Mode:",
+    option = defaults.colorMode,
+    options = colorModes,
+    onchange = function()
+        local args = dlg.data
+        local colorMode = args.colorMode
 
---         local args = dlg.data
---         local colorMode = args.colorMode
+        local isHsl = colorMode == "HSL"
+        dlg:modify { id = "hslHue", visible = isHsl }
+        dlg:modify { id = "hslSat", visible = isHsl }
+        dlg:modify { id = "hslLgt", visible = isHsl }
 
---         local isHsl = colorMode == "HSL"
---         dlg:modify { id = "hslHue", visible = isHsl }
---         dlg:modify { id = "hslSat", visible = isHsl }
---         dlg:modify { id = "hslLgt", visible = isHsl }
+        local isHsv = colorMode == "HSV"
+        dlg:modify { id = "hsvHue", visible = isHsv }
+        dlg:modify { id = "hsvSat", visible = isHsv }
+        dlg:modify { id = "hsvVal", visible = isHsv }
 
---         local isHsv = colorMode == "HSV"
---         dlg:modify { id = "hsvHue", visible = isHsv }
---         dlg:modify { id = "hsvSat", visible = isHsv }
---         dlg:modify { id = "hsvVal", visible = isHsv }
-
---         local isLab = colorMode == "LAB"
---         dlg:modify { id = "labLgt", visible = isLab }
---         dlg:modify { id = "labA", visible = isLab }
---         dlg:modify { id = "labB", visible = isLab }
---     end
--- }
+        local isLab = colorMode == "LAB"
+        dlg:modify { id = "labLgt", visible = isLab }
+        dlg:modify { id = "labA", visible = isLab }
+        dlg:modify { id = "labB", visible = isLab }
+    end
+}
 
 dlg:newrow { always = false }
 
