@@ -443,6 +443,34 @@ local function setHsv(dialog, hsv)
     dialog:modify { id = "hsvVal", value = hsvValInt }
 end
 
+local function setFromHexStr(dialog, primary, shades)
+    local args = dialog.data
+    local hexStr = args.hexCode
+    if #hexStr > 5 then
+        local hexRgb = tonumber(hexStr, 16)
+        if hexRgb then
+            local r255 = hexRgb >> 0x10 & 0xff
+            local g255 = hexRgb >> 0x08 & 0xff
+            local b255 = hexRgb & 0xff
+
+            primary = Color(r255, g255, b255, 255)
+            dialog:modify { id = "baseColor", colors = { primary } }
+            dialog:modify { id = "alpha", value = 255 }
+
+            local srgb = aseColorToRgb01(primary)
+            local lab = ok_color.srgb_to_oklab(srgb)
+
+            setLab(dialog, lab)
+            setHsl(dialog, ok_color.oklab_to_okhsl(lab))
+            setHsv(dialog, ok_color.oklab_to_okhsv(lab))
+
+            updateHarmonies(dialog, primary)
+            updateShades(dialog, primary, shades,
+                dialog.data.hslHue * 0.002777777777777778)
+        end
+    end
+end
+
 local function setFromAse(dialog, aseColor, primary, shades)
     primary = copyColorByValue(aseColor)
     dialog:modify { id = "baseColor", colors = { primary } }
@@ -451,16 +479,10 @@ local function setFromAse(dialog, aseColor, primary, shades)
 
     local srgb = aseColorToRgb01(primary)
     local lab = ok_color.srgb_to_oklab(srgb)
-    local hsl = ok_color.oklab_to_okhsl(lab)
-    local hsv = ok_color.oklab_to_okhsv(lab)
-
-    -- print(string.format(
-    --     "L: %.6f a: %.6f b: %.6f",
-    --     lab.L, lab.a, lab.b))
 
     setLab(dialog, lab)
-    setHsl(dialog, hsl)
-    setHsv(dialog, hsv)
+    setHsl(dialog, ok_color.oklab_to_okhsl(lab))
+    setHsv(dialog, ok_color.oklab_to_okhsv(lab))
 
     updateHarmonies(dialog, primary)
     updateShades(dialog, primary, shades,
@@ -589,7 +611,10 @@ dlg:entry {
     id = "hexCode",
     label = "Hex: #",
     text = "ff0000",
-    focus = false
+    focus = false,
+    onchange = function()
+        setFromHexStr(dlg, primary, shades)
+    end
 }
 
 dlg:newrow { always = false }
