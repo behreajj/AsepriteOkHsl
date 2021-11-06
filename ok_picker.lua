@@ -40,8 +40,11 @@ local defaults = {
 
     showWheelSettings = false,
     size = 256,
-    minLight = 5,
-    maxLight = 95,
+    axis = "LIGHTNESS",
+    minSat = 0,
+    maxSat = 97,
+    minLight = 7,
+    maxLight = 93,
     sectorCount = 0,
     ringCount = 0,
     frames = 32,
@@ -992,25 +995,71 @@ dlg:check {
     text = "Wheel Settings",
     selected = defaults.showWheelSettings,
     onclick = function()
-        local state = dlg.data.showWheelSettings
-        dlg:modify { id = "size", visible = state }
-        dlg:modify { id = "minLight", visible = state }
-        dlg:modify { id = "maxLight", visible = state }
+        local args = dlg.data
+        local state = args.showWheelSettings
+        local axis = args.axis
+        local isLight = axis == "LIGHTNESS"
+        local isSat = axis == "SATURATION"
+        -- dlg:modify { id = "size", visible = state }
+        dlg:modify { id = "axis", visible = state }
+        dlg:modify { id = "minSat", visible = state and isSat }
+        dlg:modify { id = "maxSat", visible = state  and isSat }
+        dlg:modify { id = "minLight", visible = state and isLight }
+        dlg:modify { id = "maxLight", visible = state  and isLight }
         dlg:modify { id = "frames", visible = state }
         dlg:modify { id = "sectorCount", visible = state }
         dlg:modify { id = "ringCount", visible = state }
     end
 }
 
+-- dlg:newrow { always = false }
+
+-- dlg:slider {
+--     id = "size",
+--     label = "Size:",
+--     min = 64,
+--     max = 512,
+--     value = defaults.size,
+--     visible = defaults.showWheelSettings
+-- }
+
+dlg:combobox {
+    id = "axis",
+    label = "Time Axis:",
+    option = defaults.axis,
+    options = { "SATURATION", "LIGHTNESS" },
+    visible = defaults.showWheelSettings,
+    onchange = function()
+        local args = dlg.data
+        local axis = args.axis
+        local isLight = axis == "LIGHTNESS"
+        local isSat = axis == "SATURATION"
+        dlg:modify { id = "minSat", visible = isSat }
+        dlg:modify { id = "maxSat", visible = isSat }
+        dlg:modify { id = "minLight", visible = isLight }
+        dlg:modify { id = "maxLight", visible = isLight }
+    end
+}
+
 dlg:newrow { always = false }
 
 dlg:slider {
-    id = "size",
-    label = "Size:",
-    min = 64,
-    max = 512,
-    value = defaults.size,
+    id = "minSat",
+    label = "Saturation:",
+    min = 0,
+    max = 99,
+    value = defaults.minSat,
     visible = defaults.showWheelSettings
+        and defaults.axis == "SATURATION"
+}
+
+dlg:slider {
+    id = "maxSat",
+    min = 1,
+    max = 100,
+    value = defaults.maxSat,
+    visible = defaults.showWheelSettings
+        and defaults.axis == "SATURATION"
 }
 
 dlg:newrow { always = false }
@@ -1018,18 +1067,20 @@ dlg:newrow { always = false }
 dlg:slider {
     id = "minLight",
     label = "Light:",
-    min = 1,
-    max = 98,
+    min = 0,
+    max = 99,
     value = defaults.minLight,
     visible = defaults.showWheelSettings
+        and defaults.axis == "LIGHTNESS"
 }
 
 dlg:slider {
     id = "maxLight",
-    min = 2,
-    max = 99,
+    min = 1,
+    max = 100,
     value = defaults.maxLight,
     visible = defaults.showWheelSettings
+        and defaults.axis == "LIGHTNESS"
 }
 
 dlg:newrow { always = false }
@@ -1049,7 +1100,7 @@ dlg:slider {
     id = "sectorCount",
     label = "Sectors:",
     min = 0,
-    max = 32,
+    max = 36,
     value = defaults.sectorCount,
     visible = defaults.showWheelSettings
 }
@@ -1191,24 +1242,38 @@ dlg:button {
         local iToStep = 1.0
         local reqFrames = args.frames or defaults.frames
         if reqFrames > 1 then iToStep = 1.0 / (reqFrames - 1.0) end
+        local axis = args.axis or defaults.axis
         local minLight = args.minLight or defaults.minLight
         local maxLight = args.maxLight or defaults.maxLight
+        local minSat = args.minSat or defaults.minSat
+        local maxSat = args.maxSat or defaults.maxSat
         local ringCount = args.ringCount or defaults.ringCount
         local sectorCount = args.sectorCount or defaults.sectorCount
 
         -- Offset by 30 degrees to match Aseprite's color wheel.
         local angleOffset = math.rad(30.0)
 
+        minSat = minSat * 0.01
+        maxSat = maxSat * 0.01
         minLight = minLight * 0.01
         maxLight = maxLight * 0.01
+
+        local useSat = axis == "SATURATION"
 
         local wheelImgs = {}
         for i = 1, reqFrames, 1 do
             local wheelImg = Image(size, size)
 
             -- Calculate light from frame count.
-            local t = (i - 1.0) * iToStep
-            local light = (1.0 - t) * minLight + t * maxLight
+            local fac0 = (i - 1.0) * iToStep
+            local sat = minSat
+            local light = minLight
+
+            if useSat then
+                sat = (1.0 - fac0) * minSat + fac0 * maxSat
+            else
+                light = (1.0 - fac0) * minLight + fac0 * maxLight
+            end
 
             -- Iterate over image pixels.
             local pxItr = wheelImg:pixels()
@@ -1226,25 +1291,30 @@ dlg:button {
 
                 -- Find square magnitude.
                 -- Magnitude correlates with saturation.
-                local sqSat = xSgn * xSgn + ySgn * ySgn
-                if sqSat <= 1.0 then
+                local magSq = xSgn * xSgn + ySgn * ySgn
+                if magSq <= 1.0 then
                     local srgb = { r = 0.0, g = 0.0, b = 0.0 }
 
-                    if sqSat > 0.0 then
+                    -- Convert from [-PI, PI] to [0.0, 1.0].
+                    -- 1 / TAU approximately equals 0.159.
+                    -- % operator is floor modulo.
+                    local hue = atan2(ySgn, xSgn) + angleOffset
+                    hue = hue * 0.15915494309189535
 
-                        -- Convert from [-PI, PI] to [0.0, 1.0].
-                        -- 1 / TAU approximately equals 0.159.
-                        -- % operator is floor modulo.
-                        local hue = atan2(ySgn, xSgn) + angleOffset
-                        hue = hue * 0.15915494309189535
+                    local mag = sqrt(magSq)
 
-                        srgb = hsl_to_srgb({
-                            h = quantizeSigned(hue % 1.0, sectorCount),
-                            s = quantizeUnsigned(sqrt(sqSat), ringCount),
-                            l = light })
+                    if useSat then
+                        light = (1.0 - mag) * maxLight + mag * minLight
+                        light = quantizeUnsigned(light, ringCount)
                     else
-                        srgb = hsl_to_srgb({ h = 0.0, s = 0.0, l = light })
+                        sat = (1.0 - mag) * minSat + mag * maxSat
+                        sat = quantizeUnsigned(sat, ringCount)
                     end
+
+                    srgb = hsl_to_srgb({
+                        h = quantizeSigned(hue % 1.0, sectorCount),
+                        s = sat,
+                        l = light })
 
                     -- Values still go out of gamut, particularly for
                     -- saturated blues at medium light.
@@ -1309,8 +1379,12 @@ dlg:button {
 
         -- Because light correlates to frames, the middle
         -- frame should be the default.
-        app.activeFrame = sprite.frames[
-            math.ceil(#sprite.frames / 2)]
+        if useSat then
+            app.activeFrame = sprite.frames[#sprite.frames]
+        else
+            app.activeFrame = sprite.frames[
+                math.ceil(#sprite.frames / 2)]
+        end
         app.refresh()
     end
 }

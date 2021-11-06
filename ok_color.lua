@@ -387,7 +387,9 @@ function ok_color.get_Cs(L, a_, b_)
         -- Use a soft minimum function, instead of a sharp triangle shape to get a smooth value for chroma.
         local C_a = L * ST_mid.S
         local C_b = (1.0 - L) * ST_mid.T
-        C_mid = 0.9 * k * math.sqrt(math.sqrt(1.0 / (1.0 / (C_a * C_a * C_a * C_a) + 1.0 / (C_b * C_b * C_b * C_b))))
+
+        C_mid = 0.9 * k * (
+            1.0 / (1.0 / (C_a * C_a * C_a * C_a) + 1.0 / (C_b * C_b * C_b * C_b)) ^ 0.25)
     end
 
     local C_0 = 0.0
@@ -530,8 +532,9 @@ function ok_color.okhsv_to_oklab(hsv)
     -- first we compute L and V as if the gamut is a perfect triangle:
 
 	-- L, C when v==1:
-    local L_v = 1.0 - s * S_0 / (S_0 + T_max - T_max * k * s)
-	local C_v = s * T_max * S_0 / (S_0 + T_max - T_max * k * s)
+    local v_denom = S_0 + T_max - T_max * k * s
+    local L_v = 1.0 - s * S_0 / v_denom
+	local C_v = s * T_max * S_0 / v_denom
 
     local L = v * L_v
 	local C = v * C_v
@@ -544,8 +547,14 @@ function ok_color.okhsv_to_oklab(hsv)
     C = C * L_new / L
     L = L_new
 
-    local rgb_scale = ok_color.oklab_to_linear_srgb({ L = L_vt, a = a_ * C_vt, b = b_ * C_vt })
-	local scale_L = (1.0 / math.max(rgb_scale.r, rgb_scale.g, rgb_scale.b, 0.0)) ^ 0.3333333333333333
+    local rgb_scale = ok_color.oklab_to_linear_srgb({
+        L = L_vt,
+        a = a_ * C_vt,
+        b = b_ * C_vt })
+	local scale_L = (1.0 / math.max(
+        rgb_scale.r,
+        rgb_scale.g,
+        rgb_scale.b, 0.0)) ^ 0.3333333333333333
 
 	C = C * scale_L
     return {
@@ -776,17 +785,12 @@ function ok_color.to_ST(cusp)
 end
 
 function ok_color.toe(x)
-    local k_1 = 0.206
-    local k_2 = 0.03
-    local k_3 = (1.0 + k_1) / (1.0 + k_2)
-	return 0.5 * (k_3 * x - k_1 + math.sqrt((k_3 * x - k_1) * (k_3 * x - k_1) + 4 * k_2 * k_3 * x))
+    local y = 1.170873786407767 * x - 0.206
+	return 0.5 * (y + math.sqrt(y * y + 0.14050485436893204 * x))
 end
 
 function ok_color.toe_inv(x)
-    local k_1 = 0.206
-    local k_2 = 0.03
-    local k_3 = (1.0 + k_1) / (1.0 + k_2)
-	return (x * x + k_1 * x) / (k_3 * (x + k_2))
+	return (x * x + 0.206 * x) / (1.170873786407767 * (x + 0.03))
 end
 
 return ok_color

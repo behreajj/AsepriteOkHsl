@@ -16,7 +16,11 @@ Left click on a color preview window to assign the color to the foreground. Righ
 
 Hues in Okhsl are not the same as in LCh, HSLuv, or classic HSL. For example, red (`#ff0000`) has a hue of approximately 29 degrees in Okhsl. Do not assume different color representations have the same primaries, or the same spatial relationships between colors.
 
-When the `Wheel` button is clicked, a new sprite is created. In this sprite, lightness varies with the frame index. Use the arrow keys to navigate through each frame and thus change the lightness. The sprite defaults to the middle frame, so moving left would decrease the lightness; moving right would increase the lightness. The color wheel's hue is shifted by 30 degrees to match the Aseprite convention.
+Beware of drift in hue and other channels when getting and setting colors. For example, getting `#ff0000` will result in (29, 100, 57) in Okhsl. However, setting the picker's sliders to those values manually will yield the hexadecimal `#ff0809`.
+
+![Saturation Axis](satAxisWheel.png)
+
+When the `Wheel` button is clicked, a new sprite is created. In this sprite, either lightness or saturation may vary with the frame index. Use the arrow keys to navigate through each frame and thus change this variable. When saturation varies with frames, the wheel will be white at its center and black at its circumference. The color wheel's hue is shifted by 30 degrees to match the Aseprite convention.
 
 Click on the `Wheel Settings` toggle to show more parameters. For example, the `Sectors` and `Rings` parameters can be used to make the color wheel discrete in a fashion similar to Aseprite's built-in color wheels.
 
