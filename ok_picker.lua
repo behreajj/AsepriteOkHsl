@@ -34,9 +34,9 @@ local defaults = {
     hsvSat = 100,
     hsvVal = 100,
 
-    labLgt = 50,
-    labA = 0,
-    labB = 0,
+    labLgt = 63,
+    labA = 23,
+    labB = 13,
 
     showWheelSettings = false,
     size = 256,
