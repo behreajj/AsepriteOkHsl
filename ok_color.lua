@@ -652,6 +652,10 @@ function ok_color.oklab_to_okhsl(lab)
 end
 
 function ok_color.oklab_to_okhsv(lab)
+    local L = lab.L
+    if L > 0.99999 then return { h = 0.0, s = 0.0, v = 1.0 } end
+    if L < 0.00001 then return { h = 0.0, s = 0.0, v = 0.0 } end
+
     local Csq = lab.a * lab.a + lab.b * lab.b
     if Csq > 0.0 then
         local C = math.sqrt(Csq)
@@ -672,7 +676,6 @@ function ok_color.oklab_to_okhsv(lab)
         -- end
 
         -- first we find L_v, C_v, L_vt and C_vt
-        local L = lab.L
         local t_denom = C + L * T_max
         local t = 0.0
         -- if t_denom ~= 0.0 then
