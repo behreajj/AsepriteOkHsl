@@ -38,6 +38,12 @@ local defaults = {
     labA = 23,
     labB = 13,
 
+    showGradientSettings = false,
+    gradWidth = 256,
+    gradHeight = 32,
+    swatchCount = 8,
+    hueDir = "NEAR",
+
     showWheelSettings = false,
     size = 256,
     axis = "LIGHTNESS",
@@ -79,10 +85,6 @@ local defaults = {
     maxGreenOffset = 0.6,
     shadowHue = 291.0 / 360.0,
     dayHue = 96.0 / 360.0,
-
-    gradWidth = 256,
-    gradHeight = 32,
-    swatchCount = 8
 }
 
 local function copyColorByValue(aseColor)
@@ -308,7 +310,7 @@ local function updateShades(dialog, primary, shades, reserveHue)
     -- For that reason, the closer a hue is to green,
     -- the more it uses absolute hue shifting.
     -- Green is approximately at hue 140.
-    local offsetMix = distAngleUnsigned(h, defaults.greenHue, 1.0)
+    local offsetMix = 2.0 * distAngleUnsigned(h, defaults.greenHue, 1.0)
     local offsetScale = (1.0 - offsetMix) * defaults.maxGreenOffset
                               + offsetMix * defaults.minGreenOffset
 
@@ -406,6 +408,8 @@ local function updateHarmonies(dialog, primary)
         srgb01ToAseColor(square2)
     }
 
+    -- TODO: Should complement be separate from
+    -- squares insofar as it has the inverse lightness?
     dialog:modify { id = "complement", colors = { squares[2] } }
     dialog:modify { id = "triadic", colors = tris }
     dialog:modify { id = "analogous", colors = analogues }
@@ -456,6 +460,7 @@ local function setFromHexStr(dialog, primary, shades)
             local g255 = hexRgb >> 0x08 & 0xff
             local b255 = hexRgb & 0xff
 
+            -- Add a previous and mix with previous.
             primary = Color(r255, g255, b255, 255)
             dialog:modify { id = "baseColor", colors = { primary } }
             dialog:modify { id = "alpha", value = 255 }
@@ -990,9 +995,21 @@ dlg:shades {
 dlg:newrow { always = false }
 
 dlg:check {
+    id = "showGradientSettings",
+    label = "Settings:",
+    text = "Gradient",
+    selected = defaults.showGradientSettings,
+    onclick = function()
+        local args = dlg.data
+        local state = args.showGradientSettings
+        dlg:modify { id = "swatchCount", visible = state }
+        dlg:modify { id = "hueDir", visible = state }
+    end
+}
+
+dlg:check {
     id = "showWheelSettings",
-    label = "Show:",
-    text = "Wheel Settings",
+    text = "Wheel",
     selected = defaults.showWheelSettings,
     onclick = function()
         local args = dlg.data
@@ -1000,7 +1017,6 @@ dlg:check {
         local axis = args.axis
         local isLight = axis == "LIGHTNESS"
         local isSat = axis == "SATURATION"
-        -- dlg:modify { id = "size", visible = state }
         dlg:modify { id = "axis", visible = state }
         dlg:modify { id = "minSat", visible = state and isSat }
         dlg:modify { id = "maxSat", visible = state  and isSat }
@@ -1012,16 +1028,28 @@ dlg:check {
     end
 }
 
--- dlg:newrow { always = false }
+dlg:newrow { always = false }
 
--- dlg:slider {
---     id = "size",
---     label = "Size:",
---     min = 64,
---     max = 512,
---     value = defaults.size,
---     visible = defaults.showWheelSettings
--- }
+dlg:slider {
+    id = "swatchCount",
+    label = "Swatches:",
+    min = 3,
+    max = 32,
+    value = defaults.swatchCount,
+    visible = defaults.showGradientSettings
+}
+
+dlg:newrow { always = false }
+
+dlg:combobox {
+    id = "hueDir",
+    label = "Direction:",
+    option = defaults.hueDir,
+    options = { "CW", "CCW", "NEAR" },
+    visible = defaults.showGradientSettings
+}
+
+dlg:newrow { always = false }
 
 dlg:combobox {
     id = "axis",
@@ -1124,13 +1152,15 @@ dlg:button {
     focus = false,
     onclick = function()
 
+        local args = dlg.data
         local gradWidth = defaults.gradWidth
         local gradHeight = defaults.gradHeight
-        local swatchCount = defaults.swatchCount
+        local colorMode = args.colorMode or defaults.colorMode
+        local swatchCount = args.swatchCount or defaults.swatchCount
+        local hueDir = args.hueDir or defaults.hueDir
 
-        local args = dlg.data
-        local colorMode = args.colorMode
-
+        -- TODO: How to handle the case where fore and
+        -- background colors are the same?
         local foreColor = app.fgColor
         local foreHex = 0xff000000 | foreColor.rgbaPixel
         local foreSrgb01 = aseColorToRgb01(foreColor)
@@ -1140,6 +1170,13 @@ dlg:button {
         local backHex = 0xff000000 | backColor.rgbaPixel
         local backSrgb01 = aseColorToRgb01(backColor)
         local backLab = ok_color.srgb_to_oklab(backSrgb01)
+
+        local hueFunc = lerpAngleNear
+        if hueDir == "CW" then
+            hueFunc = lerpAngleCw
+        elseif hueDir == "CCW" then
+            hueFunc = lerpAngleCcw
+        end
 
         local lerpLab = function(fac)
             local u = 1.0 - fac
@@ -1161,7 +1198,7 @@ dlg:button {
                     if fac <= 0.0 then return backHex end
                     if fac >= 1.0 then return foreHex end
                     local u = 1.0 - fac
-                    local ch = lerpAngleNear(backHsl.h, foreHsl.h, fac, 1.0)
+                    local ch = hueFunc(backHsl.h, foreHsl.h, fac, 1.0)
                     local cs = u * backHsl.s + fac * foreHsl.s
                     local cl = u * backHsl.l + fac * foreHsl.l
                     local csrgb01 = ok_color.okhsl_to_srgb({ h = ch, s = cs, l = cl })
@@ -1178,7 +1215,7 @@ dlg:button {
                     if fac <= 0.0 then return backHex end
                     if fac >= 1.0 then return foreHex end
                     local u = 1.0 - fac
-                    local ch = lerpAngleNear(backHsv.h, foreHsv.h, fac, 1.0)
+                    local ch = hueFunc(backHsv.h, foreHsv.h, fac, 1.0)
                     local cs = u * backHsv.s + fac * foreHsv.s
                     local cv = u * backHsv.v + fac * foreHsv.v
                     local csrgb01 = ok_color.okhsv_to_srgb({ h = ch, s = cs, v = cv })
@@ -1188,24 +1225,53 @@ dlg:button {
         end
 
         local gradSprite = Sprite(gradWidth, gradHeight)
-        local firstCel = gradSprite.cels[1]
-        local gradImg = Image(gradWidth, gradHeight)
-        local gradImgPxItr = gradImg:pixels()
+        gradSprite.filename = string.format(
+            "Okhsl Gradient (%s)",
+            colorMode)
+
+        -- Create smooth image.
+        local halfHeight = gradHeight // 2
+        local smoothImg = Image(gradWidth, halfHeight)
+        local smoothPxItr = smoothImg:pixels()
         local xToFac = 1.0 / (gradWidth - 1.0)
-        for elm in gradImgPxItr do
+        for elm in smoothPxItr do
             elm(lerpFunc(elm.x * xToFac))
         end
 
-        firstCel.image = gradImg
+        gradSprite.cels[1].image = smoothImg
+        gradSprite.layers[1].name = "Gradient.Smooth"
 
-        local pal = Palette(swatchCount)
-        local iToFac = 1.0 / (swatchCount - 1.0)
-        local swatchHexes = {}
-        for i = 0, swatchCount - 1, 1 do
-            local fac = i * iToFac
-            local swatchHex = lerpFunc(fac)
-            swatchHexes[1 + i] = swatchHex
-            pal:setColor(i, swatchHex)
+        -- Create swatches.
+        local segLayer = gradSprite:newLayer()
+        segLayer.name = "Gradient.Swatches"
+        local segImg = Image(gradWidth, gradHeight - halfHeight)
+        local segImgPxItr = segImg:pixels()
+
+        local swatchesDict = {}
+        swatchesDict[0x00000000] = 0
+        local palIdx = 1
+        local swatchesInv = 1.0 / (swatchCount - 1.0)
+        for elm in segImgPxItr do
+            local t = elm.x * xToFac
+            t = math.max(0.0,
+                (math.ceil(t * swatchCount) - 1.0)
+                * swatchesInv)
+            local hex = lerpFunc(t)
+            elm(hex)
+
+            if not swatchesDict[hex] then
+                swatchesDict[hex] = palIdx
+                palIdx = palIdx + 1
+            end
+        end
+        gradSprite:newCel(
+            segLayer, gradSprite.frames[1],
+            segImg, Point(0, halfHeight))
+
+        -- Set palette.
+        local pal = Palette(palIdx)
+        for k, v in pairs(swatchesDict) do
+            pal:setColor(v, k)
         end
         gradSprite:setPalette(pal)
 
@@ -1302,7 +1368,6 @@ dlg:button {
                     hue = hue * 0.15915494309189535
 
                     local mag = sqrt(magSq)
-
                     if useSat then
                         light = (1.0 - mag) * maxLight + mag * minLight
                         light = quantizeUnsigned(light, ringCount)

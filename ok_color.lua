@@ -43,12 +43,12 @@ function ok_color.compute_max_saturation(a, b)
         -- Blue component (default)
         local k0 = 1.35733652
         local k1 = -0.00915799
-        local k2 = -1.15130210
+        local k2 = -1.1513021
         local k3 = -0.50559606
         local k4 = 0.00692167
         local wl = -0.0041960863
         local wm = -0.7034186147
-        local ws = 1.7076147010
+        local ws = 1.707614701
 
         if -1.88170328 * a - 0.80936493 * b > 1 then
             -- Red component
@@ -65,7 +65,7 @@ function ok_color.compute_max_saturation(a, b)
             k0 = 0.73956515
             k1 = -0.45954404
             k2 = 0.08285427
-            k3 = 0.12541070
+            k3 = 0.1254107
             k4 = 0.14503204
             wl = -1.2684380046
             wm = 2.6097574011
@@ -81,7 +81,7 @@ function ok_color.compute_max_saturation(a, b)
 
         local k_l = 0.3963377774 * a + 0.2158037573 * b
         local k_m = -0.1055613458 * a - 0.0638541728 * b
-        local k_s = -0.0894841775 * a - 1.2914855480 * b
+        local k_s = -0.0894841775 * a - 1.291485548 * b
 
         do
             local l_ = 1.0 + S * k_l
@@ -122,9 +122,7 @@ function ok_color.find_cusp(a, b)
     -- Convert to linear sRGB to find the first point where at least one of r,g or b >= 1:
     local rgb_at_max = ok_color.oklab_to_linear_srgb({L = 1, a = S_cusp * a, b = S_cusp * b })
     local L_cusp = (1.0 / math.max(rgb_at_max.r, rgb_at_max.g, rgb_at_max.b)) ^ 0.3333333333333333
-    local C_cusp = L_cusp * S_cusp
-
-    return { L = L_cusp, C = C_cusp }
+    return { L = L_cusp, C = L_cusp * S_cusp }
 end
 
 -- Finds intersection of the line defined by
@@ -142,8 +140,7 @@ function ok_color.find_gamut_intersection(a, b, L1, C1, L0, x)
         t = cusp.C * L0 / (C1 * cusp.L + cusp.C * (L0 - L1))
     else
         -- Upper half
-
-        --First intersect with triangle
+        -- First intersect with triangle
 		t = cusp.C * (L0 - 1.0) / (C1 * (cusp.L - 1.0) + cusp.C * (L0 - L1))
 
         -- Then one step Halley's method
@@ -153,7 +150,7 @@ function ok_color.find_gamut_intersection(a, b, L1, C1, L0, x)
 
             local k_l = 0.3963377774 * a + 0.2158037573 * b
             local k_m = -0.1055613458 * a - 0.0638541728 * b
-            local k_s = -0.0894841775 * a - 1.2914855480 * b
+            local k_s = -0.0894841775 * a - 1.291485548 * b
 
             local l_dt = dL + dC * k_l
             local m_dt = dL + dC * k_m
@@ -194,9 +191,9 @@ function ok_color.find_gamut_intersection(a, b, L1, C1, L0, x)
                 local u_g = g1 / (g1 * g1 - 0.5 * g0 * g2)
 				local t_g = -g0 * u_g
 
-                local b0 = -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s - 1
-				local b1 = -0.0041960863 * ldt - 0.7034186147 * mdt + 1.7076147010 * sdt
-				local b2 = -0.0041960863 * ldt2 - 0.7034186147 * mdt2 + 1.7076147010 * sdt2
+                local b0 = -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s - 1
+				local b1 = -0.0041960863 * ldt - 0.7034186147 * mdt + 1.707614701 * sdt
+				local b2 = -0.0041960863 * ldt2 - 0.7034186147 * mdt2 + 1.707614701 * sdt2
 
                 local u_b = b1 / (b1 * b1 - 0.5 * b0 * b2)
 				local t_b = -b0 * u_b
@@ -371,14 +368,13 @@ end
 
 function ok_color.get_Cs(L, a_, b_)
     local cusp = ok_color.find_cusp(a_, b_)
-
     local C_max = ok_color.find_gamut_intersection(a_, b_, L, 1.0, L, cusp)
     local ST_max = ok_color.to_ST(cusp)
 
     -- Scale factor to compensate for the curved part of gamut shape:
     local k = 0.0
     local k_denom = math.min(L * ST_max.S, (1.0 - L) * ST_max.T)
-	if k_denom ~= 0.0 then k = C_max / k_denom end
+    if k_denom ~= 0.0 then k = C_max / k_denom end
 
     local C_mid = 0.0
     do
@@ -439,14 +435,14 @@ function ok_color.linear_srgb_to_oklab(c)
 
     return {
         L = 0.2104542553 * l_
-          + 0.7936177850 * m_
+          + 0.793617785 * m_
           - 0.0040720468 * s_,
         a = 1.9779984951 * l_
-          - 2.4285922050 * m_
+          - 2.428592205 * m_
           + 0.4505937099 * s_,
         b = 0.0259040371 * l_
           + 0.7827717662 * m_
-          - 0.8086757660 * s_ }
+          - 0.808675766 * s_ }
 end
 
 function ok_color.okhsl_to_oklab(hsl)
@@ -484,7 +480,7 @@ function ok_color.okhsl_to_oklab(hsl)
 
 		C = t * k_1 / (1.0 - k_2 * t)
     else
-        t = (s - mid) / (1 - mid)
+        t = (s - mid) / (1.0 - mid)
 
 		k_0 = C_mid
 		k_1 = (1.0 - mid) * C_mid * C_mid * mid_inv * mid_inv / C_0
@@ -576,7 +572,7 @@ function ok_color.oklab_to_linear_srgb(lab)
         - 0.0638541728 * lab.b
 	local s_ = lab.L
         - 0.0894841775 * lab.a
-        - 1.2914855480 * lab.b
+        - 1.291485548 * lab.b
 
     local l = l_ * l_ * l_
     local m = m_ * m_ * m_
@@ -591,7 +587,7 @@ function ok_color.oklab_to_linear_srgb(lab)
            - 0.3413193965 * s,
         b = -0.0041960863 * l
            - 0.7034186147 * m
-           + 1.7076147010 * s }
+           + 1.707614701 * s }
 end
 
 function ok_color.oklab_to_okhsl(lab)
@@ -614,7 +610,6 @@ function ok_color.oklab_to_okhsl(lab)
         local C_max = cs.C_max
 
         -- Inverse of the interpolation in okhsl_to_srgb:
-
         local mid = 0.8
         local mid_inv = 1.25
 
@@ -622,7 +617,6 @@ function ok_color.oklab_to_okhsl(lab)
         if C < C_mid then
             local k_1 = mid * C_0
             local k_2 = (1.0 - k_1 / C_mid)
-
             local t = C / (k_1 + k_2 * C)
             s = t * mid
         else
@@ -728,7 +722,7 @@ function ok_color.oklab_to_okhsv(lab)
 
         return { h = h, s = s, v = v }
     else
-        return { h = 0.0, s = 0.0, v = ok_color.clamp(lab.L, 0.0, 1.0) }
+        return { h = 0.0, s = 0.0, v = L }
     end
 end
 
