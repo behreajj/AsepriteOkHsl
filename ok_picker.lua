@@ -45,12 +45,16 @@ local defaults = {
     hueDir = "NEAR",
 
     showWheelSettings = false,
+    remapHue = false,
     size = 256,
-    axis = "LIGHTNESS",
+    hslAxis = "LIGHTNESS",
+    hsvAxis = "VALUE",
     minSat = 0,
     maxSat = 97,
     minLight = 7,
     maxLight = 93,
+    minValue = 7,
+    maxValue = 93,
     sectorCount = 0,
     ringCount = 0,
     frames = 32,
@@ -85,6 +89,22 @@ local defaults = {
     maxGreenOffset = 0.6,
     shadowHue = 291.0 / 360.0,
     dayHue = 96.0 / 360.0,
+}
+
+local rybHueRemapTable = {
+    0.081205236645396, -- ff0000ff
+    0.12435157961211, -- ff006aff
+    0.19200283257828, -- ff00a2ff
+    0.25491649730713, -- ff00cfff
+    0.30491453354589, -- ff00ffff
+    0.36815839311704, -- ff1ad481
+    0.40458493819958, -- ff33a900
+    0.46893967259811, -- ff668415
+    0.70734287202901, -- ffa65911
+    0.78714840881823, -- ff922a3c
+    0.87751578482349, -- ff850c69
+    1.0044874689047147, -- ff5500aa
+    1.081205236645396 -- ff0000ff
 }
 
 local function copyColorByValue(aseColor)
@@ -220,6 +240,13 @@ local function lerpAngleCw(origin, dest, t, range)
     end
 end
 
+local function preserveForeBack()
+    app.fgColor = copyColorByValue(app.fgColor)
+    app.command.SwitchColors()
+    app.fgColor = copyColorByValue(app.fgColor)
+    app.command.SwitchColors()
+end
+
 local function quantizeSigned(a, levels)
     if levels ~= 0 then
         return math.floor(0.5 + a * levels) / levels
@@ -291,7 +318,7 @@ local function updateShades(dialog, primary, shades, reserveHue)
     local shadowLight = defaults.shadowLight
     local dayLight = defaults.dayLight
 
-        -- Yellows are very saturated at high light;
+    -- Yellows are very saturated at high light;
     -- Desaturate them to get a better shade.
     -- Conversely, blues easily fall out of gamut
     -- so the shade factor is separate.
@@ -669,6 +696,30 @@ dlg:combobox {
         dlg:modify { id = "labLgt", visible = isLab }
         dlg:modify { id = "labA", visible = isLab }
         dlg:modify { id = "labB", visible = isLab }
+
+        local showWheel = args.showWheelSettings
+        local hslAxis = args.hslAxis
+        local hsvAxis = args.hsvAxis
+        local isLight = hslAxis == "LIGHTNESS"
+        local isValue = hsvAxis == "VALUE"
+
+        local isSat = false
+        if isHsl or isLab then
+            isSat = hslAxis == "SATURATION"
+        elseif isHsv then
+            isSat = hsvAxis == "SATURATION"
+        end
+
+        dlg:modify { id = "hslAxis", visible =  (isHsl or isLab) and showWheel }
+        dlg:modify { id = "minLight", visible = (isHsl or isLab) and showWheel and isLight }
+        dlg:modify { id = "maxLight", visible = (isHsl or isLab) and showWheel and isLight }
+
+        dlg:modify { id = "hsvAxis", visible = isHsv and showWheel }
+        dlg:modify { id = "minValue", visible = isHsv and showWheel and isValue }
+        dlg:modify { id = "maxValue", visible = isHsv and showWheel and isValue }
+
+        dlg:modify { id = "minSat", visible = showWheel and isSat }
+        dlg:modify { id = "maxSat", visible = showWheel  and isSat }
     end
 }
 
@@ -1014,17 +1065,37 @@ dlg:check {
     onclick = function()
         local args = dlg.data
         local state = args.showWheelSettings
-        local axis = args.axis
-        local isLight = axis == "LIGHTNESS"
-        local isSat = axis == "SATURATION"
-        dlg:modify { id = "axis", visible = state }
+        local colorMode = args.colorMode
+        local isLab = colorMode == "LAB"
+        local isHsl = colorMode == "HSL"
+        local isHsv = colorMode == "HSV"
+        local hslAxis = args.hslAxis
+        local hsvAxis = args.hsvAxis
+        local isLight = hslAxis == "LIGHTNESS"
+        local isValue = hsvAxis == "VALUE"
+
+        local isSat = false
+        if isHsl or isLab then
+            isSat = hslAxis == "SATURATION"
+        elseif isHsv then
+            isSat = hsvAxis == "SATURATION"
+        end
+
         dlg:modify { id = "minSat", visible = state and isSat }
         dlg:modify { id = "maxSat", visible = state  and isSat }
-        dlg:modify { id = "minLight", visible = state and isLight }
-        dlg:modify { id = "maxLight", visible = state  and isLight }
+
+        dlg:modify { id = "hslAxis", visible = state and (isHsl or isLab) }
+        dlg:modify { id = "minLight", visible = (isHsl or isLab) and state and isLight }
+        dlg:modify { id = "maxLight", visible = (isHsl or isLab) and state and isLight }
+
+        dlg:modify { id = "hsvAxis", visible = state and isHsv }
+        dlg:modify { id = "minValue", visible = isHsv and state and isValue }
+        dlg:modify { id = "maxValue", visible = isHsv and state and isValue }
+
         dlg:modify { id = "frames", visible = state }
         dlg:modify { id = "sectorCount", visible = state }
         dlg:modify { id = "ringCount", visible = state }
+        dlg:modify { id = "remapHue", visible = state }
     end
 }
 
@@ -1052,20 +1123,43 @@ dlg:combobox {
 dlg:newrow { always = false }
 
 dlg:combobox {
-    id = "axis",
+    id = "hslAxis",
     label = "Time Axis:",
-    option = defaults.axis,
+    option = defaults.hslAxis,
     options = { "SATURATION", "LIGHTNESS" },
-    visible = defaults.showWheelSettings,
+    visible = defaults.showWheelSettings
+        and (defaults.colorMode == "HSL"
+        or defaults.colorMode == "LAB"),
     onchange = function()
         local args = dlg.data
-        local axis = args.axis
-        local isLight = axis == "LIGHTNESS"
-        local isSat = axis == "SATURATION"
+        local hslAxis = args.hslAxis
+        local isLight = hslAxis == "LIGHTNESS"
+        local isSat = hslAxis == "SATURATION"
         dlg:modify { id = "minSat", visible = isSat }
         dlg:modify { id = "maxSat", visible = isSat }
         dlg:modify { id = "minLight", visible = isLight }
         dlg:modify { id = "maxLight", visible = isLight }
+    end
+}
+
+dlg:newrow { always = false }
+
+dlg:combobox {
+    id = "hsvAxis",
+    label = "Time Axis:",
+    option = defaults.hsvAxis,
+    options = { "SATURATION", "VALUE" },
+    visible = defaults.showWheelSettings
+        and defaults.colorMode == "HSV",
+    onchange = function()
+        local args = dlg.data
+        local hsvAxis = args.hsvAxis
+        local isValue = hsvAxis == "VALUE"
+        local isSat = hsvAxis == "SATURATION"
+        dlg:modify { id = "minSat", visible = isSat }
+        dlg:modify { id = "maxSat", visible = isSat }
+        dlg:modify { id = "minValue", visible = isValue }
+        dlg:modify { id = "maxValue", visible = isValue }
     end
 }
 
@@ -1078,7 +1172,8 @@ dlg:slider {
     max = 99,
     value = defaults.minSat,
     visible = defaults.showWheelSettings
-        and defaults.axis == "SATURATION"
+        and defaults.hslAxis == "SATURATION"
+        or defaults.hsvAxis == "SATURATION"
 }
 
 dlg:slider {
@@ -1087,7 +1182,8 @@ dlg:slider {
     max = 100,
     value = defaults.maxSat,
     visible = defaults.showWheelSettings
-        and defaults.axis == "SATURATION"
+        and defaults.hslAxis == "SATURATION"
+        or defaults.hsvAxis == "SATURATION"
 }
 
 dlg:newrow { always = false }
@@ -1099,7 +1195,9 @@ dlg:slider {
     max = 99,
     value = defaults.minLight,
     visible = defaults.showWheelSettings
-        and defaults.axis == "LIGHTNESS"
+        and (defaults.colorMode == "HSL"
+        or defaults.colorMode == "LAB")
+        and defaults.hslAxis == "LIGHTNESS"
 }
 
 dlg:slider {
@@ -1108,7 +1206,32 @@ dlg:slider {
     max = 100,
     value = defaults.maxLight,
     visible = defaults.showWheelSettings
-        and defaults.axis == "LIGHTNESS"
+        and (defaults.colorMode == "HSL"
+        or defaults.colorMode == "LAB")
+        and defaults.hslAxis == "LIGHTNESS"
+}
+
+dlg:newrow { always = false }
+
+dlg:slider {
+    id = "minValue",
+    label = "Value:",
+    min = 0,
+    max = 99,
+    value = defaults.minValue,
+    visible = defaults.showWheelSettings
+        and defaults.colorMode == "HSV"
+        and defaults.hslAxis == "VALUE"
+}
+
+dlg:slider {
+    id = "maxValue",
+    min = 1,
+    max = 100,
+    value = defaults.maxValue,
+    visible = defaults.showWheelSettings
+        and defaults.colorMode == "HSV"
+        and defaults.hslAxis == "VALUE"
 }
 
 dlg:newrow { always = false }
@@ -1128,7 +1251,7 @@ dlg:slider {
     id = "sectorCount",
     label = "Sectors:",
     min = 0,
-    max = 36,
+    max = 72,
     value = defaults.sectorCount,
     visible = defaults.showWheelSettings
 }
@@ -1139,9 +1262,19 @@ dlg:slider {
     id = "ringCount",
     label = "Rings:",
     min = 0,
-    max = 32,
+    max = 64,
     value = defaults.ringCount,
     visible = defaults.showWheelSettings
+}
+
+dlg:newrow { always = false }
+
+dlg:check {
+    id = "remapHue",
+    label = "Remap:",
+    text = "Hue",
+    selected = defaults.remapHue,
+    visible = defaults.showGradientSettings
 }
 
 dlg:newrow { always = false }
@@ -1151,7 +1284,6 @@ dlg:button {
     text = "&GRADIENT",
     focus = false,
     onclick = function()
-
         local args = dlg.data
         local gradWidth = defaults.gradWidth
         local gradHeight = defaults.gradHeight
@@ -1224,6 +1356,7 @@ dlg:button {
             end
         end
 
+        preserveForeBack()
         local gradSprite = Sprite(gradWidth, gradHeight)
         gradSprite.filename = string.format(
             "Ok Gradient (%s)",
@@ -1275,11 +1408,6 @@ dlg:button {
         end
         gradSprite:setPalette(pal)
 
-        app.fgColor = Color(foreHex)
-        app.command.SwitchColors()
-        app.fgColor = Color(backHex)
-        app.command.SwitchColors()
-
         app.refresh()
     end
 }
@@ -1300,6 +1428,7 @@ dlg:button {
         local max = math.max
         local min = math.min
         local hsl_to_srgb = ok_color.okhsl_to_srgb
+        local hsv_to_srgb = ok_color.okhsv_to_srgb
 
         -- Unpack arguments.
         local args = dlg.data
@@ -1308,23 +1437,37 @@ dlg:button {
         local iToStep = 1.0
         local reqFrames = args.frames or defaults.frames
         if reqFrames > 1 then iToStep = 1.0 / (reqFrames - 1.0) end
-        local axis = args.axis or defaults.axis
+        local colorMode = args.colorMode or defaults.colorMode
+        local hslAxis = args.hslAxis or defaults.hslAxis
+        local hsvAxis = args.hsvAxis or defaults.hsvAxis
         local minLight = args.minLight or defaults.minLight
         local maxLight = args.maxLight or defaults.maxLight
+        local minValue = args.minValue or defaults.minValue
+        local maxValue = args.maxValue or defaults.maxValue
         local minSat = args.minSat or defaults.minSat
         local maxSat = args.maxSat or defaults.maxSat
         local ringCount = args.ringCount or defaults.ringCount
         local sectorCount = args.sectorCount or defaults.sectorCount
+        local remapHue = args.remapHue
 
         -- Offset by 30 degrees to match Aseprite's color wheel.
         local angleOffset = math.rad(30.0)
+        local lenRemapTable = #rybHueRemapTable
 
         minSat = minSat * 0.01
         maxSat = maxSat * 0.01
         minLight = minLight * 0.01
         maxLight = maxLight * 0.01
+        minValue = minValue * 0.01
+        maxValue = maxValue * 0.01
 
-        local useSat = axis == "SATURATION"
+        local useHsv = colorMode == "HSV"
+        local useSat = false
+        if colorMode == "HSV" then
+            useSat = hsvAxis == "SATURATION"
+        else
+            useSat = hslAxis == "SATURATION"
+        end
 
         local wheelImgs = {}
         for i = 1, reqFrames, 1 do
@@ -1334,9 +1477,12 @@ dlg:button {
             local fac0 = (i - 1.0) * iToStep
             local sat = minSat
             local light = minLight
+            local value = minValue
 
             if useSat then
                 sat = (1.0 - fac0) * minSat + fac0 * maxSat
+            elseif useHsv then
+                value = (1.0 - fac0) * minValue + fac0 * maxValue
             else
                 light = (1.0 - fac0) * minLight + fac0 * maxLight
             end
@@ -1365,21 +1511,45 @@ dlg:button {
                     -- 1 / TAU approximately equals 0.159.
                     -- % operator is floor modulo.
                     local hue = atan2(ySgn, xSgn) + angleOffset
+                    hue = hue % 6.283185307179586
                     hue = hue * 0.15915494309189535
+                    hue = quantizeSigned(hue, sectorCount)
+
+                    -- Remap hue to RYB color wheel.
+                    if remapHue then
+                        local hueScaled = hue * (lenRemapTable - 1)
+                        local hueIdx = trunc(hueScaled)
+                        local hueFrac = hueScaled - hueIdx
+                        local aHue = rybHueRemapTable[1 + hueIdx]
+                        local bHue = rybHueRemapTable[1 + (hueIdx + 1) % lenRemapTable]
+                        hue = (1.0 - hueFrac) * aHue + hueFrac * bHue
+                    end
 
                     local mag = sqrt(magSq)
                     if useSat then
-                        light = (1.0 - mag) * maxLight + mag * minLight
-                        light = quantizeUnsigned(light, ringCount)
+                        if useHsv then
+                            value = (1.0 - mag) * maxValue + mag * minValue
+                            value = quantizeUnsigned(value, ringCount)
+                        else
+                            light = (1.0 - mag) * maxLight + mag * minLight
+                            light = quantizeUnsigned(light, ringCount)
+                        end
                     else
                         sat = (1.0 - mag) * minSat + mag * maxSat
                         sat = quantizeUnsigned(sat, ringCount)
                     end
 
-                    srgb = hsl_to_srgb({
-                        h = quantizeSigned(hue % 1.0, sectorCount),
-                        s = sat,
-                        l = light })
+                    if useHsv then
+                        srgb = hsv_to_srgb({
+                            h = hue,
+                            s = sat,
+                            v = value })
+                    else
+                        srgb = hsl_to_srgb({
+                            h = hue,
+                            s = sat,
+                            l = light })
+                    end
 
                     -- Values still go out of gamut, particularly for
                     -- saturated blues at medium light.
@@ -1410,7 +1580,7 @@ dlg:button {
         --     pal = oldSprite.palettes[1]
         -- end
 
-        -- Create frames.
+        preserveForeBack()
         local sprite = Sprite(size, size)
         local oldFrameLen = #sprite.frames
         local needed = math.max(0, reqFrames - oldFrameLen)
@@ -1444,7 +1614,7 @@ dlg:button {
 
         -- Because light correlates to frames, the middle
         -- frame should be the default.
-        if useSat then
+        if useSat or useHsv then
             app.activeFrame = sprite.frames[#sprite.frames]
         else
             app.activeFrame = sprite.frames[

@@ -10,19 +10,21 @@ To assign a hotkey to the dialog script go to `Edit > Keyboard Shortcuts`.
 
 ## Usage
 
-![Screen Shot](screenshot.png)
-
 Left click on a color preview window to assign the color to the foreground. Right click to assign to the background. If the alpha channel slider is zero, the color assigned will be transparent black (`0x0` or `Color(0, 0, 0, 0)`).
 
 Hues in Okhsl are not the same as in LCh, HSLuv, or classic HSL. For example, red (`#ff0000`) has a hue of approximately 29 degrees in Okhsl. Do not assume different color representations have the same primaries, or the same spatial relationships between colors.
 
 Beware of drift in hue and other channels when getting and setting colors. For example, getting `#ff0000` will result in (29, 100, 57) in Okhsl. However, setting the picker's sliders to those values manually will yield the hexadecimal `#ff0809`.
 
-![Saturation Axis](satAxisWheel.png)
+![Screen Cap 0](screenCap0.png)
 
-When the `Wheel` button is clicked, a new sprite is created. In this sprite, either lightness or saturation may vary with the frame index. Use the arrow keys to navigate through each frame and thus change this variable. When saturation varies with frames, the wheel will be white at its center and black at its circumference. The color wheel's hue is shifted by 30 degrees to match the Aseprite convention.
+When the `Wheel` button is clicked, a new sprite is created. Use the arrow keys to navigate through each frame and thus change this variable. When saturation varies with frames, the wheel will be white at its center and black at its circumference. The color wheel's hue is shifted by 30 degrees to match the Aseprite convention.
 
-Click on the `Wheel Settings` toggle to show more parameters. For example, the `Sectors` and `Rings` parameters can be used to make the color wheel discrete in a fashion similar to Aseprite's built-in color wheels.
+![Saturation Axis](altWheel0.png) ![Hue Remap](altWheel1.png)
+
+Click on the `Wheel Settings` toggle to show more options. For example, the `Sectors` and `Rings` sliders can be used to make the color wheel discrete in a fashion similar to Aseprite's built-in color wheels. The color property that varies with frame index will depend on whether the `Mode` is `HSL` or `HSV`: the choice is between `SATURATION` and `LIGHTNESS` or between `SATURATION` and `VALUE`. The hue can also be remapped to that of a red-yellow-blue color wheel.
+
+![Screen Cap 1](screenCap1.png)
 
 The `Gradient` button creates a new sprite with a horizontal gradient starting with the background color at the left and ending with the foreground color at the right. The sprite's palette is set to a number of swatches. The gradient ignores source color alpha.
 
@@ -32,13 +34,21 @@ The underlined letters on each button indicate that they work with keyboard shor
 
 This tool -- its harmony and shading features in particular -- is an imperfect aide to artistic judgment, not a replacement for it. See Pixel Parmesan's "[Color Theory for Pixel Artists: It's All Relative](https://pixelparmesan.com/color-theory-for-pixel-artists-its-all-relative/)" on the subject.
 
-_This script was tested in Aseprite version 1.3-beta-7._ It assumes that it will be used in RGB color mode, not indexed or gray mode. Furthermore, it assumes that [sRGB](https://www.wikiwand.com/en/SRGB) (standard RGB) is the sprite's working color space.
+A separate dialog allows for cel image adjustment with either `HSV` or `HSL`.
+
+![Hue Adjustment](hueAdjust.png)
+
+The test image above is Caravaggio's [Calling of St. Matthew](https://en.wikipedia.org/wiki/The_Calling_of_St_Matthew).
+
+_This script was tested in Aseprite version 1.3-beta-14._ It assumes that it will be used in RGB color mode, not indexed or gray mode. Furthermore, it assumes that [sRGB](https://www.wikiwand.com/en/SRGB) (standard RGB) is the sprite's working color space.
 
 To modify this script, see Aseprite's [API Reference](https://github.com/aseprite/api).
 
 ## Changes
 
-The original code has been modified to handle edge cases for black, white and grays. There are some measures to prevent the passing of invalid values to division or square-root. The hue for grays is left at zero to follow convention. However, this will cause problems when, for example, creating a gradient from a gray to a saturated color or when sorting colors by hue.
+Unused methods have been removed. The original code has been modified to handle edge cases for black, white and grays. There are some measures to prevent the passing of invalid values to division or square-root.
+
+The hue for grays is left at zero to follow convention. However, this will cause problems when, for example, creating a gradient from a gray to a saturated color or when sorting colors by hue.
 
 ## License
 
