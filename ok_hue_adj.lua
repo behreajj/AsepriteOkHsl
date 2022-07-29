@@ -181,7 +181,7 @@ dlg:button {
         -- local abs = math.abs
         local max = math.max
         local min = math.min
-        local trunc = math.tointeger
+        local trunc = math.floor
         local srgb_to_oklab = ok_color.srgb_to_oklab
         local oklab_to_okhsl = ok_color.oklab_to_okhsl
         local oklab_to_okhsv = ok_color.oklab_to_okhsv

@@ -62,19 +62,23 @@ local defaults = {
 
     harmonyType = "NONE",
     analogies = {
-        Color(244,   0, 132, 255),
-        Color(200, 110,   0, 255) },
-    complement = { Color(  0, 154, 172, 255) },
+        Color(244, 0, 132, 255),
+        Color(200, 110, 0, 255)
+    },
+    complement = { Color(0, 154, 172, 255) },
     splits = {
-        Color(  0, 159, 138, 255),
-        Color(  0, 146, 212, 255) },
+        Color(0, 159, 138, 255),
+        Color(0, 146, 212, 255)
+    },
     squares = {
-        Color(127, 148,   0, 255),
-        Color(  0, 154, 172, 255),
-        Color(160,  88, 255, 255) },
+        Color(127, 148, 0, 255),
+        Color(0, 154, 172, 255),
+        Color(160, 88, 255, 255)
+    },
     triads = {
-        Color( 89, 123, 255, 255),
-        Color(  0, 164,  71, 255) },
+        Color(89, 123, 255, 255),
+        Color(0, 164, 71, 255)
+    },
 
     shadingCount = 7,
     shadowLight = 0.1,
@@ -119,7 +123,8 @@ local function aseColorToRgb01(ase)
     return {
         r = ase.red * 0.00392156862745098,
         g = ase.green * 0.00392156862745098,
-        b = ase.blue * 0.00392156862745098 }
+        b = ase.blue * 0.00392156862745098
+    }
 end
 
 local function assignColor(aseColor)
@@ -181,60 +186,56 @@ local function createNewFrames(sprite, count, duration)
 end
 
 local function distAngleUnsigned(a, b, range)
-    local valRange = range or 360.0
-    local halfRange = valRange * 0.5
+    local halfRange = range * 0.5
     return halfRange - math.abs(math.abs(
-        (b % valRange) - (a % valRange))
+        (b % range) - (a % range))
         - halfRange)
 end
 
 local function lerpAngleNear(origin, dest, t, range)
-    local valRange = range or 360.0
-    local halfRange = valRange * 0.5
+    local halfRange = range * 0.5
 
-    local o = origin % valRange
-    local d = dest % valRange
+    local o = origin % range
+    local d = dest % range
     local diff = d - o
     local u = 1.0 - t
 
     if diff == 0.0 then
         return o
     elseif o < d and diff > halfRange then
-        return (u * (o + valRange) + t * d) % valRange
+        return (u * (o + range) + t * d) % range
     elseif o > d and diff < -halfRange then
-        return (u * o + t * (d + valRange)) % valRange
+        return (u * o + t * (d + range)) % range
     else
         return u * o + t * d
     end
 end
 
 local function lerpAngleCcw(origin, dest, t, range)
-    local valRange = range or 360.0
-    local o = origin % valRange
-    local d = dest % valRange
+    local o = origin % range
+    local d = dest % range
     local diff = d - o
     local u = 1.0 - t
 
     if diff == 0.0 then
         return o
     elseif o > d then
-        return (u * o + t * (d + valRange)) % valRange
+        return (u * o + t * (d + range)) % range
     else
         return u * o + t * d
     end
 end
 
 local function lerpAngleCw(origin, dest, t, range)
-    local valRange = range or 360.0
-    local o = origin % valRange
-    local d = dest % valRange
+    local o = origin % range
+    local d = dest % range
     local diff = d - o
     local u = 1.0 - t
 
     if diff == 0.0 then
         return d
     elseif o < d then
-        return (u * (o + valRange) + t * d) % valRange
+        return (u * (o + range) + t * d) % range
     else
         return u * o + t * d
     end
@@ -268,23 +269,28 @@ end
 local function srgb01ToHex(srgb, alpha)
     local va = alpha or 255
     return (va << 0x18)
-        | math.tointeger(0.5 + 0xff * math.min(math.max(srgb.b, 0.0), 1.0)) << 0x10
-        | math.tointeger(0.5 + 0xff * math.min(math.max(srgb.g, 0.0), 1.0)) << 0x08
-        | math.tointeger(0.5 + 0xff * math.min(math.max(srgb.r, 0.0), 1.0))
+        | math.floor(0.5 + 0xff * math.min(math.max(srgb.b, 0.0), 1.0)) << 0x10
+        | math.floor(0.5 + 0xff * math.min(math.max(srgb.g, 0.0), 1.0)) << 0x08
+        | math.floor(0.5 + 0xff * math.min(math.max(srgb.r, 0.0), 1.0))
 end
 
 local function srgb01ToAseColor(srgb, alpha)
     return Color(
-        math.tointeger(0.5 + 0xff * math.min(math.max(srgb.r, 0.0), 1.0)),
-        math.tointeger(0.5 + 0xff * math.min(math.max(srgb.g, 0.0), 1.0)),
-        math.tointeger(0.5 + 0xff * math.min(math.max(srgb.b, 0.0), 1.0)),
+        math.floor(0.5 + 0xff * math.min(math.max(srgb.r, 0.0), 1.0)),
+        math.floor(0.5 + 0xff * math.min(math.max(srgb.g, 0.0), 1.0)),
+        math.floor(0.5 + 0xff * math.min(math.max(srgb.b, 0.0), 1.0)),
         alpha or 255)
 end
 
 local function round(v)
-    if v < -0.0 then return math.tointeger(v - 0.5) end
-    if v > 0.0 then return math.tointeger(v + 0.5) end
-    return 0.0
+    local iv, fv = math.modf(v)
+    if iv <= 0 and fv <= -0.5 then
+        return iv - 1
+    elseif iv >= 0 and fv >= 0.5 then
+        return iv + 1
+    else
+        return iv
+    end
 end
 
 local function zigZag(t)
@@ -293,10 +299,9 @@ local function zigZag(t)
     return 1.0 - math.abs(b + b - 1.0)
 end
 
-local function updateShades(dialog, primary, shades, reserveHue)
+local function updateShades(dialog, primary, shades)
     local srgb = aseColorToRgb01(primary)
     local srcHsl = ok_color.srgb_to_okhsl(srgb)
-
     local alpha = primary.alpha
     local l = srcHsl.l
     local s = srcHsl.s
@@ -339,7 +344,7 @@ local function updateShades(dialog, primary, shades, reserveHue)
     -- Green is approximately at hue 140.
     local offsetMix = 2.0 * distAngleUnsigned(h, defaults.greenHue, 1.0)
     local offsetScale = (1.0 - offsetMix) * defaults.maxGreenOffset
-                              + offsetMix * defaults.minGreenOffset
+        + offsetMix * defaults.minGreenOffset
 
     -- Absolute hues for shadow and light.
     -- This could also be combined with the origin hue +/-
@@ -352,7 +357,7 @@ local function updateShades(dialog, primary, shades, reserveHue)
     for i = 1, shadingCount, 1 do
         local iFac = (i - 1) * toFac
         local lItr = (1.0 - iFac) * shadowLight
-                           + iFac * dayLight
+            + iFac * dayLight
 
         -- Idealized hue from violet shadow to
         -- off-yellow daylight.
@@ -362,7 +367,7 @@ local function updateShades(dialog, primary, shades, reserveHue)
         -- The fac needs to be 0.0. That's why zigzag is
         -- used to convert to an oscillation.
         local lMixed = srcLightWeight * l
-                     + cmpLightWeight * lItr
+            + cmpLightWeight * lItr
         local lZig = zigZag(lMixed)
         local fac = offsetScale * lZig
         local hMixed = lerpAngleNear(h, hAbs, fac, 1.0)
@@ -374,11 +379,11 @@ local function updateShades(dialog, primary, shades, reserveHue)
         local cMixed = (1.0 - lZig) * cVal + lZig * chromaTarget
         cMixed = math.max(minChroma, cMixed)
 
-        -- local clr = lchToRgb(lMixed * 100.0, cMixed, hMixed, a)
         local clr = ok_color.okhsl_to_srgb({
             h = hMixed,
             s = cMixed,
-            l = lMixed })
+            l = lMixed
+        })
         local aseColor = srgb01ToAseColor(clr, alpha)
         shades[i] = aseColor
     end
@@ -387,6 +392,12 @@ local function updateShades(dialog, primary, shades, reserveHue)
 end
 
 local function updateHarmonies(dialog, primary)
+    local srgb = aseColorToRgb01(primary)
+    local srcHsl = ok_color.srgb_to_okhsl(srgb)
+    local l = srcHsl.l
+    local s = srcHsl.s
+    local h = srcHsl.h
+
     local h30 = 0.08333333333333333
     local h90 = 0.25
     local h120 = 0.3333333333333333
@@ -394,12 +405,6 @@ local function updateHarmonies(dialog, primary)
     local h180 = 0.5
     local h210 = 0.5833333333333333
     local h270 = 0.75
-
-    local srgb = aseColorToRgb01(primary)
-    local srcHsl = ok_color.srgb_to_okhsl(srgb)
-    local h = srcHsl.h
-    local s = srcHsl.s
-    local l = srcHsl.l
 
     local ana0 = ok_color.okhsl_to_srgb({ h = h - h30, s = s, l = l })
     local ana1 = ok_color.okhsl_to_srgb({ h = h + h30, s = s, l = l })
@@ -435,8 +440,6 @@ local function updateHarmonies(dialog, primary)
         srgb01ToAseColor(square2)
     }
 
-    -- TODO: Should complement be separate from
-    -- squares insofar as it has the inverse lightness?
     dialog:modify { id = "complement", colors = { squares[2] } }
     dialog:modify { id = "triadic", colors = tris }
     dialog:modify { id = "analogous", colors = analogues }
@@ -445,18 +448,18 @@ local function updateHarmonies(dialog, primary)
 end
 
 local function setLab(dialog, lab)
-    local labLgtInt = math.tointeger(0.5 + 100.0 * lab.L)
-    local labAInt = round(100.0 * lab.a)
-    local labBInt = round(100.0 * lab.b)
+    local labLgtInt = math.floor(lab.L * 100.0 + 0.5)
+    local labAInt = round(lab.a * 100.0)
+    local labBInt = round(lab.b * 100.0)
     dialog:modify { id = "labLgt", value = labLgtInt }
     dialog:modify { id = "labA", value = labAInt }
     dialog:modify { id = "labB", value = labBInt }
 end
 
 local function setHsl(dialog, hsl)
-    local hslLgtInt = math.tointeger(0.5 + 100.0 * hsl.l)
-    local hslSatInt = math.tointeger(0.5 + 100.0 * hsl.s)
-    local hslHueInt = math.tointeger(0.5 + 360.0 * hsl.h)
+    local hslLgtInt = math.floor(hsl.l * 100.0 + 0.5)
+    local hslSatInt = math.floor(hsl.s * 100.0 + 0.5)
+    local hslHueInt = math.floor(hsl.h * 360.0 + 0.5)
     if hslSatInt > 0
         and hslLgtInt > 0
         and hslLgtInt < 100 then
@@ -467,9 +470,9 @@ local function setHsl(dialog, hsl)
 end
 
 local function setHsv(dialog, hsv)
-    local hsvValInt = math.tointeger(0.5 + 100.0 * hsv.v)
-    local hsvSatInt = math.tointeger(0.5 + 100.0 * hsv.s)
-    local hsvHueInt = math.tointeger(0.5 + 360.0 * hsv.h)
+    local hsvValInt = math.floor(0.5 + 100.0 * hsv.v)
+    local hsvSatInt = math.floor(0.5 + 100.0 * hsv.s)
+    local hsvHueInt = math.floor(0.5 + 360.0 * hsv.h)
     if hsvSatInt > 0 and hsvValInt > 0 then
         dialog:modify { id = "hsvHue", value = hsvHueInt }
     end
@@ -500,8 +503,7 @@ local function setFromHexStr(dialog, primary, shades)
             setHsv(dialog, ok_color.oklab_to_okhsv(lab))
 
             updateHarmonies(dialog, primary)
-            updateShades(dialog, primary, shades,
-                dialog.data.hslHue * 0.002777777777777778)
+            updateShades(dialog, primary, shades)
         end
     end
 end
@@ -520,8 +522,7 @@ local function setFromAse(dialog, aseColor, primary, shades)
     setHsv(dialog, ok_color.oklab_to_okhsv(lab))
 
     updateHarmonies(dialog, primary)
-    updateShades(dialog, primary, shades,
-        dialog.data.hslHue * 0.002777777777777778)
+    updateShades(dialog, primary, shades)
 end
 
 local function updateColor(dialog, primary, shades)
@@ -533,7 +534,8 @@ local function updateColor(dialog, primary, shades)
         local lab = ok_color.okhsv_to_oklab({
             h = args.hsvHue * 0.002777777777777778,
             s = args.hsvSat * 0.01,
-            v = args.hsvVal * 0.01 })
+            v = args.hsvVal * 0.01
+        })
         local rgb01 = ok_color.oklab_to_srgb(lab)
         primary = srgb01ToAseColor(rgb01, alpha)
 
@@ -545,7 +547,8 @@ local function updateColor(dialog, primary, shades)
         local lab = {
             L = args.labLgt * 0.01,
             a = args.labA * 0.01,
-            b = args.labB * 0.01 }
+            b = args.labB * 0.01
+        }
         local rgb01 = ok_color.oklab_to_srgb(lab)
         primary = srgb01ToAseColor(rgb01, alpha)
 
@@ -558,7 +561,8 @@ local function updateColor(dialog, primary, shades)
         local lab = ok_color.okhsl_to_oklab({
             h = args.hslHue * 0.002777777777777778,
             s = args.hslSat * 0.01,
-            l = args.hslLgt * 0.01 })
+            l = args.hslLgt * 0.01
+        })
         local rgb01 = ok_color.oklab_to_srgb(lab)
         primary = srgb01ToAseColor(rgb01, alpha)
 
@@ -579,20 +583,19 @@ local function updateColor(dialog, primary, shades)
     }
 
     updateHarmonies(dialog, primary)
-    updateShades(dialog, primary, shades,
-        args.hslHue * 0.002777777777777778)
+    updateShades(dialog, primary, shades)
 end
 
 local palColors = {
-    Color(  0,   0,   0,   0),
-    Color(  0,   0,   0, 255),
+    Color(0, 0, 0, 0),
+    Color(0, 0, 0, 255),
     Color(255, 255, 255, 255),
-    Color(255,   0,   0, 255),
-    Color(255, 255,   0, 255),
-    Color(  0, 255,   0, 255),
-    Color(  0, 255, 255, 255),
-    Color(  0,   0, 255, 255),
-    Color(255,   0, 255, 255)
+    Color(255, 0, 0, 255),
+    Color(255, 255, 0, 255),
+    Color(0, 255, 0, 255),
+    Color(0, 255, 255, 255),
+    Color(0, 0, 255, 255),
+    Color(255, 0, 255, 255)
 }
 
 local colorModes = { "HSL", "HSV", "LAB" }
@@ -609,11 +612,11 @@ local harmonies = {
 
 local primary = Color(255, 0, 0, 255)
 local shades = {
-    Color(113,   9,  30, 255),
-    Color(148,  21,  43, 255),
-    Color(183,  37,  54, 255),
-    Color(214,  62,  62, 255),
-    Color(234,  99,  78, 255),
+    Color(113, 9, 30, 255),
+    Color(148, 21, 43, 255),
+    Color(183, 37, 54, 255),
+    Color(214, 62, 62, 255),
+    Color(234, 99, 78, 255),
     Color(244, 139, 104, 255),
     Color(248, 178, 139, 255)
 }
@@ -625,7 +628,7 @@ dlg:button {
     text = "&FORE",
     focus = false,
     onclick = function()
-       setFromAse(dlg, app.fgColor, primary, shades)
+        setFromAse(dlg, app.fgColor, primary, shades)
     end
 }
 
@@ -634,9 +637,9 @@ dlg:button {
     text = "&BACK",
     focus = false,
     onclick = function()
-       app.command.SwitchColors()
-       setFromAse(dlg, app.fgColor, primary, shades)
-       app.command.SwitchColors()
+        app.command.SwitchColors()
+        setFromAse(dlg, app.fgColor, primary, shades)
+        app.command.SwitchColors()
     end
 }
 
@@ -710,7 +713,7 @@ dlg:combobox {
             isSat = hsvAxis == "SATURATION"
         end
 
-        dlg:modify { id = "hslAxis", visible =  (isHsl or isLab) and showWheel }
+        dlg:modify { id = "hslAxis", visible = (isHsl or isLab) and showWheel }
         dlg:modify { id = "minLight", visible = (isHsl or isLab) and showWheel and isLight }
         dlg:modify { id = "maxLight", visible = (isHsl or isLab) and showWheel and isLight }
 
@@ -719,7 +722,7 @@ dlg:combobox {
         dlg:modify { id = "maxValue", visible = isHsv and showWheel and isValue }
 
         dlg:modify { id = "minSat", visible = showWheel and isSat }
-        dlg:modify { id = "maxSat", visible = showWheel  and isSat }
+        dlg:modify { id = "maxSat", visible = showWheel and isSat }
     end
 }
 
@@ -1082,7 +1085,7 @@ dlg:check {
         end
 
         dlg:modify { id = "minSat", visible = state and isSat }
-        dlg:modify { id = "maxSat", visible = state  and isSat }
+        dlg:modify { id = "maxSat", visible = state and isSat }
 
         dlg:modify { id = "hslAxis", visible = state and (isHsl or isLab) }
         dlg:modify { id = "minLight", visible = (isHsl or isLab) and state and isLight }
@@ -1129,7 +1132,7 @@ dlg:combobox {
     options = { "SATURATION", "LIGHTNESS" },
     visible = defaults.showWheelSettings
         and (defaults.colorMode == "HSL"
-        or defaults.colorMode == "LAB"),
+            or defaults.colorMode == "LAB"),
     onchange = function()
         local args = dlg.data
         local hslAxis = args.hslAxis
@@ -1196,7 +1199,7 @@ dlg:slider {
     value = defaults.minLight,
     visible = defaults.showWheelSettings
         and (defaults.colorMode == "HSL"
-        or defaults.colorMode == "LAB")
+            or defaults.colorMode == "LAB")
         and defaults.hslAxis == "LIGHTNESS"
 }
 
@@ -1207,7 +1210,7 @@ dlg:slider {
     value = defaults.maxLight,
     visible = defaults.showWheelSettings
         and (defaults.colorMode == "HSL"
-        or defaults.colorMode == "LAB")
+            or defaults.colorMode == "LAB")
         and defaults.hslAxis == "LIGHTNESS"
 }
 
@@ -1424,7 +1427,7 @@ dlg:button {
         -- Cache methods.
         local atan2 = math.atan
         local sqrt = math.sqrt
-        local trunc = math.tointeger
+        local trunc = math.floor
         local max = math.max
         local min = math.min
         local hsl_to_srgb = ok_color.okhsl_to_srgb
@@ -1543,12 +1546,14 @@ dlg:button {
                         srgb = hsv_to_srgb({
                             h = hue,
                             s = sat,
-                            v = value })
+                            v = value
+                        })
                     else
                         srgb = hsl_to_srgb({
                             h = hue,
                             s = sat,
-                            l = light })
+                            l = light
+                        })
                     end
 
                     -- Values still go out of gamut, particularly for
@@ -1559,9 +1564,9 @@ dlg:button {
 
                     -- Composite into a 32-bit integer.
                     local hex = 0xff000000
-                        | trunc(0.5 + srgb.b * 255) << 0x10
-                        | trunc(0.5 + srgb.g * 255) << 0x08
-                        | trunc(0.5 + srgb.r * 255)
+                        | trunc(srgb.b * 255 + 0.5) << 0x10
+                        | trunc(srgb.g * 255 + 0.5) << 0x08
+                        | trunc(srgb.r * 255 + 0.5)
 
                     -- Assign to iterator.
                     elm(hex)

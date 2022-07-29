@@ -1,6 +1,6 @@
 # Okhsl for Aseprite
 
-This is an [Aseprite](https://www.aseprite.org/) dialog that wraps [Okhsl](https://bottosson.github.io/posts/colorpicker/) to provide a color picker and a color wheel generator. Aseprite is an "animated sprite editor & pixel art tool." Okhsl is a color representation developed by Bjorn Ottosson to create an alternative to HSL that is based on human perception. Those interested in an interactive comparison between Okhsl, HSLuv and traditional HSL may reference this [link](https://bottosson.github.io/misc/colorpicker/).
+This is an [Aseprite](https://www.aseprite.org/) dialog that wraps [Okhsl](https://bottosson.github.io/posts/colorpicker/) to provide a color picker and a color wheel generator. Aseprite is an "animated sprite editor & pixel art tool." Okhsl is a color representation developed by Bjorn Ottosson to create an alternative to HSL that is based on human perception. Those looking for an interactive online comparison between Okhsl, HSLuv and traditional HSL should refer to [this](https://bottosson.github.io/misc/colorpicker/).
 
 ## Installation
 
@@ -26,13 +26,11 @@ Click on the `Wheel Settings` toggle to show more options. For example, the `Sec
 
 ![Screen Cap 1](screenCap1.png)
 
-The `Gradient` button creates a new sprite with a horizontal gradient starting with the background color at the left and ending with the foreground color at the right. The sprite's palette is set to a number of swatches. The gradient ignores source color alpha.
-
-Supported harmonies are: analogous, complementary, split, square and triadic. Shading swatches are grouped under harmonies to conserve screen space.
+The `Gradient` button creates a new sprite with a horizontal gradient starting with the background color at the left and ending with the foreground color at the right. The sprite's palette is set to a number of swatches. The gradient ignores source color alpha. The gradient responds to the `Mode`, where `HSV` and `HSL` provide the hue easing options of `NEAR`, `CCW` (counter-clockwise) and `CW` (clockwise). The discontinuity between saturated blue and teal means that hue-based gradients will require adjustment.
 
 The underlined letters on each button indicate that they work with keyboard shortcuts: `Alt+F` gets the foreground color, `Alt+B` gets the background color, `Alt+C` closes the dialog, `Alt+W` creates a wheel, `Alt+G` creates a gradient. When shading is active, `Alt+A` appends the swatches to the active palette.
 
-This tool -- its harmony and shading features in particular -- is an imperfect aide to artistic judgment, not a replacement for it. See Pixel Parmesan's "[Color Theory for Pixel Artists: It's All Relative](https://pixelparmesan.com/color-theory-for-pixel-artists-its-all-relative/)" on the subject.
+Supported harmonies are: analogous, complementary, split, square and triadic. Shading swatches are grouped under harmonies to conserve screen space. This tool -- its harmony and shading features in particular -- is an imperfect aide to artistic judgment, not a replacement for it. See Pixel Parmesan's "[Color Theory for Pixel Artists: It's All Relative](https://pixelparmesan.com/color-theory-for-pixel-artists-its-all-relative/)" on the subject.
 
 A separate dialog allows for cel image adjustment with either `HSV` or `HSL`.
 
