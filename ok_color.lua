@@ -31,7 +31,7 @@ end
 -- a and b must be normalized so a^2 + b^2 == 1
 function ok_color.compute_max_saturation(a, b)
     if a ~= 0.0 or b ~= 0.0 then
-    	-- Max saturation will be when one of r, g or b goes below zero.
+        -- Max saturation will be when one of r, g or b goes below zero.
         -- Select different coefficients depending on which component goes below zero first
 
         -- Blue component (default)
@@ -99,7 +99,7 @@ function ok_color.compute_max_saturation(a, b)
             local f2 = wl * l_dS2 + wm * m_dS2 + ws * s_dS2
 
             local s_denom = f1 * f1 - 0.5 * f * f2
-            if s_denom ~= 0.0 then  S = S - f * f1 / s_denom end
+            if s_denom ~= 0.0 then S = S - f * f1 / s_denom end
         end
 
         return S
@@ -111,11 +111,11 @@ end
 -- finds L_cusp and C_cusp for a given hue
 -- a and b must be normalized so a^2 + b^2 == 1
 function ok_color.find_cusp(a, b)
-	-- First, find the maximum saturation (saturation S = C/L)
+    -- First, find the maximum saturation (saturation S = C/L)
     local S_cusp = ok_color.compute_max_saturation(a, b)
 
     -- Convert to linear sRGB to find the first point where at least one of r,g or b >= 1:
-    local rgb_at_max = ok_color.oklab_to_linear_srgb({L = 1, a = S_cusp * a, b = S_cusp * b })
+    local rgb_at_max = ok_color.oklab_to_linear_srgb({ L = 1, a = S_cusp * a, b = S_cusp * b })
     local max_comp = math.max(rgb_at_max.r, rgb_at_max.g, rgb_at_max.b)
     if max_comp ~= 0.0 then
         local L_cusp = (1.0 / max_comp) ^ 0.3333333333333333
@@ -161,50 +161,50 @@ function ok_color.find_gamut_intersection(a, b, L1, C1, L0, x)
             -- If higher accuracy is required, 2 or 3 iterations of the following block can be used:
             do
                 local L = L0 * (1.0 - t) + t * L1
-				local C = t * C1
+                local C = t * C1
 
-				local l_ = L + C * k_l
-				local m_ = L + C * k_m
-				local s_ = L + C * k_s
+                local l_ = L + C * k_l
+                local m_ = L + C * k_m
+                local s_ = L + C * k_s
 
-				local l = l_ * l_ * l_
-				local m = m_ * m_ * m_
-				local s = s_ * s_ * s_
+                local l = l_ * l_ * l_
+                local m = m_ * m_ * m_
+                local s = s_ * s_ * s_
 
-				local ldt = 3.0 * l_dt * l_ * l_
-				local mdt = 3.0 * m_dt * m_ * m_
-				local sdt = 3.0 * s_dt * s_ * s_
+                local ldt = 3.0 * l_dt * l_ * l_
+                local mdt = 3.0 * m_dt * m_ * m_
+                local sdt = 3.0 * s_dt * s_ * s_
 
-				local ldt2 = 6.0 * l_dt * l_dt * l_
-				local mdt2 = 6.0 * m_dt * m_dt * m_
-				local sdt2 = 6.0 * s_dt * s_dt * s_
+                local ldt2 = 6.0 * l_dt * l_dt * l_
+                local mdt2 = 6.0 * m_dt * m_dt * m_
+                local sdt2 = 6.0 * s_dt * s_dt * s_
 
                 local r0 = 4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s - 1
-				local r1 = 4.0767416621 * ldt - 3.3077115913 * mdt + 0.2309699292 * sdt
-				local r2 = 4.0767416621 * ldt2 - 3.3077115913 * mdt2 + 0.2309699292 * sdt2
+                local r1 = 4.0767416621 * ldt - 3.3077115913 * mdt + 0.2309699292 * sdt
+                local r2 = 4.0767416621 * ldt2 - 3.3077115913 * mdt2 + 0.2309699292 * sdt2
 
                 local r_denom = r1 * r1 - 0.5 * r0 * r2
                 local u_r = 0.0
                 if r_denom ~= 0.0 then u_r = r1 / r_denom end
-				local t_r = -r0 * u_r
+                local t_r = -r0 * u_r
 
                 local g0 = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s - 1
-				local g1 = -1.2684380046 * ldt + 2.6097574011 * mdt - 0.3413193965 * sdt
-				local g2 = -1.2684380046 * ldt2 + 2.6097574011 * mdt2 - 0.3413193965 * sdt2
+                local g1 = -1.2684380046 * ldt + 2.6097574011 * mdt - 0.3413193965 * sdt
+                local g2 = -1.2684380046 * ldt2 + 2.6097574011 * mdt2 - 0.3413193965 * sdt2
 
                 local g_denom = g1 * g1 - 0.5 * g0 * g2
                 local u_g = 0.0
                 if g_denom ~= 0.0 then u_g = g1 / g_denom end
-				local t_g = -g0 * u_g
+                local t_g = -g0 * u_g
 
                 local b0 = -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s - 1
-				local b1 = -0.0041960863 * ldt - 0.7034186147 * mdt + 1.707614701 * sdt
-				local b2 = -0.0041960863 * ldt2 - 0.7034186147 * mdt2 + 1.707614701 * sdt2
+                local b1 = -0.0041960863 * ldt - 0.7034186147 * mdt + 1.707614701 * sdt
+                local b2 = -0.0041960863 * ldt2 - 0.7034186147 * mdt2 + 1.707614701 * sdt2
 
                 local b_denom = (b1 * b1 - 0.5 * b0 * b2)
                 local u_b = 0.0
                 if b_denom ~= 0.0 then u_b = b1 / b_denom end
-				local t_b = -b0 * u_b
+                local t_b = -b0 * u_b
 
                 if u_r < 0.0 then t_r = 3.40282347e+38 end
                 if u_g < 0.0 then t_g = 3.40282347e+38 end
@@ -263,8 +263,8 @@ function ok_color.get_ST_mid(a_, b_)
     local S = 0.11516993
     local s_denom = 7.4477897 + 4.1590124 * b_
         + a_ * (-2.19557347 + 1.75198401 * b_
-        + a_ * (-2.13704948 - 10.02301043 * b_
-        + a_ * (-4.24894561 + 5.38770819 * b_ + 4.69891013 * a_)))
+            + a_ * (-2.13704948 - 10.02301043 * b_
+                + a_ * (-4.24894561 + 5.38770819 * b_ + 4.69891013 * a_)))
     if s_denom ~= 0.0 then
         S = 0.11516993 + 1.0 / s_denom
     end
@@ -272,25 +272,25 @@ function ok_color.get_ST_mid(a_, b_)
     local T = 0.11239642
     local t_denom = 1.6132032 - 0.68124379 * b_
         + a_ * (0.40370612 + 0.90148123 * b_
-        + a_ * (-0.27087943 + 0.6122399 * b_
-        + a_ * (0.00299215 - 0.45399568 * b_ - 0.14661872 * a_)))
-	if t_denom ~= 0.0 then
+            + a_ * (-0.27087943 + 0.6122399 * b_
+                + a_ * (0.00299215 - 0.45399568 * b_ - 0.14661872 * a_)))
+    if t_denom ~= 0.0 then
         T = 0.11239642 + 1.0 / t_denom
     end
 
-	return { S = S, T = T }
+    return { S = S, T = T }
 end
 
 function ok_color.linear_srgb_to_oklab(c)
     local l = 0.4122214708 * c.r
-            + 0.5363325363 * c.g
-            + 0.0514459929 * c.b
-	local m = 0.2119034982 * c.r
-            + 0.6806995451 * c.g
-            + 0.1073969566 * c.b
-	local s = 0.0883024619 * c.r
-            + 0.2817188376 * c.g
-            + 0.6299787005 * c.b
+        + 0.5363325363 * c.g
+        + 0.0514459929 * c.b
+    local m = 0.2119034982 * c.r
+        + 0.6806995451 * c.g
+        + 0.1073969566 * c.b
+    local s = 0.0883024619 * c.r
+        + 0.2817188376 * c.g
+        + 0.6299787005 * c.b
 
     local l_ = l ^ 0.3333333333333333
     local m_ = m ^ 0.3333333333333333
@@ -298,18 +298,19 @@ function ok_color.linear_srgb_to_oklab(c)
 
     return {
         L = 0.2104542553 * l_
-          + 0.793617785 * m_
-          - 0.0040720468 * s_,
+            + 0.793617785 * m_
+            - 0.0040720468 * s_,
         a = 1.9779984951 * l_
-          - 2.428592205 * m_
-          + 0.4505937099 * s_,
+            - 2.428592205 * m_
+            + 0.4505937099 * s_,
         b = 0.0259040371 * l_
-          + 0.7827717662 * m_
-          - 0.808675766 * s_ }
+            + 0.7827717662 * m_
+            - 0.808675766 * s_
+    }
 end
 
 function ok_color.okhsl_to_oklab(hsl)
-	local l = hsl.l
+    local l = hsl.l
     if l >= 1.0 then return { L = 1.0, a = 0.0, b = 0.0 } end
     if l <= 0.0 then return { L = 0.0, a = 0.0, b = 0.0 } end
 
@@ -325,11 +326,11 @@ function ok_color.okhsl_to_oklab(hsl)
 
     local cs = ok_color.get_Cs(L, a_, b_)
     local C_0 = cs.C_0
-	local C_mid = cs.C_mid
-	local C_max = cs.C_max
+    local C_mid = cs.C_mid
+    local C_max = cs.C_max
 
     local mid = 0.8
-	local mid_inv = 1.25
+    local mid_inv = 1.25
 
     local C = 0.0
     local t = 0.0
@@ -339,13 +340,13 @@ function ok_color.okhsl_to_oklab(hsl)
     if s < mid then
         t = mid_inv * s
 
-		k_1 = mid * C_0
+        k_1 = mid * C_0
         if C_mid ~= 0.0 then
-		    k_2 = 1.0 - k_1 / C_mid
+            k_2 = 1.0 - k_1 / C_mid
         end
 
         local k_denom = 1.0 - k_2 * t
-		if k_denom ~= 0.0 then
+        if k_denom ~= 0.0 then
             C = t * k_1 / k_denom
         end
     else
@@ -354,27 +355,28 @@ function ok_color.okhsl_to_oklab(hsl)
             t = (s - mid) / t_denom
         end
 
-		k_0 = C_mid
+        k_0 = C_mid
         if C_0 ~= 0.0 then
-		    k_1 = (1.0 - mid) * C_mid * C_mid * mid_inv * mid_inv / C_0
+            k_1 = (1.0 - mid) * C_mid * C_mid * mid_inv * mid_inv / C_0
         end
 
         local C_denom = C_max - C_mid
-		k_2 = 1.0
+        k_2 = 1.0
         if C_denom ~= 0.0 then
             k_2 = 1.0 - k_1 / C_denom
         end
 
         local k_denom = 1.0 - k_2 * t
         if k_denom ~= 0.0 then
-		    C = k_0 + t * k_1 / k_denom
+            C = k_0 + t * k_1 / k_denom
         end
     end
 
     return {
         L = L,
         a = C * a_,
-        b = C * b_ }
+        b = C * b_
+    }
 end
 
 function ok_color.okhsl_to_srgb(hsl)
@@ -382,7 +384,7 @@ function ok_color.okhsl_to_srgb(hsl)
 end
 
 function ok_color.okhsv_to_oklab(hsv)
-	local v = hsv.v
+    local v = hsv.v
     if v <= 0.0 then return { L = 0.0, a = 0.0, b = 0.0 } end
     if v > 1.0 then v = 1.0 end
 
@@ -396,28 +398,28 @@ function ok_color.okhsv_to_oklab(hsv)
     local b_ = math.sin(h_rad)
 
     local cusp = ok_color.find_cusp(a_, b_)
-	local ST_max = ok_color.to_ST(cusp)
-	local S_max = ST_max.S
-	local T_max = ST_max.T
-	local S_0 = 0.5
+    local ST_max = ok_color.to_ST(cusp)
+    local S_max = ST_max.S
+    local T_max = ST_max.T
+    local S_0 = 0.5
     local k = 1.0
     if S_max ~= 0.0 then
-	    k = 1.0 - S_0 / S_max
+        k = 1.0 - S_0 / S_max
     end
 
     -- first we compute L and V as if the gamut is a perfect triangle:
 
-	-- L, C when v==1:
+    -- L, C when v==1:
     local v_denom = S_0 + T_max - T_max * k * s
     local L_v = 1.0
     local C_v = 0.0
     if v_denom ~= 0.0 then
         L_v = 1.0 - s * S_0 / v_denom
-	    C_v = s * T_max * S_0 / v_denom
+        C_v = s * T_max * S_0 / v_denom
     end
 
     local L = v * L_v
-	local C = v * C_v
+    local C = v * C_v
 
     --then we compensate for both toe and the curved top part of the triangle:
     local L_vt = ok_color.toe_inv(L_v)
@@ -435,7 +437,8 @@ function ok_color.okhsv_to_oklab(hsv)
     local rgb_scale = ok_color.oklab_to_linear_srgb({
         L = L_vt,
         a = a_ * C_vt,
-        b = b_ * C_vt })
+        b = b_ * C_vt
+    })
     local max_comp = math.max(
         rgb_scale.r,
         rgb_scale.g,
@@ -445,11 +448,12 @@ function ok_color.okhsv_to_oklab(hsv)
         scale_L = (1.0 / max_comp) ^ 0.3333333333333333
     end
 
-	C = C * scale_L
+    C = C * scale_L
     return {
         L = L * scale_L,
         a = C * a_,
-        b = C * b_ }
+        b = C * b_
+    }
 end
 
 function ok_color.okhsv_to_srgb(hsv)
@@ -460,10 +464,10 @@ function ok_color.oklab_to_linear_srgb(lab)
     local l_ = lab.L
         + 0.3963377774 * lab.a
         + 0.2158037573 * lab.b
-	local m_ = lab.L
+    local m_ = lab.L
         - 0.1055613458 * lab.a
         - 0.0638541728 * lab.b
-	local s_ = lab.L
+    local s_ = lab.L
         - 0.0894841775 * lab.a
         - 1.291485548 * lab.b
 
@@ -473,14 +477,15 @@ function ok_color.oklab_to_linear_srgb(lab)
 
     return {
         r = 4.0767416621 * l
-          - 3.3077115913 * m
-          + 0.2309699292 * s,
+            - 3.3077115913 * m
+            + 0.2309699292 * s,
         g = -1.2684380046 * l
-           + 2.6097574011 * m
-           - 0.3413193965 * s,
+            + 2.6097574011 * m
+            - 0.3413193965 * s,
         b = -0.0041960863 * l
-           - 0.7034186147 * m
-           + 1.707614701 * s }
+            - 0.7034186147 * m
+            + 1.707614701 * s
+    }
 end
 
 function ok_color.oklab_to_okhsl(lab)
@@ -592,7 +597,8 @@ function ok_color.oklab_to_okhsv(lab)
         local rgb_scale = ok_color.oklab_to_linear_srgb({
             L = L_vt,
             a = a_ * C_vt,
-            b = b_ * C_vt })
+            b = b_ * C_vt
+        })
         local scale_denom = math.max(
             rgb_scale.r,
             rgb_scale.g,
@@ -626,10 +632,11 @@ end
 
 function ok_color.oklab_to_srgb(lab)
     local lrgb = ok_color.oklab_to_linear_srgb(lab)
-	return {
-		r = ok_color.srgb_transfer_function(lrgb.r),
-		g = ok_color.srgb_transfer_function(lrgb.g),
-		b = ok_color.srgb_transfer_function(lrgb.b) }
+    return {
+        r = ok_color.srgb_transfer_function(lrgb.r),
+        g = ok_color.srgb_transfer_function(lrgb.g),
+        b = ok_color.srgb_transfer_function(lrgb.b)
+    }
 end
 
 function ok_color.srgb_to_okhsl(rgb)
@@ -642,9 +649,10 @@ end
 
 function ok_color.srgb_to_oklab(srgb)
     return ok_color.linear_srgb_to_oklab({
-		r = ok_color.srgb_transfer_function_inv(srgb.r),
-		g = ok_color.srgb_transfer_function_inv(srgb.g),
-		b = ok_color.srgb_transfer_function_inv(srgb.b) })
+        r = ok_color.srgb_transfer_function_inv(srgb.r),
+        g = ok_color.srgb_transfer_function_inv(srgb.g),
+        b = ok_color.srgb_transfer_function_inv(srgb.b)
+    })
 end
 
 function ok_color.srgb_transfer_function(a)
@@ -664,7 +672,7 @@ function ok_color.srgb_transfer_function_inv(a)
 end
 
 function ok_color.to_ST(cusp)
-	local L = cusp.L
+    local L = cusp.L
     local C = cusp.C
     if L ~= 0.0 and L ~= 1.0 then
         return { S = C / L, T = C / (1.0 - L) }
@@ -679,13 +687,13 @@ end
 
 function ok_color.toe(x)
     local y = 1.170873786407767 * x - 0.206
-	return 0.5 * (y + math.sqrt(y * y + 0.14050485436893204 * x))
+    return 0.5 * (y + math.sqrt(y * y + 0.14050485436893204 * x))
 end
 
 function ok_color.toe_inv(x)
     local denom = 1.170873786407767 * (x + 0.03)
     if denom ~= 0.0 then
-    	return (x * x + 0.206 * x) / denom
+        return (x * x + 0.206 * x) / denom
     else
         return 0.0
     end

@@ -299,13 +299,12 @@ local function zigZag(t)
     return 1.0 - math.abs(b + b - 1.0)
 end
 
-local function updateShades(dialog, primary, shades)
-    local srgb = aseColorToRgb01(primary)
-    local srcHsl = ok_color.srgb_to_okhsl(srgb)
-    local alpha = primary.alpha
-    local l = srcHsl.l
-    local s = srcHsl.s
-    local h = srcHsl.h
+local function updateShades(dialog, shades)
+    local alpha = dialog.data.alpha
+    local l = dialog.data.hslLgt / 100.0
+    l = math.min(math.max(l, 0.01), 0.99)
+    local s = dialog.data.hslSat / 100.0
+    local h = dialog.data.hslHue / 360.0
 
     -- Decide on clockwise or counter-clockwise based
     -- on color's warmth or coolness.
@@ -503,7 +502,7 @@ local function setFromHexStr(dialog, primary, shades)
             setHsv(dialog, ok_color.oklab_to_okhsv(lab))
 
             updateHarmonies(dialog, primary)
-            updateShades(dialog, primary, shades)
+            updateShades(dialog, shades)
         end
     end
 end
@@ -522,7 +521,7 @@ local function setFromAse(dialog, aseColor, primary, shades)
     setHsv(dialog, ok_color.oklab_to_okhsv(lab))
 
     updateHarmonies(dialog, primary)
-    updateShades(dialog, primary, shades)
+    updateShades(dialog, shades)
 end
 
 local function updateColor(dialog, primary, shades)
@@ -583,7 +582,7 @@ local function updateColor(dialog, primary, shades)
     }
 
     updateHarmonies(dialog, primary)
-    updateShades(dialog, primary, shades)
+    updateShades(dialog, shades)
 end
 
 local palColors = {
