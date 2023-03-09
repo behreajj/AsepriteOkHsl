@@ -114,7 +114,8 @@ function ok_color.find_cusp(a, b)
     -- First, find the maximum saturation (saturation S = C/L)
     local S_cusp = ok_color.compute_max_saturation(a, b)
 
-    -- Convert to linear sRGB to find the first point where at least one of r,g or b >= 1:
+    -- Convert to linear sRGB to find the first point
+    -- where at least one of r,g or b >= 1:
     local rgb_at_max = ok_color.oklab_to_linear_srgb({ L = 1, a = S_cusp * a, b = S_cusp * b })
     local max_comp = math.max(rgb_at_max.r, rgb_at_max.g, rgb_at_max.b)
     if max_comp ~= 0.0 then
@@ -158,7 +159,8 @@ function ok_color.find_gamut_intersection(a, b, L1, C1, L0, x)
             local m_dt = dL + dC * k_m
             local s_dt = dL + dC * k_s
 
-            -- If higher accuracy is required, 2 or 3 iterations of the following block can be used:
+            -- If higher accuracy is required, 2 or 3 iterations
+            -- of the following block can be used:
             do
                 local L = L0 * (1.0 - t) + t * L1
                 local C = t * C1
@@ -179,27 +181,27 @@ function ok_color.find_gamut_intersection(a, b, L1, C1, L0, x)
                 local mdt2 = 6.0 * m_dt * m_dt * m_
                 local sdt2 = 6.0 * s_dt * s_dt * s_
 
-                local r0 = 4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s - 1
-                local r1 = 4.0767416621 * ldt - 3.3077115913 * mdt + 0.2309699292 * sdt
-                local r2 = 4.0767416621 * ldt2 - 3.3077115913 * mdt2 + 0.2309699292 * sdt2
+                local r0 = 4.076741661347994 * l - 3.3077115904081933 * m + 0.23096992872942793 * s - 1
+                local r1 = 4.076741661347994 * ldt - 3.3077115904081933 * mdt + 0.23096992872942793 * sdt
+                local r2 = 4.076741661347994 * ldt2 - 3.3077115904081933 * mdt2 + 0.23096992872942793 * sdt2
 
                 local r_denom = r1 * r1 - 0.5 * r0 * r2
                 local u_r = 0.0
                 if r_denom ~= 0.0 then u_r = r1 / r_denom end
                 local t_r = -r0 * u_r
 
-                local g0 = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s - 1
-                local g1 = -1.2684380046 * ldt + 2.6097574011 * mdt - 0.3413193965 * sdt
-                local g2 = -1.2684380046 * ldt2 + 2.6097574011 * mdt2 - 0.3413193965 * sdt2
+                local g0 = -1.2684380040921763 * l + 2.6097574006633715 * m - 0.3413193963102196 * s - 1
+                local g1 = -1.2684380040921763 * ldt + 2.6097574006633715 * mdt - 0.3413193963102196 * sdt
+                local g2 = -1.2684380040921763 * ldt2 + 2.6097574006633715 * mdt2 - 0.3413193963102196 * sdt2
 
                 local g_denom = g1 * g1 - 0.5 * g0 * g2
                 local u_g = 0.0
                 if g_denom ~= 0.0 then u_g = g1 / g_denom end
                 local t_g = -g0 * u_g
 
-                local b0 = -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s - 1
-                local b1 = -0.0041960863 * ldt - 0.7034186147 * mdt + 1.707614701 * sdt
-                local b2 = -0.0041960863 * ldt2 - 0.7034186147 * mdt2 + 1.707614701 * sdt2
+                local b0 = -0.004196086541837079 * l - 0.7034186144594495 * m + 1.7076147009309446 * s - 1
+                local b1 = -0.004196086541837079 * ldt - 0.7034186144594495 * mdt + 1.7076147009309446 * sdt
+                local b2 = -0.004196086541837079 * ldt2 - 0.7034186144594495 * mdt2 + 1.7076147009309446 * sdt2
 
                 local b_denom = (b1 * b1 - 0.5 * b0 * b2)
                 local u_b = 0.0
@@ -232,7 +234,8 @@ function ok_color.get_Cs(L, a_, b_)
     do
         local ST_mid = ok_color.get_ST_mid(a_, b_)
 
-        -- Use a soft minimum function, instead of a sharp triangle shape to get a smooth value for chroma.
+        -- Use a soft minimum function, instead of a sharp triangle
+        -- shape to get a smooth value for chroma.
         local C_a = L * ST_mid.S
         local C_b = (1.0 - L) * ST_mid.T
 
@@ -243,11 +246,13 @@ function ok_color.get_Cs(L, a_, b_)
 
     local C_0 = 0.0
     do
-        -- for C_0, the shape is independent of hue, so ST are constant. Values picked to roughly be the average values of ST.
+        -- for C_0, the shape is independent of hue, so ST are constant.
+        -- Values picked to roughly be the average values of ST.
         local C_a = L * 0.4
         local C_b = (1.0 - L) * 0.8
 
-        -- Use a soft minimum function, instead of a sharp triangle shape to get a smooth value for chroma.
+        -- Use a soft minimum function, instead of a sharp triangle
+        -- shape to get a smooth value for chroma.
         local cae2 = C_a * C_a
         local cbe2 = C_b * C_b
         C_0 = math.sqrt(1.0 / (1.0 / cae2 + 1.0 / cbe2))
@@ -263,8 +268,9 @@ function ok_color.get_ST_mid(a_, b_)
     local S = 0.11516993
     local s_denom = 7.4477897 + 4.1590124 * b_
         + a_ * (-2.19557347 + 1.75198401 * b_
-            + a_ * (-2.13704948 - 10.02301043 * b_
-                + a_ * (-4.24894561 + 5.38770819 * b_ + 4.69891013 * a_)))
+        + a_ * (-2.13704948 - 10.02301043 * b_
+        + a_ * (-4.24894561 + 5.38770819 * b_
+        + a_ * 4.69891013)))
     if s_denom ~= 0.0 then
         S = 0.11516993 + 1.0 / s_denom
     end
@@ -272,8 +278,9 @@ function ok_color.get_ST_mid(a_, b_)
     local T = 0.11239642
     local t_denom = 1.6132032 - 0.68124379 * b_
         + a_ * (0.40370612 + 0.90148123 * b_
-            + a_ * (-0.27087943 + 0.6122399 * b_
-                + a_ * (0.00299215 - 0.45399568 * b_ - 0.14661872 * a_)))
+        + a_ * (-0.27087943 + 0.6122399 * b_
+        + a_ * (0.00299215 - 0.45399568 * b_
+        - a_ * 0.14661872)))
     if t_denom ~= 0.0 then
         T = 0.11239642 + 1.0 / t_denom
     end
@@ -282,30 +289,38 @@ function ok_color.get_ST_mid(a_, b_)
 end
 
 function ok_color.linear_srgb_to_oklab(c)
-    local l = 0.4122214708 * c.r
-        + 0.5363325363 * c.g
-        + 0.0514459929 * c.b
-    local m = 0.2119034982 * c.r
-        + 0.6806995451 * c.g
-        + 0.1073969566 * c.b
-    local s = 0.0883024619 * c.r
-        + 0.2817188376 * c.g
-        + 0.6299787005 * c.b
+    -- See https://github.com/svgeesus/svgeesus.github.io/blob/master/
+    -- Color/OKLab-notes.md#comparing-standard-code-to-published-matrices
+    -- https://github.com/w3c/csswg-drafts/issues/6642#issuecomment-943521484
+    -- for discussions about precision.
+    local cr = c.r
+    local cg = c.g
+    local cb = c.b
 
-    local l_ = l ^ 0.3333333333333333
-    local m_ = m ^ 0.3333333333333333
-    local s_ = s ^ 0.3333333333333333
+    local l = 0.4121764591770371 * cr
+        + 0.5362739742695891 * cg
+        + 0.05144037229550143 * cb
+    local m = 0.21190919958804857 * cr
+        + 0.6807178709823131 * cg
+        + 0.10739984387775398 * cb
+    local s = 0.08834481407213204 * cr
+        + 0.28185396309857735 * cg
+        + 0.6302808688015096 * cb
+
+    local lcbrt = l ^ 0.3333333333333333
+    local mcbrt = m ^ 0.3333333333333333
+    local scbrt = s ^ 0.3333333333333333
 
     return {
-        L = 0.2104542553 * l_
-            + 0.793617785 * m_
-            - 0.0040720468 * s_,
-        a = 1.9779984951 * l_
-            - 2.428592205 * m_
-            + 0.4505937099 * s_,
-        b = 0.0259040371 * l_
-            + 0.7827717662 * m_
-            - 0.808675766 * s_
+        L = 0.2104542553 * lcbrt
+            + 0.793617785 * mcbrt
+            - 0.0040720468 * scbrt,
+        a = 1.9779984951 * lcbrt
+            - 2.428592205 * mcbrt
+            + 0.4505937099 * scbrt,
+        b = 0.0259040371 * lcbrt
+            + 0.7827717662 * mcbrt
+            - 0.808675766 * scbrt
     }
 end
 
@@ -431,6 +446,8 @@ function ok_color.okhsv_to_oklab(hsv)
     local L_new = ok_color.toe_inv(L)
     if L ~= 0.0 then
         C = C * L_new / L
+    else
+        C = 0.0
     end
     L = L_new
 
@@ -461,30 +478,30 @@ function ok_color.okhsv_to_srgb(hsv)
 end
 
 function ok_color.oklab_to_linear_srgb(lab)
-    local l_ = lab.L
-        + 0.3963377774 * lab.a
-        + 0.2158037573 * lab.b
-    local m_ = lab.L
-        - 0.1055613458 * lab.a
-        - 0.0638541728 * lab.b
-    local s_ = lab.L
-        - 0.0894841775 * lab.a
-        - 1.291485548 * lab.b
+    local l_ = 0.9999999984505196 * lab.L
+        + 0.39633779217376774 * lab.a
+        + 0.2158037580607588 * lab.b
+    local m_ = 1.0000000088817607 * lab.L
+        - 0.10556134232365633 * lab.a
+        - 0.0638541747717059 * lab.b
+    local s_ = 1.0000000546724108 * lab.L
+        - 0.08948418209496574 * lab.a
+        - 1.2914855378640917 * lab.b
 
     local l = l_ * l_ * l_
     local m = m_ * m_ * m_
     local s = s_ * s_ * s_
 
     return {
-        r = 4.0767416621 * l
-            - 3.3077115913 * m
-            + 0.2309699292 * s,
-        g = -1.2684380046 * l
-            + 2.6097574011 * m
-            - 0.3413193965 * s,
-        b = -0.0041960863 * l
-            - 0.7034186147 * m
-            + 1.707614701 * s
+        r = 4.076741661347994 * l
+            - 3.3077115904081933 * m
+            + 0.23096992872942793 * s,
+        g = -1.2684380040921763  * l
+            + 2.6097574006633715 * m
+            - 0.3413193963102196  * s,
+        b = -0.004196086541837079 * l
+            - 0.7034186144594495 * m
+            + 1.7076147009309446 * s
     }
 end
 
@@ -593,7 +610,8 @@ function ok_color.oklab_to_okhsv(lab)
             C_vt = C_v * L_vt / L_v
         end
 
-        -- we can then use these to invert the step that compensates for the toe and the curved top part of the triangle:
+        -- we can then use these to invert the step that compensates
+        -- for the toe and the curved top part of the triangle:
         local rgb_scale = ok_color.oklab_to_linear_srgb({
             L = L_vt,
             a = a_ * C_vt,

@@ -21,29 +21,23 @@ dofile("./ok_color.lua")
 -- SOFTWARE.
 
 local defaults = {
-    base = Color(255, 0, 0, 255),
-
+    base = Color { r = 255, g = 0, b = 0, a = 255 },
     colorMode = "HSL",
     alpha = 255,
-
     hslHue = 29,
     hslSat = 100,
     hslLgt = 57,
-
     hsvHue = 29,
     hsvSat = 100,
     hsvVal = 100,
-
     labLgt = 63,
     labA = 23,
     labB = 13,
-
     showGradientSettings = false,
     gradWidth = 256,
     gradHeight = 32,
     swatchCount = 8,
     hueDir = "NEAR",
-
     showWheelSettings = false,
     remapHue = false,
     size = 256,
@@ -59,27 +53,25 @@ local defaults = {
     ringCount = 0,
     frames = 32,
     fps = 24,
-
     harmonyType = "NONE",
     analogies = {
-        Color(244, 0, 132, 255),
-        Color(200, 110, 0, 255)
+        Color { r = 244, g = 0, b = 132 },
+        Color { r = 200, g = 110, b = 0 }
     },
-    complement = { Color(0, 154, 172, 255) },
+    complement = { Color { r = 0, g = 154, b = 172 } },
     splits = {
-        Color(0, 159, 138, 255),
-        Color(0, 146, 212, 255)
+        Color { r = 0, g = 159, b = 138 },
+        Color { r = 0, g = 146, b = 212 }
     },
     squares = {
-        Color(127, 148, 0, 255),
-        Color(0, 154, 172, 255),
-        Color(160, 88, 255, 255)
+        Color { r = 127, g = 148, b = 0 },
+        Color { r = 0, g = 154, b = 172 },
+        Color { r = 160, g = 88, b = 255 }
     },
     triads = {
-        Color(89, 123, 255, 255),
-        Color(0, 164, 71, 255)
+        Color { r = 89, g = 123, b = 255 },
+        Color { r = 0, g = 164, b = 71 }
     },
-
     shadingCount = 7,
     shadowLight = 0.1,
     dayLight = 0.9,
@@ -96,27 +88,28 @@ local defaults = {
 }
 
 local rybHueRemapTable = {
-    0.081205236645396, -- ff0000ff
-    0.12435157961211, -- ff006aff
-    0.19200283257828, -- ff00a2ff
-    0.25491649730713, -- ff00cfff
-    0.30491453354589, -- ff00ffff
-    0.36815839311704, -- ff1ad481
-    0.40458493819958, -- ff33a900
-    0.46893967259811, -- ff668415
-    0.70734287202901, -- ffa65911
-    0.78714840881823, -- ff922a3c
-    0.87751578482349, -- ff850c69
+    0.081205236645396,  -- ff0000ff
+    0.12435157961211,   -- ff006aff
+    0.19200283257828,   -- ff00a2ff
+    0.25491649730713,   -- ff00cfff
+    0.30491453354589,   -- ff00ffff
+    0.36815839311704,   -- ff1ad481
+    0.40458493819958,   -- ff33a900
+    0.46893967259811,   -- ff668415
+    0.70734287202901,   -- ffa65911
+    0.78714840881823,   -- ff922a3c
+    0.87751578482349,   -- ff850c69
     1.0044874689047147, -- ff5500aa
-    1.081205236645396 -- ff0000ff
+    1.081205236645396   -- ff0000ff
 }
 
 local function copyColorByValue(aseColor)
-    return Color(
-        aseColor.red,
-        aseColor.green,
-        aseColor.blue,
-        aseColor.alpha)
+    return Color {
+        r = aseColor.red,
+        g = aseColor.green,
+        b = aseColor.blue,
+        a = aseColor.alpha
+    }
 end
 
 local function aseColorToRgb01(ase)
@@ -131,7 +124,7 @@ local function assignColor(aseColor)
     if aseColor.alpha > 0 then
         return copyColorByValue(aseColor)
     else
-        return Color(0, 0, 0, 0)
+        return Color { r = 0, g = 0, b = 0, a = 0 }
     end
 end
 
@@ -188,7 +181,7 @@ end
 local function distAngleUnsigned(a, b, range)
     local halfRange = range * 0.5
     return halfRange - math.abs(math.abs(
-        (b % range) - (a % range))
+            (b % range) - (a % range))
         - halfRange)
 end
 
@@ -275,11 +268,12 @@ local function srgb01ToHex(srgb, alpha)
 end
 
 local function srgb01ToAseColor(srgb, alpha)
-    return Color(
-        math.floor(0.5 + 0xff * math.min(math.max(srgb.r, 0.0), 1.0)),
-        math.floor(0.5 + 0xff * math.min(math.max(srgb.g, 0.0), 1.0)),
-        math.floor(0.5 + 0xff * math.min(math.max(srgb.b, 0.0), 1.0)),
-        alpha or 255)
+    return Color {
+        r = math.floor(0.5 + 0xff * math.min(math.max(srgb.r, 0.0), 1.0)),
+        g = math.floor(0.5 + 0xff * math.min(math.max(srgb.g, 0.0), 1.0)),
+        b = math.floor(0.5 + 0xff * math.min(math.max(srgb.b, 0.0), 1.0)),
+        a = alpha or 255
+    }
 end
 
 local function round(v)
@@ -300,6 +294,8 @@ local function zigZag(t)
 end
 
 local function updateShades(dialog, shades)
+    -- TODO: This causes problems with gray patches
+    -- when using LAB mode.
     local alpha = dialog.data.alpha
     local l = dialog.data.hslLgt / 100.0
     l = math.min(math.max(l, 0.01), 0.99)
@@ -405,18 +401,24 @@ local function updateHarmonies(dialog, primary)
     local h210 = 0.5833333333333333
     local h270 = 0.75
 
-    local ana0 = ok_color.okhsl_to_srgb({ h = h - h30, s = s, l = l })
-    local ana1 = ok_color.okhsl_to_srgb({ h = h + h30, s = s, l = l })
+    local lOpp = 1.0 - l
+    local lTri = (2.0 - l) / 3.0
+    local lAna = (2.0 * l + 0.5) / 3.0
+    local lSpl = (2.5 - 2.0 * l) / 3.0
+    local lSqr = 0.5
 
-    local tri0 = ok_color.okhsl_to_srgb({ h = h - h120, s = s, l = l })
-    local tri1 = ok_color.okhsl_to_srgb({ h = h + h120, s = s, l = l })
+    local ana0 = ok_color.okhsl_to_srgb({ h = h - h30, s = s, l = lAna })
+    local ana1 = ok_color.okhsl_to_srgb({ h = h + h30, s = s, l = lAna })
 
-    local split0 = ok_color.okhsl_to_srgb({ h = h + h150, s = s, l = l })
-    local split1 = ok_color.okhsl_to_srgb({ h = h + h210, s = s, l = l })
+    local tri0 = ok_color.okhsl_to_srgb({ h = h - h120, s = s, l = lTri })
+    local tri1 = ok_color.okhsl_to_srgb({ h = h + h120, s = s, l = lTri })
 
-    local square0 = ok_color.okhsl_to_srgb({ h = h + h90, s = s, l = l })
-    local square1 = ok_color.okhsl_to_srgb({ h = h + h180, s = s, l = l })
-    local square2 = ok_color.okhsl_to_srgb({ h = h + h270, s = s, l = l })
+    local split0 = ok_color.okhsl_to_srgb({ h = h + h150, s = s, l = lSpl })
+    local split1 = ok_color.okhsl_to_srgb({ h = h + h210, s = s, l = lSpl })
+
+    local square0 = ok_color.okhsl_to_srgb({ h = h + h90, s = s, l = lSqr })
+    local square1 = ok_color.okhsl_to_srgb({ h = h + h180, s = s, l = lOpp })
+    local square2 = ok_color.okhsl_to_srgb({ h = h + h270, s = s, l = lSqr })
 
     local tris = {
         srgb01ToAseColor(tri0),
@@ -490,7 +492,7 @@ local function setFromHexStr(dialog, primary, shades)
             local b255 = hexRgb & 0xff
 
             -- Add a previous and mix with previous.
-            primary = Color(r255, g255, b255, 255)
+            primary = Color { r = r255, g = g255, b = b255, a = 255 }
             dialog:modify { id = "baseColor", colors = { primary } }
             dialog:modify { id = "alpha", value = 255 }
 
@@ -586,15 +588,15 @@ local function updateColor(dialog, primary, shades)
 end
 
 local palColors = {
-    Color(0, 0, 0, 0),
-    Color(0, 0, 0, 255),
-    Color(255, 255, 255, 255),
-    Color(255, 0, 0, 255),
-    Color(255, 255, 0, 255),
-    Color(0, 255, 0, 255),
-    Color(0, 255, 255, 255),
-    Color(0, 0, 255, 255),
-    Color(255, 0, 255, 255)
+    Color { r = 0, g = 0, b = 0, a = 0 },
+    Color { r = 0, g = 0, b = 0 },
+    Color { r = 255, g = 255, b = 255 },
+    Color { r = 255, g = 0, b = 0 },
+    Color { r = 255, g = 255, b = 0 },
+    Color { r = 0, g = 255, b = 0 },
+    Color { r = 0, g = 255, b = 255 },
+    Color { r = 0, g = 0, b = 255 },
+    Color { r = 255, g = 0, b = 255 }
 }
 
 local colorModes = { "HSL", "HSV", "LAB" }
@@ -609,15 +611,15 @@ local harmonies = {
     "TRIADIC"
 }
 
-local primary = Color(255, 0, 0, 255)
+local primary = Color { r = 255, g = 0, b = 0 }
 local shades = {
-    Color(113, 9, 30, 255),
-    Color(148, 21, 43, 255),
-    Color(183, 37, 54, 255),
-    Color(214, 62, 62, 255),
-    Color(234, 99, 78, 255),
-    Color(244, 139, 104, 255),
-    Color(248, 178, 139, 255)
+    Color { r = 113, g = 9, b = 30 },
+    Color { r = 148, g = 21, b = 43 },
+    Color { r = 183, g = 37, b = 54 },
+    Color { r = 214, g = 62, b = 62 },
+    Color { r = 234, g = 99, b = 78 },
+    Color { r = 244, g = 139, b = 104 },
+    Color { r = 248, g = 178, b = 139 }
 }
 local dlg = Dialog { title = "OkHsl Color Picker" }
 
@@ -1131,7 +1133,7 @@ dlg:combobox {
     options = { "SATURATION", "LIGHTNESS" },
     visible = defaults.showWheelSettings
         and (defaults.colorMode == "HSL"
-            or defaults.colorMode == "LAB"),
+        or defaults.colorMode == "LAB"),
     onchange = function()
         local args = dlg.data
         local hslAxis = args.hslAxis
@@ -1198,7 +1200,7 @@ dlg:slider {
     value = defaults.minLight,
     visible = defaults.showWheelSettings
         and (defaults.colorMode == "HSL"
-            or defaults.colorMode == "LAB")
+        or defaults.colorMode == "LAB")
         and defaults.hslAxis == "LIGHTNESS"
 }
 
@@ -1209,7 +1211,7 @@ dlg:slider {
     value = defaults.maxLight,
     visible = defaults.showWheelSettings
         and (defaults.colorMode == "HSL"
-            or defaults.colorMode == "LAB")
+        or defaults.colorMode == "LAB")
         and defaults.hslAxis == "LIGHTNESS"
 }
 
@@ -1434,7 +1436,7 @@ dlg:button {
 
         -- Unpack arguments.
         local args = dlg.data
-        local size = args.size or defaults.size
+        local size = args.size or defaults.size --[[@as integer]]
         local szInv = 1.0 / (size - 1.0)
         local iToStep = 1.0
         local reqFrames = args.frames or defaults.frames
@@ -1492,7 +1494,6 @@ dlg:button {
             -- Iterate over image pixels.
             local pxItr = wheelImg:pixels()
             for elm in pxItr do
-
                 -- Find rise.
                 local y = elm.y
                 local yNrm = y * szInv
@@ -1588,7 +1589,7 @@ dlg:button {
         local sprite = Sprite(size, size)
         local oldFrameLen = #sprite.frames
         local needed = math.max(0, reqFrames - oldFrameLen)
-        local fps = args.fps or defaults.fps
+        local fps = args.fps or defaults.fps --[[@as integer]]
         local duration = 1.0 / math.max(1, fps)
         sprite.frames[1].duration = duration
         local newFrames = createNewFrames(sprite, needed, duration)
@@ -1622,7 +1623,7 @@ dlg:button {
             app.activeFrame = sprite.frames[#sprite.frames]
         else
             app.activeFrame = sprite.frames[
-                math.ceil(#sprite.frames / 2)]
+            math.ceil(#sprite.frames / 2)]
         end
         app.refresh()
     end
