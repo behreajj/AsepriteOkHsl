@@ -103,15 +103,19 @@ local rybHueRemapTable = {
     1.081205236645396   -- ff0000ff
 }
 
-local function copyColorByValue(aseColor)
+---@param ase Color
+---@return Color
+local function copyColorByValue(ase)
     return Color {
-        r = aseColor.red,
-        g = aseColor.green,
-        b = aseColor.blue,
-        a = aseColor.alpha
+        r = ase.red,
+        g = ase.green,
+        b = ase.blue,
+        a = ase.alpha
     }
 end
 
+---@param ase Color
+---@return { r: number, g: number, b: number }
 local function aseColorToRgb01(ase)
     return {
         r = ase.red * 0.00392156862745098,
@@ -120,21 +124,29 @@ local function aseColorToRgb01(ase)
     }
 end
 
-local function assignColor(aseColor)
-    if aseColor.alpha > 0 then
-        return copyColorByValue(aseColor)
+---@param ase Color
+---@return Color
+local function assignColor(ase)
+    if ase.alpha > 0 then
+        return copyColorByValue(ase)
     else
         return Color { r = 0, g = 0, b = 0, a = 0 }
     end
 end
 
-local function colorToHexWeb(aseColor)
+---@param ase Color
+---@return string
+local function colorToHexWeb(ase)
     return string.format("%06x",
-        aseColor.red << 0x10
-        | aseColor.green << 0x08
-        | aseColor.blue)
+        ase.red << 0x10
+        | ase.green << 0x08
+        | ase.blue)
 end
 
+---@param sprite Sprite
+---@param count integer
+---@param duration number
+---@return Frame[]
 local function createNewFrames(sprite, count, duration)
     if not sprite then
         app.alert("Sprite could not be found.")
@@ -167,6 +179,7 @@ local function createNewFrames(sprite, count, duration)
     local valCount = count or 1
     if valCount < 1 then valCount = 1 end
 
+    ---@type Frame[]
     local frames = {}
     app.transaction(function()
         for i = 1, valCount, 1 do
@@ -178,6 +191,10 @@ local function createNewFrames(sprite, count, duration)
     return frames
 end
 
+---@param a number
+---@param b number
+---@param range number
+---@return number
 local function distAngleUnsigned(a, b, range)
     local halfRange = range * 0.5
     return halfRange - math.abs(math.abs(
@@ -185,10 +202,15 @@ local function distAngleUnsigned(a, b, range)
         - halfRange)
 end
 
-local function lerpAngleNear(origin, dest, t, range)
+---@param orig number
+---@param dest number
+---@param t number
+---@param range number
+---@return number
+local function lerpAngleNear(orig, dest, t, range)
     local halfRange = range * 0.5
 
-    local o = origin % range
+    local o = orig % range
     local d = dest % range
     local diff = d - o
     local u = 1.0 - t
@@ -204,8 +226,13 @@ local function lerpAngleNear(origin, dest, t, range)
     end
 end
 
-local function lerpAngleCcw(origin, dest, t, range)
-    local o = origin % range
+---@param orig number
+---@param dest number
+---@param t number
+---@param range number
+---@return number
+local function lerpAngleCcw(orig, dest, t, range)
+    local o = orig % range
     local d = dest % range
     local diff = d - o
     local u = 1.0 - t
@@ -219,8 +246,13 @@ local function lerpAngleCcw(origin, dest, t, range)
     end
 end
 
-local function lerpAngleCw(origin, dest, t, range)
-    local o = origin % range
+---@param orig number
+---@param dest number
+---@param t number
+---@param range number
+---@return number
+local function lerpAngleCw(orig, dest, t, range)
+    local o = orig % range
     local d = dest % range
     local diff = d - o
     local u = 1.0 - t
@@ -241,6 +273,9 @@ local function preserveForeBack()
     app.command.SwitchColors()
 end
 
+---@param a number
+---@param levels integer
+---@return number
 local function quantizeSigned(a, levels)
     if levels ~= 0 then
         return math.floor(0.5 + a * levels) / levels
@@ -249,6 +284,9 @@ local function quantizeSigned(a, levels)
     end
 end
 
+---@param a number
+---@param levels integer
+---@return number
 local function quantizeUnsigned(a, levels)
     if levels > 1 then
         return math.max(0.0,
@@ -259,23 +297,31 @@ local function quantizeUnsigned(a, levels)
     end
 end
 
+---@param srgb { r: number, g: number, b: number }
+---@param alpha integer?
+---@return integer
 local function srgb01ToHex(srgb, alpha)
     local va = alpha or 255
     return (va << 0x18)
-        | math.floor(0.5 + 0xff * math.min(math.max(srgb.b, 0.0), 1.0)) << 0x10
-        | math.floor(0.5 + 0xff * math.min(math.max(srgb.g, 0.0), 1.0)) << 0x08
-        | math.floor(0.5 + 0xff * math.min(math.max(srgb.r, 0.0), 1.0))
+        | math.floor(0.5 + 255.0 * math.min(math.max(srgb.b, 0.0), 1.0)) << 0x10
+        | math.floor(0.5 + 255.0 * math.min(math.max(srgb.g, 0.0), 1.0)) << 0x08
+        | math.floor(0.5 + 255.0 * math.min(math.max(srgb.r, 0.0), 1.0))
 end
 
+---@param srgb { r: number, g: number, b: number }
+---@param alpha integer?
+---@return Color
 local function srgb01ToAseColor(srgb, alpha)
     return Color {
-        r = math.floor(0.5 + 0xff * math.min(math.max(srgb.r, 0.0), 1.0)),
-        g = math.floor(0.5 + 0xff * math.min(math.max(srgb.g, 0.0), 1.0)),
-        b = math.floor(0.5 + 0xff * math.min(math.max(srgb.b, 0.0), 1.0)),
+        r = math.floor(0.5 + 255.0 * math.min(math.max(srgb.r, 0.0), 1.0)),
+        g = math.floor(0.5 + 255.0 * math.min(math.max(srgb.g, 0.0), 1.0)),
+        b = math.floor(0.5 + 255.0 * math.min(math.max(srgb.b, 0.0), 1.0)),
         a = alpha or 255
     }
 end
 
+---@param v number
+---@return integer
 local function round(v)
     local iv, fv = math.modf(v)
     if iv <= 0 and fv <= -0.5 then
@@ -287,20 +333,25 @@ local function round(v)
     end
 end
 
+---@param t number
+---@return number
 local function zigZag(t)
     local a = t * 0.5
     local b = a - math.floor(a)
     return 1.0 - math.abs(b + b - 1.0)
 end
 
+---@param dialog Dialog
+---@param shades Color[]
 local function updateShades(dialog, shades)
     -- TODO: This causes problems with gray patches
     -- when using LAB mode.
-    local alpha = dialog.data.alpha
-    local l = dialog.data.hslLgt / 100.0
+    local args = dialog.data
+    local alpha = args.alpha --[[@as integer]]
+    local l = args.hslLgt * 0.01
     l = math.min(math.max(l, 0.01), 0.99)
-    local s = dialog.data.hslSat / 100.0
-    local h = dialog.data.hslHue / 360.0
+    local s = args.hslSat * 0.01
+    local h = args.hslHue / 360.0
 
     -- Decide on clockwise or counter-clockwise based
     -- on color's warmth or coolness.
@@ -386,6 +437,8 @@ local function updateShades(dialog, shades)
     dialog:modify { id = "shading", colors = shades }
 end
 
+---@param dialog Dialog
+---@param primary Color
 local function updateHarmonies(dialog, primary)
     local srgb = aseColorToRgb01(primary)
     local srcHsl = ok_color.srgb_to_okhsl(srgb)
@@ -448,6 +501,8 @@ local function updateHarmonies(dialog, primary)
     dialog:modify { id = "square", colors = squares }
 end
 
+---@param dialog Dialog
+---@param lab { L: number, a: number, b: number }
 local function setLab(dialog, lab)
     local labLgtInt = math.floor(lab.L * 100.0 + 0.5)
     local labAInt = round(lab.a * 100.0)
@@ -457,6 +512,8 @@ local function setLab(dialog, lab)
     dialog:modify { id = "labB", value = labBInt }
 end
 
+---@param dialog Dialog
+---@param hsl { h: number, s: number, l: number }
 local function setHsl(dialog, hsl)
     local hslLgtInt = math.floor(hsl.l * 100.0 + 0.5)
     local hslSatInt = math.floor(hsl.s * 100.0 + 0.5)
@@ -470,6 +527,8 @@ local function setHsl(dialog, hsl)
     dialog:modify { id = "hslLgt", value = hslLgtInt }
 end
 
+---@param dialog Dialog
+---@param hsv { h: number, s: number, v: number }
 local function setHsv(dialog, hsv)
     local hsvValInt = math.floor(0.5 + 100.0 * hsv.v)
     local hsvSatInt = math.floor(0.5 + 100.0 * hsv.s)
@@ -481,9 +540,12 @@ local function setHsv(dialog, hsv)
     dialog:modify { id = "hsvVal", value = hsvValInt }
 end
 
+---@param dialog Dialog
+---@param primary Color
+---@param shades Color[]
 local function setFromHexStr(dialog, primary, shades)
     local args = dialog.data
-    local hexStr = args.hexCode
+    local hexStr = args.hexCode --[[@as string]]
     if #hexStr > 5 then
         local hexRgb = tonumber(hexStr, 16)
         if hexRgb then
@@ -509,6 +571,10 @@ local function setFromHexStr(dialog, primary, shades)
     end
 end
 
+---@param dialog Dialog
+---@param aseColor Color
+---@param primary Color
+---@param shades Color[]
 local function setFromAse(dialog, aseColor, primary, shades)
     primary = copyColorByValue(aseColor)
     dialog:modify { id = "baseColor", colors = { primary } }
@@ -526,10 +592,13 @@ local function setFromAse(dialog, aseColor, primary, shades)
     updateShades(dialog, shades)
 end
 
+---@param dialog Dialog
+---@param primary Color
+---@param shades Color[]
 local function updateColor(dialog, primary, shades)
     local args = dialog.data
-    local alpha = args.alpha
-    local colorMode = args.colorMode
+    local alpha = args.alpha --[[@as integer]]
+    local colorMode = args.colorMode --[[@as string]]
 
     if colorMode == "HSV" then
         local lab = ok_color.okhsv_to_oklab({
@@ -591,12 +660,18 @@ local palColors = {
     Color { r = 0, g = 0, b = 0, a = 0 },
     Color { r = 0, g = 0, b = 0 },
     Color { r = 255, g = 255, b = 255 },
-    Color { r = 255, g = 0, b = 0 },
-    Color { r = 255, g = 255, b = 0 },
-    Color { r = 0, g = 255, b = 0 },
-    Color { r = 0, g = 255, b = 255 },
-    Color { r = 0, g = 0, b = 255 },
-    Color { r = 255, g = 0, b = 255 }
+    Color { r = 220, g = 58, b = 58 },
+    Color { r = 242, g = 122, b = 42 },
+    Color { r = 254, g = 174, b = 20 },
+    Color { r = 253, g = 221, b = 25 },
+    Color { r = 202, g = 219, b = 29 },
+    Color { r = 134, g = 194, b = 60 },
+    Color { r = 3, g = 157, b = 105 },
+    Color { r = 0, g = 142, b = 150 },
+    Color { r = 0, g = 115, b = 156 },
+    Color { r = 2, g = 90, b = 156 },
+    Color { r = 98, g = 49, b = 121 },
+    Color { r = 153, g = 27, b = 88 }
 }
 
 local colorModes = { "HSL", "HSV", "LAB" }
@@ -684,7 +759,7 @@ dlg:combobox {
     options = colorModes,
     onchange = function()
         local args = dlg.data
-        local colorMode = args.colorMode
+        local colorMode = args.colorMode --[[@as string]]
 
         local isHsl = colorMode == "HSL"
         dlg:modify { id = "hslHue", visible = isHsl }
@@ -701,9 +776,9 @@ dlg:combobox {
         dlg:modify { id = "labA", visible = isLab }
         dlg:modify { id = "labB", visible = isLab }
 
-        local showWheel = args.showWheelSettings
-        local hslAxis = args.hslAxis
-        local hsvAxis = args.hsvAxis
+        local showWheel = args.showWheelSettings --[[@as boolean]]
+        local hslAxis = args.hslAxis --[[@as string]]
+        local hsvAxis = args.hsvAxis --[[@as string]]
         local isLight = hslAxis == "LIGHTNESS"
         local isValue = hsvAxis == "VALUE"
 
@@ -724,6 +799,11 @@ dlg:combobox {
 
         dlg:modify { id = "minSat", visible = showWheel and isSat }
         dlg:modify { id = "maxSat", visible = showWheel and isSat }
+
+        local showGradient = args.showGradientSettings --[[@as boolean]]
+        if showGradient then
+            dlg:modify { id = "hueDir", visible = not isLab }
+        end
     end
 }
 
@@ -876,7 +956,7 @@ dlg:combobox {
     visible = defaults.showHarmonies,
     onchange = function()
         local args = dlg.data
-        local md = args.harmonyType
+        local md = args.harmonyType --[[@as string]]
         if md == "NONE" then
             dlg:modify { id = "analogous", visible = false }
             dlg:modify { id = "complement", visible = false }
@@ -1056,9 +1136,10 @@ dlg:check {
     selected = defaults.showGradientSettings,
     onclick = function()
         local args = dlg.data
-        local state = args.showGradientSettings
+        local state = args.showGradientSettings --[[@as boolean]]
+        local colorMode = args.colorMode --[[@as string]]
         dlg:modify { id = "swatchCount", visible = state }
-        dlg:modify { id = "hueDir", visible = state }
+        dlg:modify { id = "hueDir", visible = state and colorMode ~= "LAB" }
     end
 }
 
@@ -1068,13 +1149,13 @@ dlg:check {
     selected = defaults.showWheelSettings,
     onclick = function()
         local args = dlg.data
-        local state = args.showWheelSettings
-        local colorMode = args.colorMode
+        local state = args.showWheelSettings --[[@as boolean]]
+        local colorMode = args.colorMode --[[@as string]]
         local isLab = colorMode == "LAB"
         local isHsl = colorMode == "HSL"
         local isHsv = colorMode == "HSV"
-        local hslAxis = args.hslAxis
-        local hsvAxis = args.hsvAxis
+        local hslAxis = args.hslAxis --[[@as string]]
+        local hsvAxis = args.hsvAxis --[[@as string]]
         local isLight = hslAxis == "LIGHTNESS"
         local isValue = hsvAxis == "VALUE"
 
@@ -1133,10 +1214,10 @@ dlg:combobox {
     options = { "SATURATION", "LIGHTNESS" },
     visible = defaults.showWheelSettings
         and (defaults.colorMode == "HSL"
-        or defaults.colorMode == "LAB"),
+            or defaults.colorMode == "LAB"),
     onchange = function()
         local args = dlg.data
-        local hslAxis = args.hslAxis
+        local hslAxis = args.hslAxis --[[@as string]]
         local isLight = hslAxis == "LIGHTNESS"
         local isSat = hslAxis == "SATURATION"
         dlg:modify { id = "minSat", visible = isSat }
@@ -1157,7 +1238,7 @@ dlg:combobox {
         and defaults.colorMode == "HSV",
     onchange = function()
         local args = dlg.data
-        local hsvAxis = args.hsvAxis
+        local hsvAxis = args.hsvAxis --[[@as string]]
         local isValue = hsvAxis == "VALUE"
         local isSat = hsvAxis == "SATURATION"
         dlg:modify { id = "minSat", visible = isSat }
@@ -1200,7 +1281,7 @@ dlg:slider {
     value = defaults.minLight,
     visible = defaults.showWheelSettings
         and (defaults.colorMode == "HSL"
-        or defaults.colorMode == "LAB")
+            or defaults.colorMode == "LAB")
         and defaults.hslAxis == "LIGHTNESS"
 }
 
@@ -1211,7 +1292,7 @@ dlg:slider {
     value = defaults.maxLight,
     visible = defaults.showWheelSettings
         and (defaults.colorMode == "HSL"
-        or defaults.colorMode == "LAB")
+            or defaults.colorMode == "LAB")
         and defaults.hslAxis == "LIGHTNESS"
 }
 
@@ -1291,9 +1372,9 @@ dlg:button {
         local args = dlg.data
         local gradWidth = defaults.gradWidth
         local gradHeight = defaults.gradHeight
-        local colorMode = args.colorMode or defaults.colorMode
-        local swatchCount = args.swatchCount or defaults.swatchCount
-        local hueDir = args.hueDir or defaults.hueDir
+        local colorMode = args.colorMode or defaults.colorMode --[[@as string]]
+        local swatchCount = args.swatchCount or defaults.swatchCount --[[@as integer]]
+        local hueDir = args.hueDir or defaults.hueDir --[[@as string]]
 
         -- TODO: How to handle the case where fore and
         -- background colors are the same?
@@ -1314,6 +1395,8 @@ dlg:button {
             hueFunc = lerpAngleCcw
         end
 
+        ---@param fac number
+        ---@return integer
         local lerpLab = function(fac)
             local u = 1.0 - fac
             local cL = u * backLab.L + fac * foreLab.L
@@ -1384,6 +1467,7 @@ dlg:button {
         local segImg = Image(gradWidth, gradHeight - halfHeight)
         local segImgPxItr = segImg:pixels()
 
+        ---@type table<integer, integer>
         local swatchesDict = {}
         swatchesDict[0x00000000] = 0
         local palIdx = 1
@@ -1439,20 +1523,20 @@ dlg:button {
         local size = args.size or defaults.size --[[@as integer]]
         local szInv = 1.0 / (size - 1.0)
         local iToStep = 1.0
-        local reqFrames = args.frames or defaults.frames
+        local reqFrames = args.frames or defaults.frames --[[@as integer]]
         if reqFrames > 1 then iToStep = 1.0 / (reqFrames - 1.0) end
-        local colorMode = args.colorMode or defaults.colorMode
-        local hslAxis = args.hslAxis or defaults.hslAxis
-        local hsvAxis = args.hsvAxis or defaults.hsvAxis
-        local minLight = args.minLight or defaults.minLight
-        local maxLight = args.maxLight or defaults.maxLight
-        local minValue = args.minValue or defaults.minValue
-        local maxValue = args.maxValue or defaults.maxValue
-        local minSat = args.minSat or defaults.minSat
-        local maxSat = args.maxSat or defaults.maxSat
-        local ringCount = args.ringCount or defaults.ringCount
-        local sectorCount = args.sectorCount or defaults.sectorCount
-        local remapHue = args.remapHue
+        local colorMode = args.colorMode or defaults.colorMode --[[@as string]]
+        local hslAxis = args.hslAxis or defaults.hslAxis --[[@as string]]
+        local hsvAxis = args.hsvAxis or defaults.hsvAxis --[[@as string]]
+        local minLight = args.minLight or defaults.minLight --[[@as number]]
+        local maxLight = args.maxLight or defaults.maxLight --[[@as number]]
+        local minValue = args.minValue or defaults.minValue --[[@as number]]
+        local maxValue = args.maxValue or defaults.maxValue --[[@as number]]
+        local minSat = args.minSat or defaults.minSat --[[@as number]]
+        local maxSat = args.maxSat or defaults.maxSat --[[@as number]]
+        local ringCount = args.ringCount or defaults.ringCount --[[@as integer]]
+        local sectorCount = args.sectorCount or defaults.sectorCount --[[@as integer]]
+        local remapHue = args.remapHue --[[@as boolean]]
 
         -- Offset by 30 degrees to match Aseprite's color wheel.
         local angleOffset = math.rad(30.0)
@@ -1473,6 +1557,7 @@ dlg:button {
             useSat = hslAxis == "SATURATION"
         end
 
+        ---@type Image[]
         local wheelImgs = {}
         for i = 1, reqFrames, 1 do
             local wheelImg = Image(size, size)

@@ -44,7 +44,7 @@ dlg:combobox {
     options = clrModes,
     onchange = function()
         local args = dlg.data
-        local clrMode = args.clrMode
+        local clrMode = args.clrMode --[[@as string]]
         local isHsv = clrMode == "HSV"
         local isHsl = clrMode == "HSL"
         dlg:modify { id = "lAdj", visible = isHsl }
@@ -134,9 +134,21 @@ dlg:button {
             return
         end
 
-        local version = app.version
-        if version.major >= 1 and version.minor >= 3 then
-            local activeLayer = app.activeLayer
+        local activeLayer = app.activeLayer
+        if not activeLayer then
+            app.alert("There is no active layer.")
+            return
+        end
+
+        local apiVersion = app.apiVersion
+        if apiVersion >= 15 then
+            if activeLayer.isReference then
+                app.alert("Reference layers are not supported.")
+                return
+            end
+        end
+
+        if apiVersion >= 14 then
             if activeLayer.isTilemap then
                 app.alert("Tile map layers are not supported.")
                 return
@@ -157,14 +169,14 @@ dlg:button {
         end
 
         local args = dlg.data
-        local clrMode = args.clrMode or defaults.clrMode
-        local hAdj = args.hAdj or defaults.hAdj
-        local sAdj = args.sAdj or defaults.sAdj
-        local lAdj = args.lAdj or defaults.lAdj
-        local vAdj = args.vAdj or defaults.vAdj
-        local aAdj = args.aAdj or defaults.aAdj
-        local grayHue = args.grayHue or defaults.grayHue
-        local copyToLayer = args.copyToLayer
+        local clrMode = args.clrMode or defaults.clrMode --[[@as string]]
+        local hAdj = args.hAdj or defaults.hAdj --[[@as integer]]
+        local sAdj = args.sAdj or defaults.sAdj --[[@as integer]]
+        local lAdj = args.lAdj or defaults.lAdj --[[@as integer]]
+        local vAdj = args.vAdj or defaults.vAdj --[[@as integer]]
+        local aAdj = args.aAdj or defaults.aAdj --[[@as integer]]
+        local grayHue = args.grayHue or defaults.grayHue --[[@as string]]
+        local copyToLayer = args.copyToLayer --[[@as boolean]]
 
         local useOmit = grayHue == "OMIT"
         local useZero = grayHue == "ZERO"
@@ -173,9 +185,9 @@ dlg:button {
 
         -- Scale adjustments appropriately.
         local hScl = hAdj / 360.0
-        local sScl = sAdj / 100.0
-        local lScl = lAdj / 100.0
-        local vScl = vAdj / 100.0
+        local sScl = sAdj * 0.01
+        local lScl = lAdj * 0.01
+        local vScl = vAdj * 0.01
 
         -- Cache loop methods.
         -- local abs = math.abs
@@ -191,11 +203,13 @@ dlg:button {
 
         local srcImg = srcCel.image
         local srcpxitr = srcImg:pixels()
+        ---@type table<integer, boolean>
         local srcDict = {}
         for elm in srcpxitr do
             srcDict[elm()] = true
         end
 
+        ---@type table<integer, integer>
         local trgDict = {}
         for k, _ in pairs(srcDict) do
             local alpha = k >> 0x18 & 0xff
@@ -203,7 +217,8 @@ dlg:button {
                 local srgb = {
                     r = (k & 0xff) / 255.0,
                     g = (k >> 0x08 & 0xff) / 255.0,
-                    b = (k >> 0x10 & 0xff) / 255.0 }
+                    b = (k >> 0x10 & 0xff) / 255.0
+                }
                 local oklab = srgb_to_oklab(srgb)
 
                 local okhsx = nil
@@ -238,21 +253,23 @@ dlg:button {
                     local okhsvNew = {
                         h = hNew,
                         s = sNew,
-                        v = okhsx.v + vScl }
+                        v = okhsx.v + vScl
+                    }
                     oklabNew = okhsv_to_oklab(okhsvNew)
                 else
                     local okhslNew = {
                         h = hNew,
                         s = sNew,
-                        l = okhsx.l + lScl }
+                        l = okhsx.l + lScl
+                    }
                     oklabNew = okhsl_to_oklab(okhslNew)
                 end
 
                 local srgbNew = oklab_to_srgb(oklabNew)
                 local a255 = min(max(alphaNew, 0), 255)
-                local b255 = trunc(0.5 + min(max(srgbNew.b, 0.0), 1.0) * 255)
-                local g255 = trunc(0.5 + min(max(srgbNew.g, 0.0), 1.0) * 255)
-                local r255 = trunc(0.5 + min(max(srgbNew.r, 0.0), 1.0) * 255)
+                local b255 = trunc(min(max(srgbNew.b, 0.0), 1.0) * 255 + 0.5)
+                local g255 = trunc(min(max(srgbNew.g, 0.0), 1.0) * 255 + 0.5)
+                local r255 = trunc(min(max(srgbNew.r, 0.0), 1.0) * 255 + 0.5)
 
                 trgDict[k] = (a255 << 0x18) | (b255 << 0x10) | (g255 << 0x08) | r255
             else
