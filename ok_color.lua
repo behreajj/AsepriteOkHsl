@@ -120,7 +120,6 @@ end
 
 -- finds L_cusp and C_cusp for a given hue
 -- a and b must be normalized so a^2 + b^2 == 1
----comment
 ---@param a number
 ---@param b number
 ---@return { L: number, C: number }
@@ -145,7 +144,6 @@ end
 -- L = L0 * (1 - t) + t * L1
 -- C = t * C1
 -- a and b must be normalized so a^2 + b^2 == 1
----comment
 ---@param a number
 ---@param b number
 ---@param L1 number

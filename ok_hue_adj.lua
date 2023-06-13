@@ -148,7 +148,9 @@ dlg:button {
             end
         end
 
-        if apiVersion >= 14 then
+        local version = app.version
+        if version.major >= 1
+            and version.minor >= 3 then
             if activeLayer.isTilemap then
                 app.alert("Tile map layers are not supported.")
                 return
