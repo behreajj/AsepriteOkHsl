@@ -2,7 +2,7 @@
 
 This is a set of [Aseprite](https://www.aseprite.org/) dialogs that utilize [Okhsl](https://bottosson.github.io/posts/colorpicker/) to provide a color picker, gradient and color wheel generator, and a color adjustment filter.
 
-Aseprite is an "animated sprite editor & pixel art tool." Okhsl is a color representation developed by Bjorn Ottosson to create an alternative to HSL that is based on human perception. Those looking for an interactive online comparison between Okhsl, HSLuv and traditional HSL should refer to this [article](https://bottosson.github.io/misc/colorpicker/).
+Aseprite is an "animated sprite editor & pixel art tool." Okhsl is a color representation developed by Bjorn Ottosson to create an alternative to HSL that is based on human perception. Those looking for an interactive online comparison between Okhsl, [HSLuv](https://www.hsluv.org/) and traditional HSL should refer to this [article](https://bottosson.github.io/misc/colorpicker/).
 
 _These scripts were tested with Aseprite version 1.2.40._ The goal is to maintain backwards compatibility with version 1.2 until 1.3 sees release. RGB color mode, not indexed or gray mode, is assumed. Furthermore, [sRGB](https://www.wikiwand.com/en/SRGB) (standard RGB) is assumed to be the sprite's working color space. The color space can be changed under `Sprite > Properties`.
 
@@ -20,25 +20,27 @@ If an error message in Aseprite's console appears, check if the script folder is
 
  To assign a hotkey to a dialog go to `Edit > Keyboard Shortcuts`.
  
- The underlined letters on each dialog button indicate that they work with keyboard shortcuts: `Alt+F` gets the foreground color, `Alt+B` gets the background color, `Alt+C` closes the dialog, `Alt+W` creates a wheel, `Alt+G` creates a gradient. When shading is active, `Alt+A` appends the swatches to the active palette.
+ The underlined letters on each dialog button indicate that they work with keyboard shortcuts: `Alt+F` gets the foreground color, `Alt+B` gets the background color, `Alt+X` closes the dialog, `Alt+W` creates a wheel, `Alt+G` creates a gradient. When shading is active, `Alt+A` appends the swatches to the active palette.
 
 Left click on a color preview window to assign the color to the foreground. Right click to assign to the background. If the alpha channel slider is zero, the color assigned will be transparent black (`0x0` or `Color(0, 0, 0, 0)`).
 
-Hues in Okhsl are not the same as in LCh, HSLuv, or traditional HSL. For example, red (`#ff0000`) has a hue of approximately 29 degrees in Okhsl. Do not assume different color representations have the same primaries, or the same spatial relationships between colors.
+Hues in Okhsl are not the same as in CIE LCH, HSLuv, or traditional HSL. For example, red (`#ff0000`) has a hue of approximately 29 degrees in Okhsl. Do not assume different color representations have the same primaries, or the same spatial relationships between colors.
 
-Beware of drift in hue and other channels when getting and setting colors. For example, getting `#ff0000` will result in (29, 100, 57) in Okhsl. However, setting the picker's sliders to those values manually will yield the hexadecimal `#ff0809`.
+Beware of drift in hue and other channels when getting and setting colors. For example, getting `#ff0000` will result in (29, 255, 145) in Okhsl. However, setting the picker's sliders to those values manually will yield the hexadecimal `#ff0205`.
+
+Saturation and lightness sliders use the integer range [0, 255], not [0, 100], to mitigate this issue. The former allows for a finer granularity. I.e., 360 * 100 * 100 = 3600000 possibilities while 360 * 255 * 255 = 23409000 possibilities.
 
 ### Color Wheel
 
 ![Screen Cap 0](screenCap0.png)
 
-When the `Wheel` button is clicked, a new sprite is created. When saturation varies with frames on the time axis, the wheel will be white at its center and black at its circumference. The color wheel's hue is shifted by 30 degrees to match the Aseprite convention.
-
-![Saturation Axis](altWheel0.png) ![Hue Remap](altWheel1.png)
-
-Click on the `Wheel Settings` toggle to show more options. For example, the `Sectors` and `Rings` sliders can be used to make the color wheel discrete in a fashion similar to Aseprite's built-in color wheels.
+When the `WHL` button is clicked, a new sprite is created. When saturation varies with frames on the time axis, the wheel will be white at its center and black at its circumference. The color wheel's hue is shifted by 30 degrees to match the Aseprite convention.
 
 ![Discrete Wheels](discreteWheels.png)
+
+Click on the `Settings` toggle for `Wheel` to show more options. For example, the `Sectors` and `Rings` sliders can be used to make the color wheel discrete in a fashion similar to Aseprite's built-in color wheels.
+
+![Saturation Axis](altWheel0.png) ![Hue Remap](altWheel1.png)
 
 The color property that varies by frame will depend on whether the `Mode` is `HSL` or `HSV`: the choice is between `SATURATION` and `LIGHTNESS` or between `SATURATION` and `VALUE`. The hue can also be remapped to that of a red-yellow-blue color wheel.
 
@@ -46,7 +48,7 @@ The color property that varies by frame will depend on whether the `Mode` is `HS
 
 ![Screen Cap 1](screenCap1.png)
 
-The `Gradient` button creates a new sprite with a horizontal gradient starting with the background color at the left and ending with the foreground color at the right. The sprite's palette is set to a number of swatches. The gradient ignores source color alpha. The gradient responds to the `Mode`, where `HSV` and `HSL` provide the hue easing options of `NEAR`, `CCW` (counter-clockwise) and `CW` (clockwise). The discontinuity between saturated blue and teal means that hue-based gradients will require adjustment.
+The `GRD` button creates a new sprite with a horizontal gradient starting with the background color at the left and ending with the foreground color at the right. The sprite's palette is set to a number of swatches. The gradient ignores source color alpha. The gradient responds to the `Mode`, where `HSV` and `HSL` provide the hue easing options of `NEAR`, `CCW` (counter-clockwise) and `CW` (clockwise). The discontinuity between saturated blue and teal means that hue-based gradients will require adjustment.
 
 ### Harmonies
 
@@ -58,13 +60,19 @@ This tool -- its harmony and shading features in particular -- is an imperfect a
 
 ### Color Adjustment
 
-A separate dialog allows for cel image adjustment with either `HSV` or `HSL`. `Alt+O` applies the adjustment, `Alt+C` cancels the dialog.
+A separate dialog allows for cel image adjustment with either `HSV` or `HSL`. `Alt+O` applies the adjustment, `Alt+X` cancels the dialog.
 
 ![Hue Adjustment](hueAdjust.png)
 
 For comparison, below is Aseprite's built-in hue adjustment:
 
 ![Comparison](adjCompare.png)
+
+Four colorize options are included for gray colors. `OMIT` excludes grays from saturation. `ZERO` sets the source hue to zero, which is a magenta, not red. `WARM` and `COOL` set the hue to a range between violet and yellow based on the color's lightness in OK LAB. The difference between them is the hue easing direction.
+
+![Colorize](colorize.png)
+
+Above, the image was first de-saturated to grayscale. In the re-saturated versions, `WARM` is on the left, `ZERO` is in the center, `COOL` is on the right.
 
 The test image is one of the first images taken by [Nasa's Webb Telescope](https://www.nasa.gov/webbfirstimages/).
 

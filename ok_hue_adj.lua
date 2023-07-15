@@ -20,7 +20,7 @@ dofile("./ok_color.lua")
 -- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 -- SOFTWARE.
 
-local grayHues = { "OMIT", "ZERO" }
+local grayHues = { "COOL", "OMIT", "WARM", "ZERO" }
 local clrModes = { "HSL", "HSV" }
 
 local defaults = {
@@ -32,7 +32,10 @@ local defaults = {
     aAdj = 0,
     grayHue = "OMIT",
     copyToLayer = true,
-    pullFocus = false
+    pullFocus = false,
+    hYel = 110.0 / 360.0,
+    hVio = 290.0 / 360.0,
+    hZero = 0.0
 }
 
 local dlg = Dialog { title = "Adjust OkColor" }
@@ -67,8 +70,8 @@ dlg:newrow { always = false }
 dlg:slider {
     id = "sAdj",
     label = "Saturation:",
-    min = -100,
-    max = 100,
+    min = -255,
+    max = 255,
     value = defaults.sAdj
 }
 
@@ -77,8 +80,8 @@ dlg:newrow { always = false }
 dlg:slider {
     id = "lAdj",
     label = "Lightness:",
-    min = -100,
-    max = 100,
+    min = -255,
+    max = 255,
     value = defaults.lAdj,
     visible = defaults.clrMode == "HSL"
 }
@@ -88,8 +91,8 @@ dlg:newrow { always = false }
 dlg:slider {
     id = "vAdj",
     label = "Value:",
-    min = -100,
-    max = 100,
+    min = -255,
+    max = 255,
     value = defaults.vAdj,
     visible = defaults.clrMode == "HSV"
 }
@@ -128,12 +131,14 @@ dlg:button {
     text = "&OK",
     focus = defaults.pullFocus,
     onclick = function()
+        ---@diagnostic disable-next-line: deprecated
         local activeSprite = app.activeSprite
         if not activeSprite then
             app.alert("There is no active sprite.")
             return
         end
 
+        ---@diagnostic disable-next-line: deprecated
         local activeLayer = app.activeLayer
         if not activeLayer then
             app.alert("There is no active layer.")
@@ -157,6 +162,7 @@ dlg:button {
             end
         end
 
+        ---@diagnostic disable-next-line: deprecated
         local srcCel = app.activeCel
         if not srcCel then
             app.alert("There is no active cel.")
@@ -180,22 +186,40 @@ dlg:button {
         local grayHue = args.grayHue or defaults.grayHue --[[@as string]]
         local copyToLayer = args.copyToLayer --[[@as boolean]]
 
+        -- How to handle grays.
+        local useCool = grayHue == "COOL"
         local useOmit = grayHue == "OMIT"
+        local useWarm = grayHue == "WARM"
         local useZero = grayHue == "ZERO"
         local useHsv = clrMode == "HSV"
-        local grayZero = 0.0
+
+        -- For use in cool and warm options.
+        local hYel = defaults.hYel
+        local hVio = defaults.hVio
+        local hZero = defaults.hZero
 
         -- Scale adjustments appropriately.
         local hScl = hAdj / 360.0
-        local sScl = sAdj * 0.01
-        local lScl = lAdj * 0.01
-        local vScl = vAdj * 0.01
+        local sScl = sAdj / 255.0
+        local lScl = lAdj / 255.0
+        local vScl = vAdj / 255.0
+
+        -- Prevent background images from containing transparency.
+        if activeLayer.isBackground and (not copyToLayer) then
+            aAdj = 0
+        end
 
         -- Cache loop methods.
-        -- local abs = math.abs
         local max = math.max
         local min = math.min
-        local trunc = math.floor
+        local floor = math.floor
+
+        local decompA = app.pixelColor.rgbaA
+        local decompB = app.pixelColor.rgbaB
+        local decompG = app.pixelColor.rgbaG
+        local decompR = app.pixelColor.rgbaR
+        local composeRgba = app.pixelColor.rgba
+
         local srgb_to_oklab = ok_color.srgb_to_oklab
         local oklab_to_okhsl = ok_color.oklab_to_okhsl
         local oklab_to_okhsv = ok_color.oklab_to_okhsv
@@ -207,73 +231,94 @@ dlg:button {
         local srcpxitr = srcImg:pixels()
         ---@type table<integer, boolean>
         local srcDict = {}
-        for elm in srcpxitr do
-            srcDict[elm()] = true
+        for pixel in srcpxitr do
+            srcDict[pixel()] = true
         end
 
         ---@type table<integer, integer>
         local trgDict = {}
         for k, _ in pairs(srcDict) do
-            local alpha = k >> 0x18 & 0xff
-            if alpha > 0 then
-                local srgb = {
-                    r = (k & 0xff) / 255.0,
-                    g = (k >> 0x08 & 0xff) / 255.0,
-                    b = (k >> 0x10 & 0xff) / 255.0
-                }
-                local oklab = srgb_to_oklab(srgb)
+            local a255 = decompA(k)
+            if a255 > 0 then
+                local alphaNew = a255 + aAdj
+                local a255n = min(max(alphaNew, 0), 255)
 
-                local okhsx = nil
-                if useHsv then
-                    okhsx = oklab_to_okhsv(oklab)
-                else
-                    okhsx = oklab_to_okhsl(oklab)
-                end
+                if a255n > 0 then
+                    local b255 = decompB(k)
+                    local g255 = decompG(k)
+                    local r255 = decompR(k)
+                    local isGray = r255 == g255 and r255 == b255
 
-                local alphaNew = alpha + aAdj
-                local sNew = okhsx.s
-                local hNew = okhsx.h
+                    local srgb = {
+                        r = r255 / 255.0,
+                        g = g255 / 255.0,
+                        b = b255 / 255.0
+                    }
+                    local oklab = srgb_to_oklab(srgb)
 
-                if sNew <= 0.0 then
-                    if useOmit then
-                        hNew = 0.0
-                        sNew = 0.0
-                    elseif useZero then
-                        hNew = grayZero + hScl
-                        sNew = sNew + sScl
+                    local okhsx = nil
+                    if useHsv then
+                        okhsx = oklab_to_okhsv(oklab)
+                    else
+                        okhsx = oklab_to_okhsl(oklab)
+                    end
+
+                    local sNew = okhsx.s
+                    local hNew = okhsx.h
+
+                    if isGray then
+                        if useCool then
+                            local t = oklab.L
+                            local u = 1.0 - t
+                            hNew = u * hVio + t * hYel
+                            hNew = hNew + hScl
+                            sNew = sNew + sScl
+                        elseif useOmit then
+                            hNew = 0.0
+                            sNew = 0.0
+                        elseif useZero then
+                            hNew = hZero + hScl
+                            sNew = sNew + sScl
+                        elseif useWarm then
+                            local t = oklab.L
+                            local u = 1.0 - t
+                            hNew = u * hVio + t * (hYel + 1.0)
+                            hNew = hNew + hScl
+                            sNew = sNew + sScl
+                        else
+                            hNew = hNew + hScl
+                            sNew = sNew + sScl
+                        end
                     else
                         hNew = hNew + hScl
                         sNew = sNew + sScl
                     end
+
+                    local oklabNew = nil
+                    if useHsv then
+                        local okhsvNew = {
+                            h = hNew,
+                            s = sNew,
+                            v = okhsx.v + vScl
+                        }
+                        oklabNew = okhsv_to_oklab(okhsvNew)
+                    else
+                        local okhslNew = {
+                            h = hNew,
+                            s = sNew,
+                            l = okhsx.l + lScl
+                        }
+                        oklabNew = okhsl_to_oklab(okhslNew)
+                    end
+
+                    local srgbNew = oklab_to_srgb(oklabNew)
+                    local b255n = floor(min(max(srgbNew.b, 0.0), 1.0) * 255 + 0.5)
+                    local g255n = floor(min(max(srgbNew.g, 0.0), 1.0) * 255 + 0.5)
+                    local r255n = floor(min(max(srgbNew.r, 0.0), 1.0) * 255 + 0.5)
+                    trgDict[k] = composeRgba(r255n, g255n, b255n, a255n)
                 else
-                    hNew = hNew + hScl
-                    sNew = sNew + sScl
+                    trgDict[k] = 0
                 end
-
-                local oklabNew = nil
-                if useHsv then
-                    local okhsvNew = {
-                        h = hNew,
-                        s = sNew,
-                        v = okhsx.v + vScl
-                    }
-                    oklabNew = okhsv_to_oklab(okhsvNew)
-                else
-                    local okhslNew = {
-                        h = hNew,
-                        s = sNew,
-                        l = okhsx.l + lScl
-                    }
-                    oklabNew = okhsl_to_oklab(okhslNew)
-                end
-
-                local srgbNew = oklab_to_srgb(oklabNew)
-                local a255 = min(max(alphaNew, 0), 255)
-                local b255 = trunc(min(max(srgbNew.b, 0.0), 1.0) * 255 + 0.5)
-                local g255 = trunc(min(max(srgbNew.g, 0.0), 1.0) * 255 + 0.5)
-                local r255 = trunc(min(max(srgbNew.r, 0.0), 1.0) * 255 + 0.5)
-
-                trgDict[k] = (a255 << 0x18) | (b255 << 0x10) | (g255 << 0x08) | r255
             else
                 trgDict[k] = 0
             end
@@ -281,8 +326,8 @@ dlg:button {
 
         local trgImg = srcImg:clone()
         local trgpxitr = trgImg:pixels()
-        for elm in trgpxitr do
-            elm(trgDict[elm()])
+        for pixel in trgpxitr do
+            pixel(trgDict[pixel()])
         end
 
         if copyToLayer then
@@ -321,8 +366,7 @@ dlg:button {
 
 dlg:button {
     id = "cancel",
-    text = "&CANCEL",
-    focus = false,
+    text = "&X",
     onclick = function()
         dlg:close()
     end

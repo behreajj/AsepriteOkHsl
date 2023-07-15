@@ -25,14 +25,14 @@ local defaults = {
     colorMode = "HSL",
     alpha = 255,
     hslHue = 29,
-    hslSat = 100,
-    hslLgt = 57,
+    hslSat = 255,
+    hslLgt = 145,
     hsvHue = 29,
-    hsvSat = 100,
-    hsvVal = 100,
-    labLgt = 63,
-    labA = 23,
-    labB = 13,
+    hsvSat = 255,
+    hsvVal = 255,
+    labLgt = 160,
+    labA = 225,
+    labB = 126,
     showGradientSettings = false,
     gradWidth = 256,
     gradHeight = 32,
@@ -44,11 +44,11 @@ local defaults = {
     hslAxis = "LIGHTNESS",
     hsvAxis = "VALUE",
     minSat = 0,
-    maxSat = 97,
-    minLight = 7,
-    maxLight = 93,
-    minValue = 7,
-    maxValue = 93,
+    maxSat = 250,
+    minLight = 5,
+    maxLight = 250,
+    minValue = 5,
+    maxValue = 250,
     sectorCount = 0,
     ringCount = 0,
     frames = 32,
@@ -118,9 +118,9 @@ end
 ---@return { r: number, g: number, b: number }
 local function aseColorToRgb01(ase)
     return {
-        r = ase.red * 0.00392156862745098,
-        g = ase.green * 0.00392156862745098,
-        b = ase.blue * 0.00392156862745098
+        r = ase.red / 255.0,
+        g = ase.green / 255.0,
+        b = ase.blue / 255.0
     }
 end
 
@@ -303,9 +303,9 @@ end
 local function srgb01ToHex(srgb, alpha)
     local va = alpha or 255
     return (va << 0x18)
-        | math.floor(0.5 + 255.0 * math.min(math.max(srgb.b, 0.0), 1.0)) << 0x10
-        | math.floor(0.5 + 255.0 * math.min(math.max(srgb.g, 0.0), 1.0)) << 0x08
-        | math.floor(0.5 + 255.0 * math.min(math.max(srgb.r, 0.0), 1.0))
+        | math.floor(math.min(math.max(srgb.b, 0.0), 1.0) * 255.0 + 0.5) << 0x10
+        | math.floor(math.min(math.max(srgb.g, 0.0), 1.0) * 255.0 + 0.5) << 0x08
+        | math.floor(math.min(math.max(srgb.r, 0.0), 1.0) * 255.0 + 0.5)
 end
 
 ---@param srgb { r: number, g: number, b: number }
@@ -313,9 +313,9 @@ end
 ---@return Color
 local function srgb01ToAseColor(srgb, alpha)
     return Color {
-        r = math.floor(0.5 + 255.0 * math.min(math.max(srgb.r, 0.0), 1.0)),
-        g = math.floor(0.5 + 255.0 * math.min(math.max(srgb.g, 0.0), 1.0)),
-        b = math.floor(0.5 + 255.0 * math.min(math.max(srgb.b, 0.0), 1.0)),
+        r = math.floor(math.min(math.max(srgb.r, 0.0), 1.0) * 255.0 + 0.5),
+        g = math.floor(math.min(math.max(srgb.g, 0.0), 1.0) * 255.0 + 0.5),
+        b = math.floor(math.min(math.max(srgb.b, 0.0), 1.0) * 255.0 + 0.5),
         a = alpha or 255
     }
 end
@@ -348,10 +348,13 @@ local function updateShades(dialog, shades)
     -- when using LAB mode.
     local args = dialog.data
     local alpha = args.alpha --[[@as integer]]
-    local l = args.hslLgt * 0.01
-    l = math.min(math.max(l, 0.01), 0.99)
-    local s = args.hslSat * 0.01
-    local h = args.hslHue / 360.0
+    local hslLgt = args.hslLgt --[[@as integer]]
+    local hslSat = args.hslSat --[[@as integer]]
+    local hslHue = args.hslHue --[[@as integer]]
+
+    local l = math.min(math.max(hslLgt / 255.0, 0.01), 0.99)
+    local s = hslSat / 255.0
+    local h = hslHue / 360.0
 
     -- Decide on clockwise or counter-clockwise based
     -- on color's warmth or coolness.
@@ -504,9 +507,9 @@ end
 ---@param dialog Dialog
 ---@param lab { L: number, a: number, b: number }
 local function setLab(dialog, lab)
-    local labLgtInt = math.floor(lab.L * 100.0 + 0.5)
-    local labAInt = round(lab.a * 100.0)
-    local labBInt = round(lab.b * 100.0)
+    local labLgtInt = math.floor(lab.L * 255.0 + 0.5)
+    local labAInt = round(lab.a * 1000.0)
+    local labBInt = round(lab.b * 1000.0)
     dialog:modify { id = "labLgt", value = labLgtInt }
     dialog:modify { id = "labA", value = labAInt }
     dialog:modify { id = "labB", value = labBInt }
@@ -515,12 +518,12 @@ end
 ---@param dialog Dialog
 ---@param hsl { h: number, s: number, l: number }
 local function setHsl(dialog, hsl)
-    local hslLgtInt = math.floor(hsl.l * 100.0 + 0.5)
-    local hslSatInt = math.floor(hsl.s * 100.0 + 0.5)
+    local hslLgtInt = math.floor(hsl.l * 255.0 + 0.5)
+    local hslSatInt = math.floor(hsl.s * 255.0 + 0.5)
     local hslHueInt = math.floor(hsl.h * 360.0 + 0.5)
     if hslSatInt > 0
         and hslLgtInt > 0
-        and hslLgtInt < 100 then
+        and hslLgtInt < 255 then
         dialog:modify { id = "hslHue", value = hslHueInt }
     end
     dialog:modify { id = "hslSat", value = hslSatInt }
@@ -530,9 +533,9 @@ end
 ---@param dialog Dialog
 ---@param hsv { h: number, s: number, v: number }
 local function setHsv(dialog, hsv)
-    local hsvValInt = math.floor(0.5 + 100.0 * hsv.v)
-    local hsvSatInt = math.floor(0.5 + 100.0 * hsv.s)
-    local hsvHueInt = math.floor(0.5 + 360.0 * hsv.h)
+    local hsvValInt = math.floor(hsv.v * 255.0 + 0.5)
+    local hsvSatInt = math.floor(hsv.s * 255.0 + 0.5)
+    local hsvHueInt = math.floor(hsv.h * 360.0 + 0.5)
     if hsvSatInt > 0 and hsvValInt > 0 then
         dialog:modify { id = "hsvHue", value = hsvHueInt }
     end
@@ -601,10 +604,14 @@ local function updateColor(dialog, primary, shades)
     local colorMode = args.colorMode --[[@as string]]
 
     if colorMode == "HSV" then
+        local hsvHue = args.hsvHue --[[@as integer]]
+        local hsvSat = args.hsvSat --[[@as integer]]
+        local hsvVal = args.hsvVal --[[@as integer]]
+
         local lab = ok_color.okhsv_to_oklab({
-            h = args.hsvHue * 0.002777777777777778,
-            s = args.hsvSat * 0.01,
-            v = args.hsvVal * 0.01
+            h = hsvHue / 360.0,
+            s = hsvSat / 255.0,
+            v = hsvVal / 255.0
         })
         local rgb01 = ok_color.oklab_to_srgb(lab)
         primary = srgb01ToAseColor(rgb01, alpha)
@@ -614,10 +621,13 @@ local function updateColor(dialog, primary, shades)
         setHsl(dialog, hsl)
         setLab(dialog, lab)
     elseif colorMode == "LAB" then
+        local labLgt = args.labLgt --[[@as integer]]
+        local labA = args.labA --[[@as integer]]
+        local labB = args.labB --[[@as integer]]
         local lab = {
-            L = args.labLgt * 0.01,
-            a = args.labA * 0.01,
-            b = args.labB * 0.01
+            L = labLgt / 255.0,
+            a = labA * 0.001,
+            b = labB * 0.001
         }
         local rgb01 = ok_color.oklab_to_srgb(lab)
         primary = srgb01ToAseColor(rgb01, alpha)
@@ -628,10 +638,14 @@ local function updateColor(dialog, primary, shades)
         setHsl(dialog, hsl)
         setHsv(dialog, hsv)
     else
+        local hslHue = args.hslHue --[[@as integer]]
+        local hslSat = args.hslSat --[[@as integer]]
+        local hslLgt = args.hslLgt --[[@as integer]]
+
         local lab = ok_color.okhsl_to_oklab({
-            h = args.hslHue * 0.002777777777777778,
-            s = args.hslSat * 0.01,
-            l = args.hslLgt * 0.01
+            h = hslHue / 360.0,
+            s = hslSat / 255.0,
+            l = hslLgt / 255.0
         })
         local rgb01 = ok_color.oklab_to_srgb(lab)
         primary = srgb01ToAseColor(rgb01, alpha)
@@ -827,7 +841,7 @@ dlg:slider {
     id = "hslSat",
     label = "Saturation:",
     min = 0,
-    max = 100,
+    max = 255,
     value = defaults.hslSat,
     visible = defaults.colorMode == "HSL",
     onchange = function()
@@ -841,7 +855,7 @@ dlg:slider {
     id = "hslLgt",
     label = "Lightness:",
     min = 0,
-    max = 100,
+    max = 255,
     value = defaults.hslLgt,
     visible = defaults.colorMode == "HSL",
     onchange = function()
@@ -869,7 +883,7 @@ dlg:slider {
     id = "hsvSat",
     label = "Saturation:",
     min = 0,
-    max = 100,
+    max = 255,
     value = defaults.hsvSat,
     visible = defaults.colorMode == "HSV",
     onchange = function()
@@ -883,7 +897,7 @@ dlg:slider {
     id = "hsvVal",
     label = "Value:",
     min = 0,
-    max = 100,
+    max = 255,
     value = defaults.hsvVal,
     visible = defaults.colorMode == "HSV",
     onchange = function()
@@ -897,7 +911,7 @@ dlg:slider {
     id = "labLgt",
     label = "Lightness:",
     min = 0,
-    max = 100,
+    max = 255,
     value = defaults.labLgt,
     visible = defaults.colorMode == "LAB",
     onchange = function()
@@ -910,8 +924,8 @@ dlg:newrow { always = false }
 dlg:slider {
     id = "labA",
     label = "A:",
-    min = -32,
-    max = 32,
+    min = -320,
+    max = 320,
     value = defaults.labA,
     visible = defaults.colorMode == "LAB",
     onchange = function()
@@ -924,8 +938,8 @@ dlg:newrow { always = false }
 dlg:slider {
     id = "labB",
     label = "B:",
-    min = -32,
-    max = 32,
+    min = -320,
+    max = 320,
     value = defaults.labB,
     visible = defaults.colorMode == "LAB",
     onchange = function()
@@ -1043,6 +1057,7 @@ dlg:button {
     focus = false,
     visible = defaults.harmonyType == "SHADING",
     onclick = function()
+        ---@diagnostic disable-next-line: deprecated
         local activeSprite = app.activeSprite
         if activeSprite then
             local palette = activeSprite.palettes[1]
@@ -1254,7 +1269,7 @@ dlg:slider {
     id = "minSat",
     label = "Saturation:",
     min = 0,
-    max = 99,
+    max = 254,
     value = defaults.minSat,
     visible = defaults.showWheelSettings
         and defaults.hslAxis == "SATURATION"
@@ -1264,7 +1279,7 @@ dlg:slider {
 dlg:slider {
     id = "maxSat",
     min = 1,
-    max = 100,
+    max = 255,
     value = defaults.maxSat,
     visible = defaults.showWheelSettings
         and defaults.hslAxis == "SATURATION"
@@ -1277,7 +1292,7 @@ dlg:slider {
     id = "minLight",
     label = "Light:",
     min = 0,
-    max = 99,
+    max = 254,
     value = defaults.minLight,
     visible = defaults.showWheelSettings
         and (defaults.colorMode == "HSL"
@@ -1288,7 +1303,7 @@ dlg:slider {
 dlg:slider {
     id = "maxLight",
     min = 1,
-    max = 100,
+    max = 255,
     value = defaults.maxLight,
     visible = defaults.showWheelSettings
         and (defaults.colorMode == "HSL"
@@ -1302,7 +1317,7 @@ dlg:slider {
     id = "minValue",
     label = "Value:",
     min = 0,
-    max = 99,
+    max = 254,
     value = defaults.minValue,
     visible = defaults.showWheelSettings
         and defaults.colorMode == "HSV"
@@ -1312,7 +1327,7 @@ dlg:slider {
 dlg:slider {
     id = "maxValue",
     min = 1,
-    max = 100,
+    max = 255,
     value = defaults.maxValue,
     visible = defaults.showWheelSettings
         and defaults.colorMode == "HSV"
@@ -1366,7 +1381,7 @@ dlg:newrow { always = false }
 
 dlg:button {
     id = "gradient",
-    text = "&GRADIENT",
+    text = "&GRD",
     focus = false,
     onclick = function()
         local args = dlg.data
@@ -1502,7 +1517,7 @@ dlg:button {
 
 dlg:button {
     id = "wheel",
-    text = "&WHEEL",
+    text = "&WHL",
     focus = false,
     onclick = function()
         -- There is some known discontinuity for saturated dark blues.
@@ -1528,10 +1543,10 @@ dlg:button {
         local colorMode = args.colorMode or defaults.colorMode --[[@as string]]
         local hslAxis = args.hslAxis or defaults.hslAxis --[[@as string]]
         local hsvAxis = args.hsvAxis or defaults.hsvAxis --[[@as string]]
-        local minLight = args.minLight or defaults.minLight --[[@as number]]
-        local maxLight = args.maxLight or defaults.maxLight --[[@as number]]
-        local minValue = args.minValue or defaults.minValue --[[@as number]]
-        local maxValue = args.maxValue or defaults.maxValue --[[@as number]]
+        local minLgt = args.minLight or defaults.minLight --[[@as number]]
+        local maxLgt = args.maxLight or defaults.maxLight --[[@as number]]
+        local minVal = args.minValue or defaults.minValue --[[@as number]]
+        local maxVal = args.maxValue or defaults.maxValue --[[@as number]]
         local minSat = args.minSat or defaults.minSat --[[@as number]]
         local maxSat = args.maxSat or defaults.maxSat --[[@as number]]
         local ringCount = args.ringCount or defaults.ringCount --[[@as integer]]
@@ -1542,12 +1557,12 @@ dlg:button {
         local angleOffset = math.rad(30.0)
         local lenRemapTable = #rybHueRemapTable
 
-        minSat = minSat * 0.01
-        maxSat = maxSat * 0.01
-        minLight = minLight * 0.01
-        maxLight = maxLight * 0.01
-        minValue = minValue * 0.01
-        maxValue = maxValue * 0.01
+        minSat = minSat / 255.0
+        maxSat = maxSat / 255.0
+        minLgt = minLgt / 255.0
+        maxLgt = maxLgt / 255.0
+        minVal = minVal / 255.0
+        maxVal = maxVal / 255.0
 
         local useHsv = colorMode == "HSV"
         local useSat = false
@@ -1565,27 +1580,27 @@ dlg:button {
             -- Calculate light from frame count.
             local fac0 = (i - 1.0) * iToStep
             local sat = minSat
-            local light = minLight
-            local value = minValue
+            local light = minLgt
+            local value = minVal
 
             if useSat then
                 sat = (1.0 - fac0) * minSat + fac0 * maxSat
             elseif useHsv then
-                value = (1.0 - fac0) * minValue + fac0 * maxValue
+                value = (1.0 - fac0) * minVal + fac0 * maxVal
             else
-                light = (1.0 - fac0) * minLight + fac0 * maxLight
+                light = (1.0 - fac0) * minLgt + fac0 * maxLgt
             end
 
             -- Iterate over image pixels.
             local pxItr = wheelImg:pixels()
-            for elm in pxItr do
+            for pixel in pxItr do
                 -- Find rise.
-                local y = elm.y
+                local y = pixel.y
                 local yNrm = y * szInv
                 local ySgn = 1.0 - (yNrm + yNrm)
 
                 -- Find run.
-                local x = elm.x
+                local x = pixel.x
                 local xNrm = x * szInv
                 local xSgn = xNrm + xNrm - 1.0
 
@@ -1616,10 +1631,10 @@ dlg:button {
                     local mag = sqrt(magSq)
                     if useSat then
                         if useHsv then
-                            value = (1.0 - mag) * maxValue + mag * minValue
+                            value = (1.0 - mag) * maxVal + mag * minVal
                             value = quantizeUnsigned(value, ringCount)
                         else
-                            light = (1.0 - mag) * maxLight + mag * minLight
+                            light = (1.0 - mag) * maxLgt + mag * minLgt
                             light = quantizeUnsigned(light, ringCount)
                         end
                     else
@@ -1654,9 +1669,9 @@ dlg:button {
                         | trunc(srgb.r * 255 + 0.5)
 
                     -- Assign to iterator.
-                    elm(hex)
+                    pixel(hex)
                 else
-                    elm(0)
+                    pixel(0)
                 end
             end
             wheelImgs[i] = wheelImg
@@ -1711,6 +1726,14 @@ dlg:button {
             math.ceil(#sprite.frames / 2)]
         end
         app.refresh()
+    end
+}
+
+dlg:button {
+    id = "cancel",
+    text = "&X",
+    onclick = function()
+        dlg:close()
     end
 }
 
