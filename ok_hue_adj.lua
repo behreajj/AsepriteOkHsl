@@ -24,6 +24,7 @@ local grayHues = { "COOL", "OMIT", "WARM", "ZERO" }
 local clrModes = { "HSL", "HSV" }
 
 local defaults = {
+    -- TODO: Warn when color profile is not sRGB?
     clrMode = "HSL",
     hAdj = 0,
     sAdj = 0,
@@ -134,30 +135,37 @@ dlg:button {
         ---@diagnostic disable-next-line: deprecated
         local activeSprite = app.activeSprite
         if not activeSprite then
-            app.alert("There is no active sprite.")
+            app.alert { title = "Error", text = "There is no active sprite." }
             return
         end
 
         ---@diagnostic disable-next-line: deprecated
         local activeLayer = app.activeLayer
         if not activeLayer then
-            app.alert("There is no active layer.")
+            app.alert { title = "Error", text = "There is no active layer." }
             return
         end
 
         local apiVersion = app.apiVersion
         if apiVersion >= 15 then
             if activeLayer.isReference then
-                app.alert("Reference layers are not supported.")
+                app.alert {
+                    title = "Error",
+                    text = "Reference layers are not supported."
+                }
                 return
             end
         end
 
         local version = app.version
-        if version.major >= 1
-            and version.minor >= 3 then
+        if (version.major >= 1
+                and version.minor >= 3)
+            or version.prereleaseLabel == "dev" then
             if activeLayer.isTilemap then
-                app.alert("Tile map layers are not supported.")
+                app.alert {
+                    title = "Error",
+                    text = "Tile map layers are not supported."
+                }
                 return
             end
         end
@@ -165,14 +173,17 @@ dlg:button {
         ---@diagnostic disable-next-line: deprecated
         local srcCel = app.activeCel
         if not srcCel then
-            app.alert("There is no active cel.")
+            app.alert { title = "Error", text = "There is no active cel." }
             return
         end
 
         local specSprite = activeSprite.spec
         local colorMode = specSprite.colorMode
         if colorMode ~= ColorMode.RGB then
-            app.alert("Only RGB color mode is supported.")
+            app.alert {
+                title = "Error",
+                text = "Only RGB color mode is supported."
+            }
             return
         end
 
@@ -214,11 +225,12 @@ dlg:button {
         local min = math.min
         local floor = math.floor
 
-        local decompA = app.pixelColor.rgbaA
-        local decompB = app.pixelColor.rgbaB
-        local decompG = app.pixelColor.rgbaG
-        local decompR = app.pixelColor.rgbaR
-        local composeRgba = app.pixelColor.rgba
+        local pixelColor = app.pixelColor
+        local decompA = pixelColor.rgbaA
+        local decompB = pixelColor.rgbaB
+        local decompG = pixelColor.rgbaG
+        local decompR = pixelColor.rgbaR
+        local composeRgba = pixelColor.rgba
 
         local srgb_to_oklab = ok_color.srgb_to_oklab
         local oklab_to_okhsl = ok_color.oklab_to_okhsl

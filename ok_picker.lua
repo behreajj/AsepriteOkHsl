@@ -149,7 +149,7 @@ end
 ---@return Frame[]
 local function createNewFrames(sprite, count, duration)
     if not sprite then
-        app.alert("Sprite could not be found.")
+        app.alert { title = "Error", text = "Sprite could not be found." }
         return {}
     end
 
@@ -1511,6 +1511,11 @@ dlg:button {
         end
         gradSprite:setPalette(pal)
 
+        -- Turn off onion skin loop through tag frames.
+        local docPrefs <const> = app.preferences.document(gradSprite)
+        local onionSkinPrefs <const> = docPrefs.onionskin
+        onionSkinPrefs.loop_tag = false
+
         app.refresh()
     end
 }
@@ -1725,6 +1730,12 @@ dlg:button {
             app.activeFrame = sprite.frames[
             math.ceil(#sprite.frames / 2)]
         end
+
+        -- Turn off onion skin loop through tag frames.
+        local docPrefs <const> = app.preferences.document(sprite)
+        local onionSkinPrefs <const> = docPrefs.onionskin
+        onionSkinPrefs.loop_tag = false
+
         app.refresh()
     end
 }
