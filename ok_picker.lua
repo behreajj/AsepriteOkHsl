@@ -1512,8 +1512,8 @@ dlg:button {
         gradSprite:setPalette(pal)
 
         -- Turn off onion skin loop through tag frames.
-        local docPrefs <const> = app.preferences.document(gradSprite)
-        local onionSkinPrefs <const> = docPrefs.onionskin
+        local docPrefs = app.preferences.document(gradSprite)
+        local onionSkinPrefs = docPrefs.onionskin
         onionSkinPrefs.loop_tag = false
 
         app.refresh()
@@ -1732,8 +1732,8 @@ dlg:button {
         end
 
         -- Turn off onion skin loop through tag frames.
-        local docPrefs <const> = app.preferences.document(sprite)
-        local onionSkinPrefs <const> = docPrefs.onionskin
+        local docPrefs = app.preferences.document(sprite)
+        local onionSkinPrefs = docPrefs.onionskin
         onionSkinPrefs.loop_tag = false
 
         app.refresh()
