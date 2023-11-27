@@ -301,7 +301,7 @@ end
 ---@param alpha integer?
 ---@return integer
 local function srgb01ToHex(srgb, alpha)
-    local va <const> <const> = alpha or 255
+    local va <const> = alpha or 255
     return (va << 0x18)
         | math.floor(math.min(math.max(srgb.b, 0.0), 1.0) * 255.0 + 0.5) << 0x10
         | math.floor(math.min(math.max(srgb.g, 0.0), 1.0) * 255.0 + 0.5) << 0x08
@@ -1391,7 +1391,6 @@ dlg:button {
         local swatchCount <const> = args.swatchCount or defaults.swatchCount --[[@as integer]]
         local hueDir <const> = args.hueDir or defaults.hueDir --[[@as string]]
 
-        -- TODO: Replace with string bytes method.
         local foreColor <const> = app.fgColor
         local foreHex <const> = 0xff000000 | foreColor.rgbaPixel
         local foreSrgb01 <const> = aseColorToRgb01(foreColor)
@@ -1533,15 +1532,18 @@ dlg:button {
         -- Cache methods.
         local atan2 <const> = math.atan
         local sqrt <const> = math.sqrt
-        local trunc <const> = math.floor
+        local floor <const> = math.floor
         local max <const> = math.max
         local min <const> = math.min
+        local strpack <const> = string.pack
+        local tconcat <const> = table.concat
         local hsl_to_srgb <const> = ok_color.okhsl_to_srgb
         local hsv_to_srgb <const> = ok_color.okhsv_to_srgb
 
         -- Unpack arguments.
         local args <const> = dlg.data
         local size <const> = args.size or defaults.size --[[@as integer]]
+        local szSq <const> = size * size
         local szInv <const> = 1.0 / (size - 1.0)
         local iToStep = 1.0
         local reqFrames <const> = args.frames or defaults.frames --[[@as integer]]
@@ -1597,19 +1599,24 @@ dlg:button {
                 light = (1.0 - fac0) * minLgt + fac0 * maxLgt
             end
 
-            -- TODO: Refactor to use string.bytes.
-            -- Iterate over image pixels.
-            local pxItr <const> = wheelImg:pixels()
-            for pixel in pxItr do
+            ---@type string[]
+            local pixels = {}
+            local j = 0
+            while j < szSq do
                 -- Find rise.
-                local y <const> = pixel.y
+                local y <const> = j // size
                 local yNrm <const> = y * szInv
                 local ySgn <const> = 1.0 - (yNrm + yNrm)
 
                 -- Find run.
-                local x <const> = pixel.x
+                local x = j % size
                 local xNrm <const> = x * szInv
                 local xSgn <const> = xNrm + xNrm - 1.0
+
+                local r8 = 0
+                local g8 = 0
+                local b8 = 0
+                local a8 = 0
 
                 -- Find square magnitude.
                 -- Magnitude correlates with saturation.
@@ -1628,7 +1635,7 @@ dlg:button {
                     -- Remap hue to RYB color wheel.
                     if remapHue then
                         local hueScaled <const> = hue * (lenRemapTable - 1)
-                        local hueIdx <const> = trunc(hueScaled)
+                        local hueIdx <const> = floor(hueScaled)
                         local hueFrac <const> = hueScaled - hueIdx
                         local aHue <const> = rybHueRemapTable[1 + hueIdx]
                         local bHue <const> = rybHueRemapTable[1 + (hueIdx + 1) % lenRemapTable]
@@ -1665,22 +1672,18 @@ dlg:button {
 
                     -- Values still go out of gamut, particularly for
                     -- saturated blues at medium light.
-                    srgb.r = min(max(srgb.r, 0.0), 1.0)
-                    srgb.g = min(max(srgb.g, 0.0), 1.0)
-                    srgb.b = min(max(srgb.b, 0.0), 1.0)
-
-                    -- Composite into a 32-bit integer.
-                    local hex <const> = 0xff000000
-                        | trunc(srgb.b * 255 + 0.5) << 0x10
-                        | trunc(srgb.g * 255 + 0.5) << 0x08
-                        | trunc(srgb.r * 255 + 0.5)
-
-                    -- Assign to iterator.
-                    pixel(hex)
-                else
-                    pixel(0)
+                    r8 = floor(min(max(srgb.r, 0.0), 1.0) * 255 + 0.5)
+                    g8 = floor(min(max(srgb.g, 0.0), 1.0) * 255 + 0.5)
+                    b8 = floor(min(max(srgb.b, 0.0), 1.0) * 255 + 0.5)
+                    a8 = 255
                 end
+
+                j = j + 1
+                pixels[j] = strpack("B B B B", r8, g8, b8, a8)
             end
+
+            wheelImg.bytes = tconcat(pixels)
+
             wheelImgs[i] = wheelImg
         end
 

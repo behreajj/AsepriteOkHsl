@@ -202,9 +202,9 @@ function ok_color.find_gamut_intersection(a, b, L1, C1, L0, x)
                 local mdt <const> = 3.0 * m_dt * m_sq
                 local sdt <const> = 3.0 * s_dt * s_sq
 
-                local ldt2 <const> = 6.0 * l_dt * l_dt * l_
-                local mdt2 <const> = 6.0 * m_dt * m_dt * m_
-                local sdt2 <const> = 6.0 * s_dt * s_dt * s_
+                local ldt2 <const> = 6.0 * (l_dt * l_dt) * l_
+                local mdt2 <const> = 6.0 * (m_dt * m_dt) * m_
+                local sdt2 <const> = 6.0 * (s_dt * s_dt) * s_
 
                 local r0 <const> = 4.076741661347994 * l - 3.3077115904081933 * m + 0.23096992872942793 * s - 1.0
                 local r1 <const> = 4.076741661347994 * ldt - 3.3077115904081933 * mdt + 0.23096992872942793 * sdt
@@ -269,8 +269,8 @@ function ok_color.get_Cs(L, a_, b_)
         local C_a <const> = L * ST_mid.S
         local C_b <const> = (1.0 - L) * ST_mid.T
 
-        local cae4 <const> = C_a ^ 4
-        local cbe4 <const> = C_b ^ 4
+        local cae4 <const> = (C_a * C_a) * (C_a * C_a)
+        local cbe4 <const> = (C_b * C_b) * (C_b * C_b)
         C_mid = 0.9 * k * ((1.0 / (1.0 / cae4 + 1.0 / cbe4)) ^ 0.25)
     end
 
@@ -519,15 +519,19 @@ function ok_color.oklab_to_linear_srgb(lab)
     local a <const> = lab.a
     local b <const> = lab.b
 
-    local l <const> = (0.9999999984505196 * lgt
-        + 0.39633779217376774 * a
-        + 0.2158037580607588 * b) ^ 3
-    local m <const> = (1.0000000088817607 * lgt
-        - 0.10556134232365633 * a
-        - 0.0638541747717059 * b) ^ 3
-    local s <const> = (1.0000000546724108 * lgt
-        - 0.08948418209496574 * a
-        - 1.2914855378640917 * b) ^ 3
+    local l_cbrt <const> = 0.9999999984505196 * lgt
+    + 0.39633779217376774 * a
+    + 0.2158037580607588 * b
+    local m_cbrt <const> = 1.0000000088817607 * lgt
+    - 0.10556134232365633 * a
+    - 0.0638541747717059 * b
+    local s_cbrt <const> = 1.0000000546724108 * lgt
+    - 0.08948418209496574 * a
+    - 1.2914855378640917 * b
+
+    local l <const> = (l_cbrt * l_cbrt) * l_cbrt
+    local m <const> = (m_cbrt * m_cbrt) * m_cbrt
+    local s <const> = (s_cbrt * s_cbrt) * s_cbrt
 
     return {
         r = 4.076741661347994 * l
