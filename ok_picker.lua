@@ -20,7 +20,7 @@ dofile("./ok_color.lua")
 -- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 -- SOFTWARE.
 
-local defaults = {
+local defaults <const> = {
     base = Color { r = 255, g = 0, b = 0, a = 255 },
     colorMode = "HSL",
     alpha = 255,
@@ -87,7 +87,7 @@ local defaults = {
     dayHue = 96.0 / 360.0,
 }
 
-local rybHueRemapTable = {
+local rybHueRemapTable <const> = {
     0.081205236645396,  -- ff0000ff
     0.12435157961211,   -- ff006aff
     0.19200283257828,   -- ff00a2ff
@@ -155,7 +155,7 @@ local function createNewFrames(sprite, count, duration)
 
     if count < 1 then return {} end
     if count > 256 then
-        local response = app.alert {
+        local response <const> = app.alert {
             title = "Warning",
             text = {
                 string.format(
@@ -175,7 +175,7 @@ local function createNewFrames(sprite, count, duration)
         end
     end
 
-    local valDur = duration or 1
+    local valDur <const> = duration or 1
     local valCount = count or 1
     if valCount < 1 then valCount = 1 end
 
@@ -183,7 +183,7 @@ local function createNewFrames(sprite, count, duration)
     local frames = {}
     app.transaction(function()
         for i = 1, valCount, 1 do
-            local frame = sprite:newEmptyFrame()
+            local frame <const> = sprite:newEmptyFrame()
             frame.duration = valDur
             frames[i] = frame
         end
@@ -196,7 +196,7 @@ end
 ---@param range number
 ---@return number
 local function distAngleUnsigned(a, b, range)
-    local halfRange = range * 0.5
+    local halfRange <const> = range * 0.5
     return halfRange - math.abs(math.abs(
             (b % range) - (a % range))
         - halfRange)
@@ -208,12 +208,12 @@ end
 ---@param range number
 ---@return number
 local function lerpAngleNear(orig, dest, t, range)
-    local halfRange = range * 0.5
+    local halfRange <const> = range * 0.5
 
-    local o = orig % range
-    local d = dest % range
-    local diff = d - o
-    local u = 1.0 - t
+    local o <const> = orig % range
+    local d <const> = dest % range
+    local diff <const> = d - o
+    local u <const> = 1.0 - t
 
     if diff == 0.0 then
         return o
@@ -232,10 +232,10 @@ end
 ---@param range number
 ---@return number
 local function lerpAngleCcw(orig, dest, t, range)
-    local o = orig % range
-    local d = dest % range
-    local diff = d - o
-    local u = 1.0 - t
+    local o <const> = orig % range
+    local d <const> = dest % range
+    local diff <const> = d - o
+    local u <const> = 1.0 - t
 
     if diff == 0.0 then
         return o
@@ -252,10 +252,10 @@ end
 ---@param range number
 ---@return number
 local function lerpAngleCw(orig, dest, t, range)
-    local o = orig % range
-    local d = dest % range
-    local diff = d - o
-    local u = 1.0 - t
+    local o <const> = orig % range
+    local d <const> = dest % range
+    local diff <const> = d - o
+    local u <const> = 1.0 - t
 
     if diff == 0.0 then
         return d
@@ -301,7 +301,7 @@ end
 ---@param alpha integer?
 ---@return integer
 local function srgb01ToHex(srgb, alpha)
-    local va = alpha or 255
+    local va <const> <const> = alpha or 255
     return (va << 0x18)
         | math.floor(math.min(math.max(srgb.b, 0.0), 1.0) * 255.0 + 0.5) << 0x10
         | math.floor(math.min(math.max(srgb.g, 0.0), 1.0) * 255.0 + 0.5) << 0x08
@@ -323,7 +323,7 @@ end
 ---@param v number
 ---@return integer
 local function round(v)
-    local iv, fv = math.modf(v)
+    local iv <const>, fv <const> = math.modf(v)
     if iv <= 0 and fv <= -0.5 then
         return iv - 1
     elseif iv >= 0 and fv >= 0.5 then
@@ -336,8 +336,8 @@ end
 ---@param t number
 ---@return number
 local function zigZag(t)
-    local a = t * 0.5
-    local b = a - math.floor(a)
+    local a <const> = t * 0.5
+    local b <const> = a - math.floor(a)
     return 1.0 - math.abs(b + b - 1.0)
 end
 
@@ -346,21 +346,21 @@ end
 local function updateShades(dialog, shades)
     -- TODO: This causes problems with gray patches
     -- when using LAB mode.
-    local args = dialog.data
-    local alpha = args.alpha --[[@as integer]]
-    local hslLgt = args.hslLgt --[[@as integer]]
-    local hslSat = args.hslSat --[[@as integer]]
-    local hslHue = args.hslHue --[[@as integer]]
+    local args <const> = dialog.data
+    local alpha <const> = args.alpha --[[@as integer]]
+    local hslLgt <const> = args.hslLgt --[[@as integer]]
+    local hslSat <const> = args.hslSat --[[@as integer]]
+    local hslHue <const> = args.hslHue --[[@as integer]]
 
-    local l = math.min(math.max(hslLgt / 255.0, 0.01), 0.99)
-    local s = hslSat / 255.0
-    local h = hslHue / 360.0
+    local l <const> = math.min(math.max(hslLgt / 255.0, 0.01), 0.99)
+    local s <const> = hslSat / 255.0
+    local h <const> = hslHue / 360.0
 
     -- Decide on clockwise or counter-clockwise based
     -- on color's warmth or coolness.
     -- The LCh hue for yellow is 103 degrees.
-    local hYel = defaults.hYel
-    local hBlu = hYel + 0.5
+    local hYel <const> = defaults.hYel
+    local hBlu <const> = hYel + 0.5
     local lerpFunc = nil
     if h < hYel or h >= hBlu then
         lerpFunc = lerpAngleCcw
@@ -369,57 +369,57 @@ local function updateShades(dialog, shades)
     end
 
     -- Minimum and maximum light based on place in loop.
-    local shadowLight = defaults.shadowLight
-    local dayLight = defaults.dayLight
+    local shadowLight <const> = defaults.shadowLight
+    local dayLight <const> = defaults.dayLight
 
     -- Yellows are very saturated at high light;
     -- Desaturate them to get a better shade.
     -- Conversely, blues easily fall out of gamut
     -- so the shade factor is separate.
-    local lgtDesatFac = defaults.lgtDesatFac
-    local shdDesatFac = defaults.shdDesatFac
-    local minChroma = defaults.minChroma
-    local cVal = math.max(minChroma, s)
-    local desatChromaLgt = cVal * lgtDesatFac
-    local desatChromaShd = cVal * shdDesatFac
+    local lgtDesatFac <const> = defaults.lgtDesatFac
+    local shdDesatFac <const> = defaults.shdDesatFac
+    local minChroma <const> = defaults.minChroma
+    local cVal <const> = math.max(minChroma, s)
+    local desatChromaLgt <const> = cVal * lgtDesatFac
+    local desatChromaShd <const> = cVal * shdDesatFac
 
     -- Amount to mix between base light and loop light.
-    local srcLightWeight = defaults.srcLightWeight
-    local cmpLightWeight = 1.0 - srcLightWeight
+    local srcLightWeight <const> = defaults.srcLightWeight
+    local cmpLightWeight <const> = 1.0 - srcLightWeight
 
     -- The warm-cool dichotomy works poorly for greens.
     -- For that reason, the closer a hue is to green,
     -- the more it uses absolute hue shifting.
     -- Green is approximately at hue 140.
-    local offsetMix = 2.0 * distAngleUnsigned(h, defaults.greenHue, 1.0)
-    local offsetScale = (1.0 - offsetMix) * defaults.maxGreenOffset
+    local offsetMix <const> = 2.0 * distAngleUnsigned(h, defaults.greenHue, 1.0)
+    local offsetScale <const> = (1.0 - offsetMix) * defaults.maxGreenOffset
         + offsetMix * defaults.minGreenOffset
 
     -- Absolute hues for shadow and light.
     -- This could also be combined with the origin hue +/-
     -- a shift which is then mixed with the absolute hue.
-    local shadowHue = defaults.shadowHue
-    local dayHue = defaults.dayHue
+    local shadowHue <const> = defaults.shadowHue
+    local dayHue <const> = defaults.dayHue
 
-    local shadingCount = defaults.shadingCount
-    local toFac = 1.0 / (shadingCount - 1.0)
+    local shadingCount <const> = defaults.shadingCount
+    local toFac <const> = 1.0 / (shadingCount - 1.0)
     for i = 1, shadingCount, 1 do
-        local iFac = (i - 1) * toFac
-        local lItr = (1.0 - iFac) * shadowLight
+        local iFac <const> = (i - 1) * toFac
+        local lItr <const> = (1.0 - iFac) * shadowLight
             + iFac * dayLight
 
         -- Idealized hue from violet shadow to
         -- off-yellow daylight.
-        local hAbs = lerpFunc(shadowHue, dayHue, lItr, 1.0)
+        local hAbs <const> = lerpFunc(shadowHue, dayHue, lItr, 1.0)
 
         -- The middle sample should be closest to base color.
         -- The fac needs to be 0.0. That's why zigzag is
         -- used to convert to an oscillation.
-        local lMixed = srcLightWeight * l
+        local lMixed <const> = srcLightWeight * l
             + cmpLightWeight * lItr
-        local lZig = zigZag(lMixed)
-        local fac = offsetScale * lZig
-        local hMixed = lerpAngleNear(h, hAbs, fac, 1.0)
+        local lZig <const> = zigZag(lMixed)
+        local fac <const> = offsetScale * lZig
+        local hMixed <const> = lerpAngleNear(h, hAbs, fac, 1.0)
 
         -- Desaturate brights and darks.
         -- Min chroma gives even grays a slight chroma.
@@ -428,12 +428,12 @@ local function updateShades(dialog, shades)
         local cMixed = (1.0 - lZig) * cVal + lZig * chromaTarget
         cMixed = math.max(minChroma, cMixed)
 
-        local clr = ok_color.okhsl_to_srgb({
+        local clr <const> = ok_color.okhsl_to_srgb({
             h = hMixed,
             s = cMixed,
             l = lMixed
         })
-        local aseColor = srgb01ToAseColor(clr, alpha)
+        local aseColor <const> = srgb01ToAseColor(clr, alpha)
         shades[i] = aseColor
     end
 
@@ -443,55 +443,55 @@ end
 ---@param dialog Dialog
 ---@param primary Color
 local function updateHarmonies(dialog, primary)
-    local srgb = aseColorToRgb01(primary)
-    local srcHsl = ok_color.srgb_to_okhsl(srgb)
-    local l = srcHsl.l
-    local s = srcHsl.s
-    local h = srcHsl.h
+    local srgb <const> = aseColorToRgb01(primary)
+    local srcHsl <const> = ok_color.srgb_to_okhsl(srgb)
+    local l <const> = srcHsl.l
+    local s <const> = srcHsl.s
+    local h <const> = srcHsl.h
 
-    local h30 = 0.08333333333333333
-    local h90 = 0.25
-    local h120 = 0.3333333333333333
-    local h150 = 0.4166666666666667
-    local h180 = 0.5
-    local h210 = 0.5833333333333333
-    local h270 = 0.75
+    local h30 <const> = 0.08333333333333333
+    local h90 <const> = 0.25
+    local h120 <const> = 0.3333333333333333
+    local h150 <const> = 0.4166666666666667
+    local h180 <const> = 0.5
+    local h210 <const> = 0.5833333333333333
+    local h270 <const> = 0.75
 
-    local lOpp = 1.0 - l
-    local lTri = (2.0 - l) / 3.0
-    local lAna = (2.0 * l + 0.5) / 3.0
-    local lSpl = (2.5 - 2.0 * l) / 3.0
-    local lSqr = 0.5
+    local lOpp <const> = 1.0 - l
+    local lTri <const> = (2.0 - l) / 3.0
+    local lAna <const> = (2.0 * l + 0.5) / 3.0
+    local lSpl <const> = (2.5 - 2.0 * l) / 3.0
+    local lSqr <const> = 0.5
 
-    local ana0 = ok_color.okhsl_to_srgb({ h = h - h30, s = s, l = lAna })
-    local ana1 = ok_color.okhsl_to_srgb({ h = h + h30, s = s, l = lAna })
+    local ana0 <const> = ok_color.okhsl_to_srgb({ h = h - h30, s = s, l = lAna })
+    local ana1 <const> = ok_color.okhsl_to_srgb({ h = h + h30, s = s, l = lAna })
 
-    local tri0 = ok_color.okhsl_to_srgb({ h = h - h120, s = s, l = lTri })
-    local tri1 = ok_color.okhsl_to_srgb({ h = h + h120, s = s, l = lTri })
+    local tri0 <const> = ok_color.okhsl_to_srgb({ h = h - h120, s = s, l = lTri })
+    local tri1 <const> = ok_color.okhsl_to_srgb({ h = h + h120, s = s, l = lTri })
 
-    local split0 = ok_color.okhsl_to_srgb({ h = h + h150, s = s, l = lSpl })
-    local split1 = ok_color.okhsl_to_srgb({ h = h + h210, s = s, l = lSpl })
+    local split0 <const> = ok_color.okhsl_to_srgb({ h = h + h150, s = s, l = lSpl })
+    local split1 <const> = ok_color.okhsl_to_srgb({ h = h + h210, s = s, l = lSpl })
 
-    local square0 = ok_color.okhsl_to_srgb({ h = h + h90, s = s, l = lSqr })
-    local square1 = ok_color.okhsl_to_srgb({ h = h + h180, s = s, l = lOpp })
-    local square2 = ok_color.okhsl_to_srgb({ h = h + h270, s = s, l = lSqr })
+    local square0 <const> = ok_color.okhsl_to_srgb({ h = h + h90, s = s, l = lSqr })
+    local square1 <const> = ok_color.okhsl_to_srgb({ h = h + h180, s = s, l = lOpp })
+    local square2 <const> = ok_color.okhsl_to_srgb({ h = h + h270, s = s, l = lSqr })
 
-    local tris = {
+    local tris <const> = {
         srgb01ToAseColor(tri0),
         srgb01ToAseColor(tri1)
     }
 
-    local analogues = {
+    local analogues <const> = {
         srgb01ToAseColor(ana0),
         srgb01ToAseColor(ana1)
     }
 
-    local splits = {
+    local splits <const> = {
         srgb01ToAseColor(split0),
         srgb01ToAseColor(split1)
     }
 
-    local squares = {
+    local squares <const> = {
         srgb01ToAseColor(square0),
         srgb01ToAseColor(square1),
         srgb01ToAseColor(square2)
@@ -507,9 +507,9 @@ end
 ---@param dialog Dialog
 ---@param lab { L: number, a: number, b: number }
 local function setLab(dialog, lab)
-    local labLgtInt = math.floor(lab.L * 255.0 + 0.5)
-    local labAInt = round(lab.a * 1000.0)
-    local labBInt = round(lab.b * 1000.0)
+    local labLgtInt <const> = math.floor(lab.L * 255.0 + 0.5)
+    local labAInt <const> = round(lab.a * 1000.0)
+    local labBInt <const> = round(lab.b * 1000.0)
     dialog:modify { id = "labLgt", value = labLgtInt }
     dialog:modify { id = "labA", value = labAInt }
     dialog:modify { id = "labB", value = labBInt }
@@ -518,9 +518,9 @@ end
 ---@param dialog Dialog
 ---@param hsl { h: number, s: number, l: number }
 local function setHsl(dialog, hsl)
-    local hslLgtInt = math.floor(hsl.l * 255.0 + 0.5)
-    local hslSatInt = math.floor(hsl.s * 255.0 + 0.5)
-    local hslHueInt = math.floor(hsl.h * 360.0 + 0.5)
+    local hslLgtInt <const> = math.floor(hsl.l * 255.0 + 0.5)
+    local hslSatInt <const> = math.floor(hsl.s * 255.0 + 0.5)
+    local hslHueInt <const> = math.floor(hsl.h * 360.0 + 0.5)
     if hslSatInt > 0
         and hslLgtInt > 0
         and hslLgtInt < 255 then
@@ -533,9 +533,9 @@ end
 ---@param dialog Dialog
 ---@param hsv { h: number, s: number, v: number }
 local function setHsv(dialog, hsv)
-    local hsvValInt = math.floor(hsv.v * 255.0 + 0.5)
-    local hsvSatInt = math.floor(hsv.s * 255.0 + 0.5)
-    local hsvHueInt = math.floor(hsv.h * 360.0 + 0.5)
+    local hsvValInt <const> = math.floor(hsv.v * 255.0 + 0.5)
+    local hsvSatInt <const> = math.floor(hsv.s * 255.0 + 0.5)
+    local hsvHueInt <const> = math.floor(hsv.h * 360.0 + 0.5)
     if hsvSatInt > 0 and hsvValInt > 0 then
         dialog:modify { id = "hsvHue", value = hsvHueInt }
     end
@@ -547,22 +547,22 @@ end
 ---@param primary Color
 ---@param shades Color[]
 local function setFromHexStr(dialog, primary, shades)
-    local args = dialog.data
-    local hexStr = args.hexCode --[[@as string]]
+    local args <const> = dialog.data
+    local hexStr <const> = args.hexCode --[[@as string]]
     if #hexStr > 5 then
-        local hexRgb = tonumber(hexStr, 16)
+        local hexRgb <const> = tonumber(hexStr, 16)
         if hexRgb then
-            local r255 = hexRgb >> 0x10 & 0xff
-            local g255 = hexRgb >> 0x08 & 0xff
-            local b255 = hexRgb & 0xff
+            local r255 <const> = hexRgb >> 0x10 & 0xff
+            local g255 <const> = hexRgb >> 0x08 & 0xff
+            local b255 <const> = hexRgb & 0xff
 
             -- Add a previous and mix with previous.
             primary = Color { r = r255, g = g255, b = b255, a = 255 }
             dialog:modify { id = "baseColor", colors = { primary } }
             dialog:modify { id = "alpha", value = 255 }
 
-            local srgb = aseColorToRgb01(primary)
-            local lab = ok_color.srgb_to_oklab(srgb)
+            local srgb <const> = aseColorToRgb01(primary)
+            local lab <const> = ok_color.srgb_to_oklab(srgb)
 
             setLab(dialog, lab)
             setHsl(dialog, ok_color.oklab_to_okhsl(lab))
@@ -584,8 +584,8 @@ local function setFromAse(dialog, aseColor, primary, shades)
     dialog:modify { id = "alpha", value = primary.alpha }
     dialog:modify { id = "hexCode", text = colorToHexWeb(primary) }
 
-    local srgb = aseColorToRgb01(primary)
-    local lab = ok_color.srgb_to_oklab(srgb)
+    local srgb <const> = aseColorToRgb01(primary)
+    local lab <const> = ok_color.srgb_to_oklab(srgb)
 
     setLab(dialog, lab)
     setHsl(dialog, ok_color.oklab_to_okhsl(lab))
@@ -599,59 +599,59 @@ end
 ---@param primary Color
 ---@param shades Color[]
 local function updateColor(dialog, primary, shades)
-    local args = dialog.data
-    local alpha = args.alpha --[[@as integer]]
-    local colorMode = args.colorMode --[[@as string]]
+    local args <const> = dialog.data
+    local alpha <const> = args.alpha --[[@as integer]]
+    local colorMode <const> = args.colorMode --[[@as string]]
 
     if colorMode == "HSV" then
-        local hsvHue = args.hsvHue --[[@as integer]]
-        local hsvSat = args.hsvSat --[[@as integer]]
-        local hsvVal = args.hsvVal --[[@as integer]]
+        local hsvHue <const> = args.hsvHue --[[@as integer]]
+        local hsvSat <const> = args.hsvSat --[[@as integer]]
+        local hsvVal <const> = args.hsvVal --[[@as integer]]
 
-        local lab = ok_color.okhsv_to_oklab({
+        local lab <const> = ok_color.okhsv_to_oklab({
             h = hsvHue / 360.0,
             s = hsvSat / 255.0,
             v = hsvVal / 255.0
         })
-        local rgb01 = ok_color.oklab_to_srgb(lab)
+        local rgb01 <const> = ok_color.oklab_to_srgb(lab)
         primary = srgb01ToAseColor(rgb01, alpha)
 
         -- Update other color sliders.
-        local hsl = ok_color.oklab_to_okhsl(lab)
+        local hsl <const> = ok_color.oklab_to_okhsl(lab)
         setHsl(dialog, hsl)
         setLab(dialog, lab)
     elseif colorMode == "LAB" then
-        local labLgt = args.labLgt --[[@as integer]]
-        local labA = args.labA --[[@as integer]]
-        local labB = args.labB --[[@as integer]]
-        local lab = {
+        local labLgt <const> = args.labLgt --[[@as integer]]
+        local labA <const> = args.labA --[[@as integer]]
+        local labB <const> = args.labB --[[@as integer]]
+        local lab <const> = {
             L = labLgt / 255.0,
             a = labA * 0.001,
             b = labB * 0.001
         }
-        local rgb01 = ok_color.oklab_to_srgb(lab)
+        local rgb01 <const> = ok_color.oklab_to_srgb(lab)
         primary = srgb01ToAseColor(rgb01, alpha)
 
         -- Update other color sliders.
-        local hsl = ok_color.oklab_to_okhsl(lab)
-        local hsv = ok_color.oklab_to_okhsv(lab)
+        local hsl <const> = ok_color.oklab_to_okhsl(lab)
+        local hsv <const> = ok_color.oklab_to_okhsv(lab)
         setHsl(dialog, hsl)
         setHsv(dialog, hsv)
     else
-        local hslHue = args.hslHue --[[@as integer]]
-        local hslSat = args.hslSat --[[@as integer]]
-        local hslLgt = args.hslLgt --[[@as integer]]
+        local hslHue <const> = args.hslHue --[[@as integer]]
+        local hslSat <const> = args.hslSat --[[@as integer]]
+        local hslLgt <const> = args.hslLgt --[[@as integer]]
 
-        local lab = ok_color.okhsl_to_oklab({
+        local lab <const> = ok_color.okhsl_to_oklab({
             h = hslHue / 360.0,
             s = hslSat / 255.0,
             l = hslLgt / 255.0
         })
-        local rgb01 = ok_color.oklab_to_srgb(lab)
+        local rgb01 <const> = ok_color.oklab_to_srgb(lab)
         primary = srgb01ToAseColor(rgb01, alpha)
 
         -- Update other color sliders.
-        local hsv = ok_color.oklab_to_okhsv(lab)
+        local hsv <const> = ok_color.oklab_to_okhsv(lab)
         setHsv(dialog, hsv)
         setLab(dialog, lab)
     end
@@ -670,7 +670,7 @@ local function updateColor(dialog, primary, shades)
     updateShades(dialog, shades)
 end
 
-local palColors = {
+local palColors <const> = {
     Color { r = 0, g = 0, b = 0, a = 0 },
     Color { r = 0, g = 0, b = 0 },
     Color { r = 255, g = 255, b = 255 },
@@ -688,9 +688,9 @@ local palColors = {
     Color { r = 153, g = 27, b = 88 }
 }
 
-local colorModes = { "HSL", "HSV", "LAB" }
+local colorModes <const> = { "HSL", "HSV", "LAB" }
 
-local harmonies = {
+local harmonies <const> = {
     "ANALOGOUS",
     "COMPLEMENT",
     "NONE",
@@ -700,8 +700,8 @@ local harmonies = {
     "TRIADIC"
 }
 
-local primary = Color { r = 255, g = 0, b = 0 }
-local shades = {
+local primary <const> = Color { r = 255, g = 0, b = 0 }
+local shades <const> = {
     Color { r = 113, g = 9, b = 30 },
     Color { r = 148, g = 21, b = 43 },
     Color { r = 183, g = 37, b = 54 },
@@ -710,7 +710,7 @@ local shades = {
     Color { r = 244, g = 139, b = 104 },
     Color { r = 248, g = 178, b = 139 }
 }
-local dlg = Dialog { title = "OkHsl Color Picker" }
+local dlg <const> = Dialog { title = "OkHsl Color Picker" }
 
 dlg:button {
     id = "fgGet",
@@ -753,7 +753,7 @@ dlg:shades {
     mode = "pick",
     colors = { defaults.base },
     onclick = function(ev)
-        local button = ev.button
+        local button <const> = ev.button
         if button == MouseButton.LEFT then
             app.fgColor = assignColor(ev.color)
         elseif button == MouseButton.RIGHT then
@@ -772,8 +772,8 @@ dlg:combobox {
     option = defaults.colorMode,
     options = colorModes,
     onchange = function()
-        local args = dlg.data
-        local colorMode = args.colorMode --[[@as string]]
+        local args <const> = dlg.data
+        local colorMode <const> = args.colorMode --[[@as string]]
 
         local isHsl = colorMode == "HSL"
         dlg:modify { id = "hslHue", visible = isHsl }
@@ -790,11 +790,11 @@ dlg:combobox {
         dlg:modify { id = "labA", visible = isLab }
         dlg:modify { id = "labB", visible = isLab }
 
-        local showWheel = args.showWheelSettings --[[@as boolean]]
-        local hslAxis = args.hslAxis --[[@as string]]
-        local hsvAxis = args.hsvAxis --[[@as string]]
-        local isLight = hslAxis == "LIGHTNESS"
-        local isValue = hsvAxis == "VALUE"
+        local showWheel <const> = args.showWheelSettings --[[@as boolean]]
+        local hslAxis <const> = args.hslAxis --[[@as string]]
+        local hsvAxis <const> = args.hsvAxis --[[@as string]]
+        local isLight <const> = hslAxis == "LIGHTNESS"
+        local isValue <const> = hsvAxis == "VALUE"
 
         local isSat = false
         if isHsl or isLab then
@@ -814,7 +814,7 @@ dlg:combobox {
         dlg:modify { id = "minSat", visible = showWheel and isSat }
         dlg:modify { id = "maxSat", visible = showWheel and isSat }
 
-        local showGradient = args.showGradientSettings --[[@as boolean]]
+        local showGradient <const> = args.showGradientSettings --[[@as boolean]]
         if showGradient then
             dlg:modify { id = "hueDir", visible = not isLab }
         end
@@ -969,8 +969,8 @@ dlg:combobox {
     options = harmonies,
     visible = defaults.showHarmonies,
     onchange = function()
-        local args = dlg.data
-        local md = args.harmonyType --[[@as string]]
+        local args <const> = dlg.data
+        local md <const> = args.harmonyType --[[@as string]]
         if md == "NONE" then
             dlg:modify { id = "analogous", visible = false }
             dlg:modify { id = "complement", visible = false }
@@ -1000,7 +1000,7 @@ dlg:shades {
     colors = defaults.analogies,
     visible = defaults.harmonyType == "ANALOGOUS",
     onclick = function(ev)
-        local button = ev.button
+        local button <const> = ev.button
         if button == MouseButton.LEFT then
             app.fgColor = assignColor(ev.color)
         elseif button == MouseButton.RIGHT then
@@ -1020,7 +1020,7 @@ dlg:shades {
     colors = defaults.complement,
     visible = defaults.harmonyType == "COMPLEMENT",
     onclick = function(ev)
-        local button = ev.button
+        local button <const> = ev.button
         if button == MouseButton.LEFT then
             app.fgColor = assignColor(ev.color)
         elseif button == MouseButton.RIGHT then
@@ -1038,7 +1038,7 @@ dlg:shades {
     colors = shades,
     visible = defaults.harmonyType == "SHADING",
     onclick = function(ev)
-        local button = ev.button
+        local button <const> = ev.button
         if button == MouseButton.LEFT then
             app.fgColor = assignColor(ev.color)
         elseif button == MouseButton.RIGHT then
@@ -1058,12 +1058,12 @@ dlg:button {
     visible = defaults.harmonyType == "SHADING",
     onclick = function()
         ---@diagnostic disable-next-line: deprecated
-        local activeSprite = app.activeSprite
+        local activeSprite <const> = app.activeSprite
         if activeSprite then
-            local palette = activeSprite.palettes[1]
-            local oldLen = #palette
-            local shadingCount = defaults.shadingCount
-            local newLen = oldLen + shadingCount
+            local palette <const> = activeSprite.palettes[1]
+            local oldLen <const> = #palette
+            local shadingCount <const> = defaults.shadingCount
+            local newLen <const> = oldLen + shadingCount
 
             app.transaction(function()
                 palette:resize(newLen)
@@ -1091,7 +1091,7 @@ dlg:shades {
     colors = defaults.splits,
     visible = defaults.harmonyType == "SPLIT",
     onclick = function(ev)
-        local button = ev.button
+        local button <const> = ev.button
         if button == MouseButton.LEFT then
             app.fgColor = assignColor(ev.color)
         elseif button == MouseButton.RIGHT then
@@ -1111,7 +1111,7 @@ dlg:shades {
     colors = defaults.squares,
     visible = defaults.harmonyType == "SQUARE",
     onclick = function(ev)
-        local button = ev.button
+        local button <const> = ev.button
         if button == MouseButton.LEFT then
             app.fgColor = assignColor(ev.color)
         elseif button == MouseButton.RIGHT then
@@ -1131,7 +1131,7 @@ dlg:shades {
     colors = defaults.triads,
     visible = defaults.harmonyType == "TRIADIC",
     onclick = function(ev)
-        local button = ev.button
+        local button <const> = ev.button
         if button == MouseButton.LEFT then
             app.fgColor = assignColor(ev.color)
         elseif button == MouseButton.RIGHT then
@@ -1150,9 +1150,9 @@ dlg:check {
     text = "Gradient",
     selected = defaults.showGradientSettings,
     onclick = function()
-        local args = dlg.data
-        local state = args.showGradientSettings --[[@as boolean]]
-        local colorMode = args.colorMode --[[@as string]]
+        local args <const> = dlg.data
+        local state <const> = args.showGradientSettings --[[@as boolean]]
+        local colorMode <const> = args.colorMode --[[@as string]]
         dlg:modify { id = "swatchCount", visible = state }
         dlg:modify { id = "hueDir", visible = state and colorMode ~= "LAB" }
     end
@@ -1163,16 +1163,16 @@ dlg:check {
     text = "Wheel",
     selected = defaults.showWheelSettings,
     onclick = function()
-        local args = dlg.data
-        local state = args.showWheelSettings --[[@as boolean]]
-        local colorMode = args.colorMode --[[@as string]]
-        local isLab = colorMode == "LAB"
-        local isHsl = colorMode == "HSL"
-        local isHsv = colorMode == "HSV"
-        local hslAxis = args.hslAxis --[[@as string]]
-        local hsvAxis = args.hsvAxis --[[@as string]]
-        local isLight = hslAxis == "LIGHTNESS"
-        local isValue = hsvAxis == "VALUE"
+        local args <const> = dlg.data
+        local state <const> = args.showWheelSettings --[[@as boolean]]
+        local colorMode <const> = args.colorMode --[[@as string]]
+        local isLab <const> = colorMode == "LAB"
+        local isHsl <const> = colorMode == "HSL"
+        local isHsv <const> = colorMode == "HSV"
+        local hslAxis <const> = args.hslAxis --[[@as string]]
+        local hsvAxis <const> = args.hsvAxis --[[@as string]]
+        local isLight <const> = hslAxis == "LIGHTNESS"
+        local isValue <const> = hsvAxis == "VALUE"
 
         local isSat = false
         if isHsl or isLab then
@@ -1231,10 +1231,10 @@ dlg:combobox {
         and (defaults.colorMode == "HSL"
             or defaults.colorMode == "LAB"),
     onchange = function()
-        local args = dlg.data
-        local hslAxis = args.hslAxis --[[@as string]]
-        local isLight = hslAxis == "LIGHTNESS"
-        local isSat = hslAxis == "SATURATION"
+        local args <const> = dlg.data
+        local hslAxis <const> = args.hslAxis --[[@as string]]
+        local isLight <const> = hslAxis == "LIGHTNESS"
+        local isSat <const> = hslAxis == "SATURATION"
         dlg:modify { id = "minSat", visible = isSat }
         dlg:modify { id = "maxSat", visible = isSat }
         dlg:modify { id = "minLight", visible = isLight }
@@ -1252,10 +1252,10 @@ dlg:combobox {
     visible = defaults.showWheelSettings
         and defaults.colorMode == "HSV",
     onchange = function()
-        local args = dlg.data
-        local hsvAxis = args.hsvAxis --[[@as string]]
-        local isValue = hsvAxis == "VALUE"
-        local isSat = hsvAxis == "SATURATION"
+        local args <const> = dlg.data
+        local hsvAxis <const> = args.hsvAxis --[[@as string]]
+        local isValue <const> = hsvAxis == "VALUE"
+        local isSat <const> = hsvAxis == "SATURATION"
         dlg:modify { id = "minSat", visible = isSat }
         dlg:modify { id = "maxSat", visible = isSat }
         dlg:modify { id = "minValue", visible = isValue }
@@ -1384,24 +1384,23 @@ dlg:button {
     text = "&GRD",
     focus = false,
     onclick = function()
-        local args = dlg.data
-        local gradWidth = defaults.gradWidth
-        local gradHeight = defaults.gradHeight
-        local colorMode = args.colorMode or defaults.colorMode --[[@as string]]
-        local swatchCount = args.swatchCount or defaults.swatchCount --[[@as integer]]
-        local hueDir = args.hueDir or defaults.hueDir --[[@as string]]
+        local args <const> = dlg.data
+        local gradWidth <const> = defaults.gradWidth
+        local gradHeight <const> = defaults.gradHeight
+        local colorMode <const> = args.colorMode or defaults.colorMode --[[@as string]]
+        local swatchCount <const> = args.swatchCount or defaults.swatchCount --[[@as integer]]
+        local hueDir <const> = args.hueDir or defaults.hueDir --[[@as string]]
 
-        -- TODO: How to handle the case where fore and
-        -- background colors are the same?
-        local foreColor = app.fgColor
-        local foreHex = 0xff000000 | foreColor.rgbaPixel
-        local foreSrgb01 = aseColorToRgb01(foreColor)
-        local foreLab = ok_color.srgb_to_oklab(foreSrgb01)
+        -- TODO: Replace with string bytes method.
+        local foreColor <const> = app.fgColor
+        local foreHex <const> = 0xff000000 | foreColor.rgbaPixel
+        local foreSrgb01 <const> = aseColorToRgb01(foreColor)
+        local foreLab <const> = ok_color.srgb_to_oklab(foreSrgb01)
 
-        local backColor = app.bgColor
-        local backHex = 0xff000000 | backColor.rgbaPixel
-        local backSrgb01 = aseColorToRgb01(backColor)
-        local backLab = ok_color.srgb_to_oklab(backSrgb01)
+        local backColor <const> = app.bgColor
+        local backHex <const> = 0xff000000 | backColor.rgbaPixel
+        local backSrgb01 <const> = aseColorToRgb01(backColor)
+        local backLab <const> = ok_color.srgb_to_oklab(backSrgb01)
 
         local hueFunc = lerpAngleNear
         if hueDir == "CW" then
@@ -1410,49 +1409,51 @@ dlg:button {
             hueFunc = lerpAngleCcw
         end
 
-        ---@param fac number
-        ---@return integer
-        local lerpLab = function(fac)
-            local u = 1.0 - fac
-            local cL = u * backLab.L + fac * foreLab.L
-            local ca = u * backLab.a + fac * foreLab.a
-            local cb = u * backLab.b + fac * foreLab.b
-            local csrgb01 = ok_color.oklab_to_srgb({ L = cL, a = ca, b = cb })
+        ---@type fun(fac: number): integer
+        local lerpLab <const> = function(fac)
+            local u <const> = 1.0 - fac
+            local csrgb01 <const> = ok_color.oklab_to_srgb({
+                L = u * backLab.L + fac * foreLab.L,
+                a = u * backLab.a + fac * foreLab.a,
+                b = u * backLab.b + fac * foreLab.b
+            })
             return srgb01ToHex(csrgb01)
         end
 
         local lerpFunc = lerpLab
         if colorMode == "HSL" then
-            local foreHsl = ok_color.oklab_to_okhsl(foreLab)
-            local backHsl = ok_color.oklab_to_okhsl(backLab)
+            local foreHsl <const> = ok_color.oklab_to_okhsl(foreLab)
+            local backHsl <const> = ok_color.oklab_to_okhsl(backLab)
             if foreHsl.s < 0.00001 or backHsl.s < 0.00001 then
                 lerpFunc = lerpLab
             else
                 lerpFunc = function(fac)
                     if fac <= 0.0 then return backHex end
                     if fac >= 1.0 then return foreHex end
-                    local u = 1.0 - fac
-                    local ch = hueFunc(backHsl.h, foreHsl.h, fac, 1.0)
-                    local cs = u * backHsl.s + fac * foreHsl.s
-                    local cl = u * backHsl.l + fac * foreHsl.l
-                    local csrgb01 = ok_color.okhsl_to_srgb({ h = ch, s = cs, l = cl })
+                    local u <const> = 1.0 - fac
+                    local csrgb01 = ok_color.okhsl_to_srgb({
+                        h = hueFunc(backHsl.h, foreHsl.h, fac, 1.0),
+                        s = u * backHsl.s + fac * foreHsl.s,
+                        l = u * backHsl.l + fac * foreHsl.l
+                    })
                     return srgb01ToHex(csrgb01)
                 end
             end
         elseif colorMode == "HSV" then
-            local foreHsv = ok_color.oklab_to_okhsv(foreLab)
-            local backHsv = ok_color.oklab_to_okhsv(backLab)
+            local foreHsv <const> = ok_color.oklab_to_okhsv(foreLab)
+            local backHsv <const> = ok_color.oklab_to_okhsv(backLab)
             if foreHsv.s < 0.00001 or backHsv.s < 0.00001 then
                 lerpFunc = lerpLab
             else
                 lerpFunc = function(fac)
                     if fac <= 0.0 then return backHex end
                     if fac >= 1.0 then return foreHex end
-                    local u = 1.0 - fac
-                    local ch = hueFunc(backHsv.h, foreHsv.h, fac, 1.0)
-                    local cs = u * backHsv.s + fac * foreHsv.s
-                    local cv = u * backHsv.v + fac * foreHsv.v
-                    local csrgb01 = ok_color.okhsv_to_srgb({ h = ch, s = cs, v = cv })
+                    local u <const> = 1.0 - fac
+                    local csrgb01 = ok_color.okhsv_to_srgb({
+                        h = hueFunc(backHsv.h, foreHsv.h, fac, 1.0),
+                        s = u * backHsv.s + fac * foreHsv.s,
+                        v = u * backHsv.v + fac * foreHsv.v
+                    })
                     return srgb01ToHex(csrgb01)
                 end
             end
@@ -1505,15 +1506,15 @@ dlg:button {
             segImg, Point(0, halfHeight))
 
         -- Set palette.
-        local pal = Palette(palIdx)
+        local pal <const> = Palette(palIdx)
         for k, v in pairs(swatchesDict) do
             pal:setColor(v, k)
         end
         gradSprite:setPalette(pal)
 
         -- Turn off onion skin loop through tag frames.
-        local docPrefs = app.preferences.document(gradSprite)
-        local onionSkinPrefs = docPrefs.onionskin
+        local docPrefs <const> = app.preferences.document(gradSprite)
+        local onionSkinPrefs <const> = docPrefs.onionskin
         onionSkinPrefs.loop_tag = false
 
         app.refresh()
@@ -1530,37 +1531,37 @@ dlg:button {
         -- hex code #0009c5.
 
         -- Cache methods.
-        local atan2 = math.atan
-        local sqrt = math.sqrt
-        local trunc = math.floor
-        local max = math.max
-        local min = math.min
-        local hsl_to_srgb = ok_color.okhsl_to_srgb
-        local hsv_to_srgb = ok_color.okhsv_to_srgb
+        local atan2 <const> = math.atan
+        local sqrt <const> = math.sqrt
+        local trunc <const> = math.floor
+        local max <const> = math.max
+        local min <const> = math.min
+        local hsl_to_srgb <const> = ok_color.okhsl_to_srgb
+        local hsv_to_srgb <const> = ok_color.okhsv_to_srgb
 
         -- Unpack arguments.
-        local args = dlg.data
-        local size = args.size or defaults.size --[[@as integer]]
-        local szInv = 1.0 / (size - 1.0)
+        local args <const> = dlg.data
+        local size <const> = args.size or defaults.size --[[@as integer]]
+        local szInv <const> = 1.0 / (size - 1.0)
         local iToStep = 1.0
-        local reqFrames = args.frames or defaults.frames --[[@as integer]]
+        local reqFrames <const> = args.frames or defaults.frames --[[@as integer]]
         if reqFrames > 1 then iToStep = 1.0 / (reqFrames - 1.0) end
-        local colorMode = args.colorMode or defaults.colorMode --[[@as string]]
-        local hslAxis = args.hslAxis or defaults.hslAxis --[[@as string]]
-        local hsvAxis = args.hsvAxis or defaults.hsvAxis --[[@as string]]
+        local colorMode <const> = args.colorMode or defaults.colorMode --[[@as string]]
+        local hslAxis <const> = args.hslAxis or defaults.hslAxis --[[@as string]]
+        local hsvAxis <const> = args.hsvAxis or defaults.hsvAxis --[[@as string]]
         local minLgt = args.minLight or defaults.minLight --[[@as number]]
         local maxLgt = args.maxLight or defaults.maxLight --[[@as number]]
         local minVal = args.minValue or defaults.minValue --[[@as number]]
         local maxVal = args.maxValue or defaults.maxValue --[[@as number]]
         local minSat = args.minSat or defaults.minSat --[[@as number]]
         local maxSat = args.maxSat or defaults.maxSat --[[@as number]]
-        local ringCount = args.ringCount or defaults.ringCount --[[@as integer]]
-        local sectorCount = args.sectorCount or defaults.sectorCount --[[@as integer]]
-        local remapHue = args.remapHue --[[@as boolean]]
+        local ringCount <const> = args.ringCount or defaults.ringCount --[[@as integer]]
+        local sectorCount <const> = args.sectorCount or defaults.sectorCount --[[@as integer]]
+        local remapHue <const> = args.remapHue --[[@as boolean]]
 
         -- Offset by 30 degrees to match Aseprite's color wheel.
-        local angleOffset = math.rad(30.0)
-        local lenRemapTable = #rybHueRemapTable
+        local angleOffset <const> = math.rad(30.0)
+        local lenRemapTable <const> = #rybHueRemapTable
 
         minSat = minSat / 255.0
         maxSat = maxSat / 255.0
@@ -1578,12 +1579,12 @@ dlg:button {
         end
 
         ---@type Image[]
-        local wheelImgs = {}
+        local wheelImgs <const> = {}
         for i = 1, reqFrames, 1 do
-            local wheelImg = Image(size, size)
+            local wheelImg <const> = Image(size, size)
 
             -- Calculate light from frame count.
-            local fac0 = (i - 1.0) * iToStep
+            local fac0 <const> = (i - 1.0) * iToStep
             local sat = minSat
             local light = minLgt
             local value = minVal
@@ -1596,22 +1597,23 @@ dlg:button {
                 light = (1.0 - fac0) * minLgt + fac0 * maxLgt
             end
 
+            -- TODO: Refactor to use string.bytes.
             -- Iterate over image pixels.
-            local pxItr = wheelImg:pixels()
+            local pxItr <const> = wheelImg:pixels()
             for pixel in pxItr do
                 -- Find rise.
-                local y = pixel.y
-                local yNrm = y * szInv
-                local ySgn = 1.0 - (yNrm + yNrm)
+                local y <const> = pixel.y
+                local yNrm <const> = y * szInv
+                local ySgn <const> = 1.0 - (yNrm + yNrm)
 
                 -- Find run.
-                local x = pixel.x
-                local xNrm = x * szInv
-                local xSgn = xNrm + xNrm - 1.0
+                local x <const> = pixel.x
+                local xNrm <const> = x * szInv
+                local xSgn <const> = xNrm + xNrm - 1.0
 
                 -- Find square magnitude.
                 -- Magnitude correlates with saturation.
-                local magSq = xSgn * xSgn + ySgn * ySgn
+                local magSq <const> = xSgn * xSgn + ySgn * ySgn
                 if magSq <= 1.0 then
                     local srgb = { r = 0.0, g = 0.0, b = 0.0 }
 
@@ -1625,11 +1627,11 @@ dlg:button {
 
                     -- Remap hue to RYB color wheel.
                     if remapHue then
-                        local hueScaled = hue * (lenRemapTable - 1)
-                        local hueIdx = trunc(hueScaled)
-                        local hueFrac = hueScaled - hueIdx
-                        local aHue = rybHueRemapTable[1 + hueIdx]
-                        local bHue = rybHueRemapTable[1 + (hueIdx + 1) % lenRemapTable]
+                        local hueScaled <const> = hue * (lenRemapTable - 1)
+                        local hueIdx <const> = trunc(hueScaled)
+                        local hueFrac <const> = hueScaled - hueIdx
+                        local aHue <const> = rybHueRemapTable[1 + hueIdx]
+                        local bHue <const> = rybHueRemapTable[1 + (hueIdx + 1) % lenRemapTable]
                         hue = (1.0 - hueFrac) * aHue + hueFrac * bHue
                     end
 
@@ -1668,7 +1670,7 @@ dlg:button {
                     srgb.b = min(max(srgb.b, 0.0), 1.0)
 
                     -- Composite into a 32-bit integer.
-                    local hex = 0xff000000
+                    local hex <const> = 0xff000000
                         | trunc(srgb.b * 255 + 0.5) << 0x10
                         | trunc(srgb.g * 255 + 0.5) << 0x08
                         | trunc(srgb.r * 255 + 0.5)
@@ -1691,16 +1693,16 @@ dlg:button {
         -- end
 
         preserveForeBack()
-        local sprite = Sprite(size, size)
-        local oldFrameLen = #sprite.frames
-        local needed = math.max(0, reqFrames - oldFrameLen)
-        local fps = args.fps or defaults.fps --[[@as integer]]
-        local duration = 1.0 / math.max(1, fps)
+        local sprite <const> = Sprite(size, size)
+        local oldFrameLen <const> = #sprite.frames
+        local needed <const> = math.max(0, reqFrames - oldFrameLen)
+        local fps <const> = args.fps or defaults.fps --[[@as integer]]
+        local duration <const> = 1.0 / math.max(1, fps)
         sprite.frames[1].duration = duration
-        local newFrames = createNewFrames(sprite, needed, duration)
+        createNewFrames(sprite, needed, duration)
 
         -- Set first layer to gamut.
-        local gamutLayer = sprite.layers[1]
+        local gamutLayer <const> = sprite.layers[1]
         gamutLayer.name = "Color Wheel"
 
         -- Create gamut layer cels.
@@ -1732,8 +1734,8 @@ dlg:button {
         end
 
         -- Turn off onion skin loop through tag frames.
-        local docPrefs = app.preferences.document(sprite)
-        local onionSkinPrefs = docPrefs.onionskin
+        local docPrefs <const> = app.preferences.document(sprite)
+        local onionSkinPrefs <const> = docPrefs.onionskin
         onionSkinPrefs.loop_tag = false
 
         app.refresh()
@@ -1748,4 +1750,7 @@ dlg:button {
     end
 }
 
-dlg:show { wait = false }
+dlg:show {
+    autoscrollbars = false,
+    wait = false
+}
