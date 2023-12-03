@@ -64,8 +64,7 @@ local function adjustColor(
     hScl, sScl, lScl, vScl, aAdj,
     useHsv,
     useCool, useOmit, useZero, useWarm,
-    hVio, hYel, hZero
-)
+    hVio, hYel, hZero)
     local r8n = 0
     local g8n = 0
     local b8n = 0
@@ -148,6 +147,82 @@ local function adjustColor(
     end
 
     return r8n, g8n, b8n, a8n
+end
+
+---@param srcImg Image
+---@return Image
+local function adjustImage(
+    srcImg,
+    hScl, sScl, lScl, vScl, aAdj,
+    useHsv,
+    useCool, useOmit, useZero, useWarm,
+    hVio, hYel, hZero)
+    local srcpxitr <const> = srcImg:pixels()
+    ---@type table<integer, boolean>
+    local srcDict <const> = {}
+    for pixel in srcpxitr do
+        srcDict[pixel()] = true
+    end
+
+    ---@type table<integer, integer>
+    local trgDict <const> = {}
+
+    -- Cache methods.
+    local pixelColor <const> = app.pixelColor
+    local decompA <const> = pixelColor.rgbaA
+    local decompB <const> = pixelColor.rgbaB
+    local decompG <const> = pixelColor.rgbaG
+    local decompR <const> = pixelColor.rgbaR
+    local composeRgba <const> = pixelColor.rgba
+
+    local decompAGray <const> = pixelColor.grayaA
+    local decompVGray <const> = pixelColor.grayaV
+    local composeGray <const> = pixelColor.graya
+
+    if srcImg.colorMode == ColorMode.GRAY then
+        for k, _ in pairs(srcDict) do
+            local v8 <const> = decompVGray(k)
+            local a8 <const> = decompAGray(k)
+
+            local r8n <const>,
+            g8n <const>,
+            b8n <const>,
+            a8n <const> = adjustColor(
+                v8, v8, v8, a8,
+                hScl, sScl, lScl, vScl, aAdj,
+                useHsv,
+                false, true, false, false,
+                hVio, hYel, hZero)
+
+            trgDict[k] = composeGray(b8n, a8n)
+        end
+    else
+        for k, _ in pairs(srcDict) do
+            local r8 <const> = decompR(k)
+            local g8 <const> = decompG(k)
+            local b8 <const> = decompB(k)
+            local a8 <const> = decompA(k)
+
+            local r8n <const>,
+            g8n <const>,
+            b8n <const>,
+            a8n <const> = adjustColor(
+                r8, g8, b8, a8,
+                hScl, sScl, lScl, vScl, aAdj,
+                useHsv,
+                useCool, useOmit, useZero, useWarm,
+                hVio, hYel, hZero)
+
+            trgDict[k] = composeRgba(r8n, g8n, b8n, a8n)
+        end
+    end
+
+    local trgImg <const> = srcImg:clone()
+    local trgPxItr <const> = trgImg:pixels()
+    for pixel in trgPxItr do
+        pixel(trgDict[pixel()])
+    end
+    return trgImg
 end
 
 local dlg <const> = Dialog { title = "Adjust OkColor" }
@@ -257,11 +332,8 @@ dlg:button {
         end
 
         ---@diagnostic disable-next-line: deprecated
-        local activeFrame <const> = api26 and app.frame or app.activeFrame
-        if not activeFrame then
-            app.alert { title = "Error", text = "There is no active frame." }
-            return
-        end
+        local activeFrame <const> = (api26 and app.frame or app.activeFrame)
+            or activeSprite.frames[1]
 
         local args <const> = dlg.data
         local target <const> = args.target or defaults.target --[[@as string]]
@@ -295,7 +367,8 @@ dlg:button {
         local colorMode <const> = specSprite.colorMode
         if colorMode == ColorMode.INDEXED then
             -- Prevent background images from containing transparency.
-            local aAdjCurr <const> = activeSprite.backgroundLayer and 0 or aAdj
+            local aAdjCurr <const> = activeSprite.backgroundLayer
+                and 0 or aAdj
 
             local alphaIdx <const> = specSprite.transparentColor
 
@@ -351,6 +424,26 @@ dlg:button {
             return
         end
 
+        -- Tile sets need to have a unique identifier so that they can be
+        -- adjusted only once in case they are used by multiple layers.
+        local tilesets <const> = activeSprite.tilesets
+        local lenTilesets <const> = tilesets and #tilesets or 0
+        if lenTilesets > 0 then
+            app.transaction("Set Tileset IDs", function()
+                math.randomseed(os.time())
+                local minint64 <const> = 0x1000000000000000
+                local maxint64 <const> = 0x7fffffffffffffff
+
+                local rng <const> = math.random
+                local i = 0
+                while i < lenTilesets do
+                    i = i + 1
+                    local tileset = tilesets[i]
+                    tileset.properties["id"] = rng(minint64, maxint64)
+                end
+            end)
+        end
+
         ---@type Cel[]
         local chosenCels = {}
         if target == "ALL" then
@@ -364,13 +457,7 @@ dlg:button {
                 local spriteCel <const> = spriteCels[i]
                 local layer <const> = spriteCel.layer
 
-                -- Tile maps simply cannot be supported atm, because more than
-                -- one layer could use the same tile set, or a tile map layer
-                -- could have multiple frames, so the tile set would be changed
-                -- multiple times. There is currently no way to get a unique ID
-                -- on tile sets.
                 if (not layer.isReference)
-                    and (not layer.isTilemap)
                     and layer.isEditable
                     and layer.isVisible then
                     -- Warning: Images will not have an id attribute in older
@@ -405,87 +492,56 @@ dlg:button {
             }
         end
 
-        -- Cache loop methods.
-        local pixelColor <const> = app.pixelColor
-        local decompA <const> = pixelColor.rgbaA
-        local decompB <const> = pixelColor.rgbaB
-        local decompG <const> = pixelColor.rgbaG
-        local decompR <const> = pixelColor.rgbaR
-        local composeRgba <const> = pixelColor.rgba
-
-        local isGray <const> = colorMode == ColorMode.GRAY
-        local decompAGray <const> = pixelColor.grayaA
-        local decompVGray <const> = pixelColor.grayaV
-        local composeGray <const> = pixelColor.graya
+        ---@type table<integer, Tileset>
+        local usedTilesets <const> = {}
+        local lenTsUsed = 0
 
         app.transaction("OKHSL Adjust Cels", function()
             local h = 0
             while h < lenChosenCels do
                 h = h + 1
-                local srcCel = chosenCels[h]
-                local srcLayer = srcCel.layer
+                local srcCel <const> = chosenCels[h]
+                local srcLayer <const> = srcCel.layer
 
-                -- Prevent background images from containing transparency.
-                local aAdjCurr <const> = srcLayer.isBackground and 0 or aAdj
-
-                local srcImg <const> = srcCel.image
-                local srcpxitr <const> = srcImg:pixels()
-                ---@type table<integer, boolean>
-                local srcDict <const> = {}
-                for pixel in srcpxitr do
-                    srcDict[pixel()] = true
-                end
-
-                ---@type table<integer, integer>
-                local trgDict <const> = {}
-
-                if isGray then
-                    for k, _ in pairs(srcDict) do
-                        local v8 <const> = decompVGray(k)
-                        local a8 <const> = decompAGray(k)
-
-                        local r8n <const>,
-                        g8n <const>,
-                        b8n <const>,
-                        a8n <const> = adjustColor(
-                            v8, v8, v8, a8,
-                            hScl, sScl, lScl, vScl, aAdjCurr,
-                            useHsv,
-                            false, true, false, false,
-                            hVio, hYel, hZero)
-
-                        trgDict[k] = composeGray(b8n, a8n)
+                if srcLayer.isTilemap then
+                    local tileset <const> = srcLayer.tileset --[[@as Tileset]]
+                    local tsid <const> = tileset.properties["id"]
+                    if not usedTilesets[tsid] then
+                        lenTsUsed = lenTsUsed + 1
+                        usedTilesets[tsid] = tileset
                     end
                 else
-                    for k, _ in pairs(srcDict) do
-                        local r8 <const> = decompR(k)
-                        local g8 <const> = decompG(k)
-                        local b8 <const> = decompB(k)
-                        local a8 <const> = decompA(k)
-
-                        local r8n <const>,
-                        g8n <const>,
-                        b8n <const>,
-                        a8n <const> = adjustColor(
-                            r8, g8, b8, a8,
-                            hScl, sScl, lScl, vScl, aAdjCurr,
-                            useHsv,
-                            useCool, useOmit, useZero, useWarm,
-                            hVio, hYel, hZero)
-
-                        trgDict[k] = composeRgba(r8n, g8n, b8n, a8n)
-                    end
+                    -- Prevent background images from containing transparency.
+                    local aAdjCurr <const> = srcLayer.isBackground
+                        and 0 or aAdj
+                    local srcImg <const> = srcCel.image
+                    local trgImg <const> = adjustImage(
+                        srcImg, hScl, sScl, lScl, vScl, aAdjCurr,
+                        useHsv, useCool, useOmit, useZero, useWarm,
+                        hVio, hYel, hZero)
+                    srcCel.image = trgImg
                 end
-
-                local trgImg <const> = srcImg:clone()
-                local trgPxItr <const> = trgImg:pixels()
-                for pixel in trgPxItr do
-                    pixel(trgDict[pixel()])
-                end
-
-                srcCel.image = trgImg
             end
         end)
+
+        if lenTsUsed > 0 then
+            app.transaction("OKHSL Adjust Tilesets", function()
+                for _, tileset in pairs(usedTilesets) do
+                    local lenTileset <const> = #tileset
+                    local i = 0
+                    while i < lenTileset do
+                        local tile <const> = tileset:tile(i)
+                        local srcImg <const> = tile.image
+                        local trgImg <const> = adjustImage(
+                            srcImg, hScl, sScl, lScl, vScl, aAdj,
+                            useHsv, useCool, useOmit, useZero, useWarm,
+                            hVio, hYel, hZero)
+                        tile.image = trgImg
+                        i = i + 1
+                    end
+                end
+            end)
+        end
 
         app.refresh()
     end
