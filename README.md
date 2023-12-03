@@ -1,10 +1,10 @@
 # Okhsl for Aseprite
 
-This is a set of [Aseprite](https://www.aseprite.org/) dialogs that utilize [Okhsl](https://bottosson.github.io/posts/colorpicker/) to provide a color picker, gradient and color wheel generator, and a color adjustment filter.
+This is a set of [Aseprite](https://www.aseprite.org/) dialogs that utilize [Okhsl](https://bottosson.github.io/posts/colorpicker/) to provide a color picker, gradient, color wheel generator and an adjustment filter.
 
 Aseprite is an "animated sprite editor & pixel art tool." Okhsl is a color representation developed by Bjorn Ottosson to create an alternative to HSL that is based on human perception. Those looking for an interactive online comparison between Okhsl, [HSLuv](https://www.hsluv.org/) and traditional HSL should refer to this [article](https://bottosson.github.io/misc/colorpicker/).
 
-_These scripts were tested with Aseprite version 1.3.2._ RGB color mode, not indexed or gray mode, is assumed. Furthermore, [sRGB](https://www.wikiwand.com/en/SRGB) (standard RGB) is assumed to be the sprite's working color space. The color space can be changed under `Sprite > Properties`.
+_These scripts were tested with Aseprite version 1.3.2._ [sRGB](https://www.wikiwand.com/en/SRGB) (standard RGB) is assumed to be the sprite's working color space. The color space can be changed under `Sprite > Properties`.
 
 To modify these scripts, see Aseprite's [API Reference](https://github.com/aseprite/api). A [type definition](https://github.com/behreajj/aseprite-type-definition) for use with VS Code and the [Lua Language Server extension](https://github.com/LuaLS/lua-language-server) is also available.
 
@@ -18,9 +18,9 @@ Select `ok_picker` or `ok_hue_adj` to launch a dialog.
 
 If an error message in Aseprite's console appears, check if the script folder is on a file path that includes characters beyond [UTF-8](https://en.wikipedia.org/wiki/UTF-8), such as 'é' (e acute) or 'ö' (o umlaut). See this [thread](https://community.aseprite.org/t/script-folder-path-cannot-open-no-such-file-or-directory/16818) for discussion of the issue on the community forum.
 
- To assign a hotkey to a dialog go to `Edit > Keyboard Shortcuts`.
+To assign a hotkey to a dialog go to `Edit > Keyboard Shortcuts`.
  
- The underlined letters on each dialog button indicate that they work with keyboard shortcuts: `Alt+F` gets the foreground color, `Alt+B` gets the background color, `Alt+X` closes the dialog, `Alt+W` creates a wheel, `Alt+G` creates a gradient. When shading is active, `Alt+A` appends the swatches to the active palette.
+The underlined letters on each dialog button indicate that they work with keyboard shortcuts: `Alt+F` gets the foreground color, `Alt+B` gets the background color, `Alt+X` closes the dialog, `Alt+W` creates a wheel, `Alt+G` creates a gradient. When shading is active, `Alt+A` appends the swatches to the active palette.
 
 Left click on a color preview window to assign the color to the foreground. Right click to assign to the background. If the alpha channel slider is zero, the color assigned will be transparent black (`0x0` or `Color(0, 0, 0, 0)`).
 
@@ -61,6 +61,8 @@ This tool -- its harmony and shading features in particular -- is an imperfect a
 ### Color Adjustment
 
 A separate dialog allows for cel image adjustment with either `HSV` or `HSL`. `Alt+O` applies the adjustment, `Alt+X` cancels the dialog.
+
+_As of Aseprite version 1.3.2, all adjustments are made in-place. Indexed and grayscale color modes are also supported. When a tile map is selected, all tiles in the tile set that the map uses will be adjusted. To make this possible, a hacky unique ID is assigned to all tile sets in the sprite._
 
 ![Hue Adjustment](hueAdjust.png)
 
