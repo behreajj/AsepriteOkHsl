@@ -14,7 +14,7 @@ For example, Windows 10.
 The current supported version is 1.3.2.
 
 **Sprite color mode**
-Only RGB color mode is supported.
+RGB, indexed or grayscale.
 
 **Current behavior**
 A clear and concise description of current behavior.
