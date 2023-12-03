@@ -4,7 +4,7 @@ This is a set of [Aseprite](https://www.aseprite.org/) dialogs that utilize [Okh
 
 Aseprite is an "animated sprite editor & pixel art tool." Okhsl is a color representation developed by Bjorn Ottosson to create an alternative to HSL that is based on human perception. Those looking for an interactive online comparison between Okhsl, [HSLuv](https://www.hsluv.org/) and traditional HSL should refer to this [article](https://bottosson.github.io/misc/colorpicker/).
 
-_These scripts were tested with Aseprite version 1.2.40._ The goal is to maintain backwards compatibility with version 1.2 until 1.3 sees release. RGB color mode, not indexed or gray mode, is assumed. Furthermore, [sRGB](https://www.wikiwand.com/en/SRGB) (standard RGB) is assumed to be the sprite's working color space. The color space can be changed under `Sprite > Properties`.
+_These scripts were tested with Aseprite version 1.3.2._ RGB color mode, not indexed or gray mode, is assumed. Furthermore, [sRGB](https://www.wikiwand.com/en/SRGB) (standard RGB) is assumed to be the sprite's working color space. The color space can be changed under `Sprite > Properties`.
 
 To modify these scripts, see Aseprite's [API Reference](https://github.com/aseprite/api). A [type definition](https://github.com/behreajj/aseprite-type-definition) for use with VS Code and the [Lua Language Server extension](https://github.com/LuaLS/lua-language-server) is also available.
 

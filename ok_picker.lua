@@ -670,24 +670,6 @@ local function updateColor(dialog, primary, shades)
     updateShades(dialog, shades)
 end
 
-local palColors <const> = {
-    Color { r = 0, g = 0, b = 0, a = 0 },
-    Color { r = 0, g = 0, b = 0 },
-    Color { r = 255, g = 255, b = 255 },
-    Color { r = 220, g = 58, b = 58 },
-    Color { r = 242, g = 122, b = 42 },
-    Color { r = 254, g = 174, b = 20 },
-    Color { r = 253, g = 221, b = 25 },
-    Color { r = 202, g = 219, b = 29 },
-    Color { r = 134, g = 194, b = 60 },
-    Color { r = 3, g = 157, b = 105 },
-    Color { r = 0, g = 142, b = 150 },
-    Color { r = 0, g = 115, b = 156 },
-    Color { r = 2, g = 90, b = 156 },
-    Color { r = 98, g = 49, b = 121 },
-    Color { r = 153, g = 27, b = 88 }
-}
-
 local colorModes <const> = { "HSL", "HSV", "LAB" }
 
 local harmonies <const> = {
@@ -1687,14 +1669,6 @@ dlg:button {
             wheelImgs[i] = wheelImg
         end
 
-        local pal = nil
-        -- In case this causes pass by ref vs.
-        -- pass by value problems, comment out.
-        -- local oldSprite = app.activeSprite
-        -- if oldSprite then
-        --     pal = oldSprite.palettes[1]
-        -- end
-
         preserveForeBack()
         local sprite <const> = Sprite(size, size)
         local oldFrameLen <const> = #sprite.frames
@@ -1719,13 +1693,9 @@ dlg:button {
         end)
 
         -- Assign a palette.
-        if not pal then
-            pal = Palette(#palColors)
-            for i = 1, #palColors, 1 do
-                pal:setColor(i - 1, palColors[i])
-            end
+        if app.defaultPalette then
+            sprite:setPalette(app.defaultPalette)
         end
-        sprite:setPalette(pal)
 
         -- Because light correlates to frames, the middle
         -- frame should be the default.
