@@ -38,11 +38,11 @@ When the `WHL` button is clicked, a new sprite is created. When saturation varie
 
 ![Discrete Wheels](discreteWheels.png)
 
-Click on the `Settings` toggle for `Wheel` to show more options. For example, the `Sectors` and `Rings` sliders can be used to make the color wheel discrete in a fashion similar to Aseprite's built-in color wheels.
+Click on the `Settings` toggle for `Wheel` to show more options. For example, the `Sectors` and `Rings` sliders can be used to make the color wheel discrete in a fashion similar to Aseprite's built-in color wheels. The color property that varies by frame will depend on whether the `Mode` is `HSL` or `HSV`: the choice is between `SATURATION` and `LIGHTNESS` or between `SATURATION` and `VALUE`. 
 
-![Saturation Axis](altWheel0.png) ![Hue Remap](altWheel1.png)
+![Hue Remap Comparison](hueRemap.png)
 
-The color property that varies by frame will depend on whether the `Mode` is `HSL` or `HSV`: the choice is between `SATURATION` and `LIGHTNESS` or between `SATURATION` and `VALUE`. The hue can also be remapped to that of a red-yellow-blue color wheel.
+The hue can also be remapped to one of three options: RGB, RYGB and RYB.
 
 ### Gradient
 

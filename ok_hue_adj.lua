@@ -166,20 +166,13 @@ local function adjustImage(
 
     ---@type table<integer, integer>
     local trgDict <const> = {}
-
-    -- Cache methods.
     local pixelColor <const> = app.pixelColor
-    local decompA <const> = pixelColor.rgbaA
-    local decompB <const> = pixelColor.rgbaB
-    local decompG <const> = pixelColor.rgbaG
-    local decompR <const> = pixelColor.rgbaR
-    local composeRgba <const> = pixelColor.rgba
-
-    local decompAGray <const> = pixelColor.grayaA
-    local decompVGray <const> = pixelColor.grayaV
-    local composeGray <const> = pixelColor.graya
 
     if srcImg.colorMode == ColorMode.GRAY then
+        local decompAGray <const> = pixelColor.grayaA
+        local decompVGray <const> = pixelColor.grayaV
+        local composeGray <const> = pixelColor.graya
+
         for k, _ in pairs(srcDict) do
             local v8 <const> = decompVGray(k)
             local a8 <const> = decompAGray(k)
@@ -197,6 +190,12 @@ local function adjustImage(
             trgDict[k] = composeGray(b8n, a8n)
         end
     else
+        local decompA <const> = pixelColor.rgbaA
+        local decompB <const> = pixelColor.rgbaB
+        local decompG <const> = pixelColor.rgbaG
+        local decompR <const> = pixelColor.rgbaR
+        local composeRgba <const> = pixelColor.rgba
+
         for k, _ in pairs(srcDict) do
             local r8 <const> = decompR(k)
             local g8 <const> = decompG(k)
@@ -438,7 +437,7 @@ dlg:button {
                 local i = 0
                 while i < lenTilesets do
                     i = i + 1
-                    local tileset = tilesets[i]
+                    local tileset <const> = tilesets[i]
                     tileset.properties["id"] = rng(minint64, maxint64)
                 end
             end)

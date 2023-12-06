@@ -39,7 +39,7 @@ local defaults <const> = {
     swatchCount = 8,
     hueDir = "NEAR",
     showWheelSettings = false,
-    remapHue = false,
+    remapHue = "OKLAB",
     size = 256,
     hslAxis = "LIGHTNESS",
     hsvAxis = "VALUE",
@@ -80,27 +80,113 @@ local defaults <const> = {
     lgtDesatFac = 0.75,
     shdDesatFac = 0.75,
     srcLightWeight = 0.3333333333333333,
-    greenHue = 146 / 360.0,
+    greenHue = 146.0 / 360.0,
     minGreenOffset = 0.3,
     maxGreenOffset = 0.6,
     shadowHue = 291.0 / 360.0,
     dayHue = 96.0 / 360.0,
 }
 
-local rybHueRemapTable <const> = {
-    0.081205236645396,  -- ff0000ff
-    0.12435157961211,   -- ff006aff
-    0.19200283257828,   -- ff00a2ff
-    0.25491649730713,   -- ff00cfff
-    0.30491453354589,   -- ff00ffff
-    0.36815839311704,   -- ff1ad481
-    0.40458493819958,   -- ff33a900
-    0.46893967259811,   -- ff668415
-    0.70734287202901,   -- ffa65911
-    0.78714840881823,   -- ff922a3c
-    0.87751578482349,   -- ff850c69
-    1.0044874689047147, -- ff5500aa
-    1.081205236645396   -- ff0000ff
+local rybHueRemapTable24 <const> = {
+    0.081186489951701, --ff0000bc
+    0.088543402729094, --ff0021c9
+    0.10262364680987,  --ff0040d9
+    0.13403629399108,  --ff0066e2
+
+    0.17916243354554,  --ff008ae7
+    0.21949160794204,  --ff00a8ed
+    0.25320328186974,  --ff05c4f3
+    0.28293666595694,  --ff20e7fe
+
+    0.3045570947557,   --ff33fefe
+    0.36503532781409,  --ff00ffa1
+    0.39128411126471,  --ff00ff43
+    0.397020150612,    --ff1cff00
+
+    0.41735542065514,  --ff7aff00
+    0.48945464109323,  --ffd8ff00
+    0.62758432515209,  --ffa68200
+    0.71322973397372,  --ffce6401
+
+    0.73231601426016,  --fff24100
+    0.74106567631729,  --ffe7241b
+    0.75326079486957,  --ffc61528
+    0.79484301474327,  --ff97043b
+
+    0.86508195598932,  --ff6a004b
+    0.94537622442158,  --ff510367
+    1.016379461501466, --ff3c008a
+    1.062861707421092, --ff2100a7
+
+    1.081186489951701, --ff0000bc
+}
+
+local rgbHueRemapTable24 <const> = {
+    0.081186489951701,  --ff0000ff
+    0.095766555555779,  --ff0040ff
+    0.14659018427134,   --ff0080ff
+    0.23391826905505,   --ff00bfff
+
+    0.30496513648794,   --ff00ffff
+    0.34959701375912,   --ff00ffbf
+    0.37768750974757,   --ff00ff80
+    0.39166456136257,   --ff00ff40
+
+    0.39586436900711,   --ff00ff00
+    0.40113237655716,   --ff40ff00
+    0.41979583005808,   --ff80ff00
+    0.4629578833159,    --ffbfff00
+
+    0.54114119023916,   --ffffff00
+    0.64313742175205,   --ffffbf00
+    0.71173624990824,   --ffff8000
+    0.73287799718808,   --ffff4000
+
+    0.73349594598298,   --ffff0000
+    0.76053438187642,   --ffff0040
+    0.81602187489686,   --ffff0080
+    0.8694399396202,    --ffff00bf
+
+    0.91207209774771,   --ffff00ff
+    0.95478525659029,   --ffbf00ff
+    1.0072520521085758, --ff8000ff
+    1.058046802990062,  --ff4000ff
+
+    1.081186489951701,  --ff0000ff
+}
+
+local rygbHueRemapTable24 <const> = {
+    0.072237063394159,
+    0.095280383412942,
+    0.13208035564017,
+    0.16773270414916,
+
+    0.20028989647507,
+    0.23379645010808,
+    0.26494353051784,
+    0.29321548131135,
+
+    0.32196570822139,
+    0.34926312018934,
+    0.38151093005415,
+    0.40002040933732,
+
+    0.43068663559305,
+    0.45901928198972,
+    0.49871093920573,
+    0.54434781369171,
+
+    0.5969853889193,
+    0.67811627795289,
+    0.73479009641358,
+    0.78756293049826,
+
+    0.83860181840028,
+    0.89205663524978,
+    0.95304453455657,
+    1.021032964650062,
+
+    1.072237063394159,
 }
 
 ---@param ase Color
@@ -180,8 +266,8 @@ local function createNewFrames(sprite, count, duration)
     if valCount < 1 then valCount = 1 end
 
     ---@type Frame[]
-    local frames = {}
-    app.transaction(function()
+    local frames <const> = {}
+    app.transaction("Create Frames", function()
         for i = 1, valCount, 1 do
             local frame <const> = sprite:newEmptyFrame()
             frame.duration = valDur
@@ -1351,12 +1437,12 @@ dlg:slider {
 
 dlg:newrow { always = false }
 
-dlg:check {
+dlg:combobox {
     id = "remapHue",
-    label = "Remap:",
-    text = "Hue",
-    selected = defaults.remapHue,
-    visible = defaults.showGradientSettings
+    label = "Hue:",
+    option = defaults.remapHue,
+    options = { "RGB", "RYB", "RYGB", "OKLAB" },
+    visible = defaults.showWheelSettings
 }
 
 dlg:newrow { always = false }
@@ -1541,11 +1627,28 @@ dlg:button {
         local maxSat = args.maxSat or defaults.maxSat --[[@as number]]
         local ringCount <const> = args.ringCount or defaults.ringCount --[[@as integer]]
         local sectorCount <const> = args.sectorCount or defaults.sectorCount --[[@as integer]]
-        local remapHue <const> = args.remapHue --[[@as boolean]]
+        local remapHue <const> = args.remapHue or defaults.remapHue --[[@as string]]
 
         -- Offset by 30 degrees to match Aseprite's color wheel.
-        local angleOffset <const> = math.rad(30.0)
-        local lenRemapTable <const> = #rybHueRemapTable
+        local useRemapHue <const> = remapHue ~= "OKLAB"
+        local useRgbHue <const> = remapHue == "RGB"
+        local useRybHue <const> = remapHue == "RYB"
+        local useRygbHue <const> = remapHue == "RYGB"
+
+        local angleOffset <const> = useRygbHue and 0.0 or math.rad(30.0)
+
+        local hueRemapTable = {}
+        local lenRemapTable = 0
+        if useRgbHue then
+            hueRemapTable = rgbHueRemapTable24
+            lenRemapTable = #rgbHueRemapTable24
+        elseif useRygbHue then
+            hueRemapTable = rygbHueRemapTable24
+            lenRemapTable = #rygbHueRemapTable24
+        elseif useRybHue then
+            hueRemapTable = rybHueRemapTable24
+            lenRemapTable = #rybHueRemapTable24
+        end
 
         minSat = minSat / 255.0
         maxSat = maxSat / 255.0
@@ -1615,26 +1718,27 @@ dlg:button {
                     hue = quantizeSigned(hue, sectorCount)
 
                     -- Remap hue to RYB color wheel.
-                    if remapHue then
+                    if useRemapHue then
                         local hueScaled <const> = hue * (lenRemapTable - 1)
                         local hueIdx <const> = floor(hueScaled)
                         local hueFrac <const> = hueScaled - hueIdx
-                        local aHue <const> = rybHueRemapTable[1 + hueIdx]
-                        local bHue <const> = rybHueRemapTable[1 + (hueIdx + 1) % lenRemapTable]
-                        hue = (1.0 - hueFrac) * aHue + hueFrac * bHue
+                        local oHue <const> = hueRemapTable[1 + hueIdx]
+                        local dHue <const> = hueRemapTable[1 + (hueIdx + 1) % lenRemapTable]
+                        hue = (1.0 - hueFrac) * oHue + hueFrac * dHue
                     end
 
-                    local mag = sqrt(magSq)
+                    local mag <const> = sqrt(magSq)
+                    local complMag <const> = 1.0 - mag
                     if useSat then
                         if useHsv then
-                            value = (1.0 - mag) * maxVal + mag * minVal
+                            value = complMag * maxVal + mag * minVal
                             value = quantizeUnsigned(value, ringCount)
                         else
-                            light = (1.0 - mag) * maxLgt + mag * minLgt
+                            light = complMag * maxLgt + mag * minLgt
                             light = quantizeUnsigned(light, ringCount)
                         end
                     else
-                        sat = (1.0 - mag) * minSat + mag * maxSat
+                        sat = complMag * minSat + mag * maxSat
                         sat = quantizeUnsigned(sat, ringCount)
                     end
 
@@ -1671,6 +1775,10 @@ dlg:button {
 
         preserveForeBack()
         local sprite <const> = Sprite(size, size)
+        sprite.filename = string.format(
+            "OK Wheel %d (%s Hue)",
+            reqFrames,
+            remapHue)
         local oldFrameLen <const> = #sprite.frames
         local needed <const> = math.max(0, reqFrames - oldFrameLen)
         local fps <const> = args.fps or defaults.fps --[[@as integer]]
@@ -1683,7 +1791,7 @@ dlg:button {
         gamutLayer.name = "Color Wheel"
 
         -- Create gamut layer cels.
-        app.transaction(function()
+        app.transaction("Create Cels", function()
             for i = 1, reqFrames, 1 do
                 sprite:newCel(
                     gamutLayer,
@@ -1727,3 +1835,8 @@ dlg:show {
     autoscrollbars = false,
     wait = false
 }
+
+local dlgBounds <const> = dlg.bounds
+dlg.bounds = Rectangle(
+    16, dlgBounds.y,
+    dlgBounds.w, dlgBounds.h)
