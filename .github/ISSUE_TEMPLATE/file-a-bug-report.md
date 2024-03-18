@@ -8,10 +8,10 @@ assignees: ''
 ---
 
 **Operating System**
-For example, Windows 10.
+For example, Windows 11.
 
 **Aseprite version**
-The current supported version is 1.3.2.
+The current supported version is 1.3.5.
 
 **Sprite color mode**
 RGB, indexed or grayscale.

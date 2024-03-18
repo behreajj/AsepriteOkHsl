@@ -317,9 +317,6 @@ dlg:button {
     id = "confirm",
     text = "&OK",
     onclick = function()
-        -- local version <const> = app.version
-        -- local v13 <const> = (version.major >= 1 and version.minor >= 3)
-        --     or version.prereleaseLabel == "dev"
         local apiVersion <const> = app.apiVersion
         local api26 <const> = apiVersion >= 26
 
@@ -362,6 +359,13 @@ dlg:button {
         local lScl <const> = lAdj / 255.0
         local vScl <const> = vAdj / 255.0
 
+        -- Prevent uncommitted selection transformation (drop pixels) from
+        -- raising an error.
+        app.transaction("Commit Mask", function()
+            app.command.InvertMask()
+            app.command.InvertMask()
+        end)
+
         local specSprite <const> = activeSprite.spec
         local colorMode <const> = specSprite.colorMode
         if colorMode == ColorMode.INDEXED then
@@ -382,7 +386,7 @@ dlg:button {
             end
 
             app.transaction("OKHSL Adjust Palette", function()
-                local lenChosenPalettes = #chosenPalettes
+                local lenChosenPalettes <const> = #chosenPalettes
                 local h = 0
                 while h < lenChosenPalettes do
                     h = h + 1
@@ -483,7 +487,7 @@ dlg:button {
             end
         end
 
-        local lenChosenCels = #chosenCels
+        local lenChosenCels <const> = #chosenCels
         if lenChosenCels <= 0 then
             app.alert {
                 title = "Error",
@@ -530,12 +534,14 @@ dlg:button {
                     local i = 0
                     while i < lenTileset do
                         local tile <const> = tileset:tile(i)
-                        local srcImg <const> = tile.image
-                        local trgImg <const> = adjustImage(
-                            srcImg, hScl, sScl, lScl, vScl, aAdj,
-                            useHsv, useCool, useOmit, useZero, useWarm,
-                            hVio, hYel, hZero)
-                        tile.image = trgImg
+                        if tile then
+                            local srcImg <const> = tile.image
+                            local trgImg <const> = adjustImage(
+                                srcImg, hScl, sScl, lScl, vScl, aAdj,
+                                useHsv, useCool, useOmit, useZero, useWarm,
+                                hVio, hYel, hZero)
+                            tile.image = trgImg
+                        end
                         i = i + 1
                     end
                 end
