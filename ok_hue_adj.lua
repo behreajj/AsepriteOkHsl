@@ -361,10 +361,8 @@ dlg:button {
 
         -- Prevent uncommitted selection transformation (drop pixels) from
         -- raising an error.
-        app.transaction("Commit Mask", function()
-            app.command.InvertMask()
-            app.command.InvertMask()
-        end)
+        app.command.InvertMask()
+        app.command.InvertMask()
 
         local specSprite <const> = activeSprite.spec
         local colorMode <const> = specSprite.colorMode
