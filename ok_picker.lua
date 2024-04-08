@@ -1599,6 +1599,8 @@ dlg:button {
                 if onionSkinPrefs then
                     onionSkinPrefs.loop_tag = false
                 end
+
+                -- TODO: Set overlay preferences.
             end
         end
 
@@ -1689,6 +1691,8 @@ dlg:button {
             local wheelImg <const> = Image(size, size)
 
             -- Calculate light from frame count.
+
+            -- TODO: Add an offset for cases where there's only one frame.
             local fac0 <const> = (i - 1.0) * iToStep
             local sat = minSat
             local light = minLgt
@@ -1839,7 +1843,7 @@ dlg:button {
             palette:setColor(2, Color { r = 119, g = 119, b = 119, a = 255 })
             palette:setColor(3, Color { r = 255, g = 255, b = 255, a = 255 })
             palette:setColor(4, Color { r = 225, g = 0, b = 3, a = 255 })
-            palette:setColor(5, Color { r = 225, g = 255, b = 0, a = 255 })
+            palette:setColor(5, Color { r = 255, g = 255, b = 0, a = 255 })
             palette:setColor(6, Color { r = 0, g = 145, b = 13, a = 255 })
             palette:setColor(7, Color { r = 43, g = 102, b = 255, a = 255 })
         end)
@@ -1862,6 +1866,8 @@ dlg:button {
                 if onionSkinPrefs then
                     onionSkinPrefs.loop_tag = false
                 end
+
+                -- TODO: Set overlay preferences.
             end
         end
 
