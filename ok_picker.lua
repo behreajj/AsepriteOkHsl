@@ -1600,7 +1600,12 @@ dlg:button {
                     onionSkinPrefs.loop_tag = false
                 end
 
-                -- TODO: Set overlay preferences.
+                local thumbPrefs <const> = docPrefs.thumbnails
+                if thumbPrefs then
+                    thumbPrefs.enabled = true
+                    thumbPrefs.zoom = 1
+                    thumbPrefs.overlay_enabled = true
+                end
             end
         end
 
@@ -1867,7 +1872,12 @@ dlg:button {
                     onionSkinPrefs.loop_tag = false
                 end
 
-                -- TODO: Set overlay preferences.
+                local thumbPrefs <const> = docPrefs.thumbnails
+                if thumbPrefs then
+                    thumbPrefs.enabled = true
+                    thumbPrefs.zoom = 1
+                    thumbPrefs.overlay_enabled = true
+                end
             end
         end
 
