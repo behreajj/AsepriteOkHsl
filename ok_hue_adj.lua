@@ -360,7 +360,7 @@ dlg:button {
         local vScl <const> = vAdj / 255.0
 
         -- Prevent uncommitted selection transformation (drop pixels) from
-        -- raising an error.
+        -- raising an error. This cannot be wrapped in a transaction.
         app.command.InvertMask()
         app.command.InvertMask()
 

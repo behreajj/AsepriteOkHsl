@@ -1527,6 +1527,17 @@ dlg:button {
         end
 
         preserveForeBack()
+
+        -- As a precaution against crashes, do not allow slices UI interface
+        -- to be active.
+        local appTool <const> = app.tool
+        if appTool then
+            local toolName <const> = appTool.id
+            if toolName == "slice" then
+                app.tool = "hand"
+            end
+        end
+
         local gradSprite = Sprite(gradWidth, gradHeight)
         gradSprite.filename = string.format(
             "Ok Gradient (%s)",
@@ -1580,9 +1591,16 @@ dlg:button {
         gradSprite:setPalette(pal)
 
         -- Turn off onion skin loop through tag frames.
-        local docPrefs <const> = app.preferences.document(gradSprite)
-        local onionSkinPrefs <const> = docPrefs.onionskin
-        onionSkinPrefs.loop_tag = false
+        local appPrefs <const> = app.preferences
+        if appPrefs then
+            local docPrefs <const> = appPrefs.document(gradSprite)
+            if docPrefs then
+                local onionSkinPrefs <const> = docPrefs.onionskin
+                if onionSkinPrefs then
+                    onionSkinPrefs.loop_tag = false
+                end
+            end
+        end
 
         app.refresh()
     end
@@ -1774,6 +1792,17 @@ dlg:button {
         end
 
         preserveForeBack()
+
+        -- As a precaution against crashes, do not allow slices UI interface
+        -- to be active.
+        local appTool <const> = app.tool
+        if appTool then
+            local toolName <const> = appTool.id
+            if toolName == "slice" then
+                app.tool = "hand"
+            end
+        end
+
         local sprite <const> = Sprite(size, size)
         sprite.filename = string.format(
             "OK Wheel %d (%s Hue)",
@@ -1801,9 +1830,19 @@ dlg:button {
         end)
 
         -- Assign a palette.
-        if app.defaultPalette then
-            sprite:setPalette(app.defaultPalette)
-        end
+        -- Do not use defaultPalette.
+        app.transaction("Set Palette", function()
+            local palette <const> = sprite.palettes[1]
+            palette:resize(8)
+            palette:setColor(0, Color { r = 0, g = 0, b = 0, a = 0 })
+            palette:setColor(1, Color { r = 0, g = 0, b = 0, a = 255 })
+            palette:setColor(2, Color { r = 119, g = 119, b = 119, a = 255 })
+            palette:setColor(3, Color { r = 255, g = 255, b = 255, a = 255 })
+            palette:setColor(4, Color { r = 225, g = 0, b = 3, a = 255 })
+            palette:setColor(5, Color { r = 225, g = 255, b = 0, a = 255 })
+            palette:setColor(6, Color { r = 0, g = 145, b = 13, a = 255 })
+            palette:setColor(7, Color { r = 43, g = 102, b = 255, a = 255 })
+        end)
 
         -- Because light correlates to frames, the middle
         -- frame should be the default.
@@ -1815,9 +1854,16 @@ dlg:button {
         end
 
         -- Turn off onion skin loop through tag frames.
-        local docPrefs <const> = app.preferences.document(sprite)
-        local onionSkinPrefs <const> = docPrefs.onionskin
-        onionSkinPrefs.loop_tag = false
+        local appPrefs <const> = app.preferences
+        if appPrefs then
+            local docPrefs <const> = appPrefs.document(sprite)
+            if docPrefs then
+                local onionSkinPrefs <const> = docPrefs.onionskin
+                if onionSkinPrefs then
+                    onionSkinPrefs.loop_tag = false
+                end
+            end
+        end
 
         app.refresh()
     end
