@@ -1639,8 +1639,12 @@ dlg:button {
         local szSq <const> = size * size
         local szInv <const> = 1.0 / (size - 1.0)
         local iToStep = 1.0
+        local iOffset = 0.5
         local reqFrames <const> = args.frames or defaults.frames --[[@as integer]]
-        if reqFrames > 1 then iToStep = 1.0 / (reqFrames - 1.0) end
+        if reqFrames > 1 then
+            iToStep = 1.0 / (reqFrames - 1.0)
+            iOffset = 0.0
+        end
         local colorMode <const> = args.colorMode or defaults.colorMode --[[@as string]]
         local hslAxis <const> = args.hslAxis or defaults.hslAxis --[[@as string]]
         local hsvAxis <const> = args.hsvAxis or defaults.hsvAxis --[[@as string]]
@@ -1696,9 +1700,7 @@ dlg:button {
             local wheelImg <const> = Image(size, size)
 
             -- Calculate light from frame count.
-
-            -- TODO: Add an offset for cases where there's only one frame.
-            local fac0 <const> = (i - 1.0) * iToStep
+            local fac0 <const> = (i - 1.0) * iToStep + iOffset
             local sat = minSat
             local light = minLgt
             local value = minVal
