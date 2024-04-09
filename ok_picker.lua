@@ -1844,15 +1844,17 @@ dlg:button {
         -- Do not use defaultPalette.
         app.transaction("Set Palette", function()
             local palette <const> = sprite.palettes[1]
-            palette:resize(8)
+            palette:resize(10)
             palette:setColor(0, Color { r = 0, g = 0, b = 0, a = 0 })
             palette:setColor(1, Color { r = 0, g = 0, b = 0, a = 255 })
-            palette:setColor(2, Color { r = 119, g = 119, b = 119, a = 255 })
-            palette:setColor(3, Color { r = 255, g = 255, b = 255, a = 255 })
-            palette:setColor(4, Color { r = 225, g = 0, b = 3, a = 255 })
-            palette:setColor(5, Color { r = 255, g = 255, b = 0, a = 255 })
-            palette:setColor(6, Color { r = 0, g = 145, b = 13, a = 255 })
-            palette:setColor(7, Color { r = 43, g = 102, b = 255, a = 255 })
+            palette:setColor(2, Color { r = 255, g = 255, b = 255, a = 255 })
+            palette:setColor(3, Color { r = 254, g = 91, b = 89, a = 255 })
+            palette:setColor(4, Color { r = 247, g = 165, b = 71, a = 255 })
+            palette:setColor(5, Color { r = 243, g = 206, b = 82, a = 255 })
+            palette:setColor(6, Color { r = 106, g = 205, b = 91, a = 255 })
+            palette:setColor(7, Color { r = 87, g = 185, b = 242, a = 255 })
+            palette:setColor(8, Color { r = 209, g = 134, b = 223, a = 255 })
+            palette:setColor(9, Color { r = 165, g = 165, b = 167, a = 255 })
         end)
 
         -- Because light correlates to frames, the middle
