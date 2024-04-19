@@ -360,9 +360,14 @@ dlg:button {
         local vScl <const> = vAdj / 255.0
 
         -- Prevent uncommitted selection transformation (drop pixels) from
-        -- raising an error. This cannot be wrapped in a transaction.
-        app.command.InvertMask()
-        app.command.InvertMask()
+        -- raising an error. Also prevent slice tool context bar in the UI.
+        local appTool <const> = app.tool
+        if appTool then
+            local toolName <const> = appTool.id
+            if toolName == "slice" then
+                app.tool = "hand"
+            end
+        end
 
         local specSprite <const> = activeSprite.spec
         local colorMode <const> = specSprite.colorMode
