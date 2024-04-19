@@ -1538,7 +1538,14 @@ dlg:button {
             end
         end
 
-        local gradSprite = Sprite(gradWidth, gradHeight)
+        local gradSpec <const> = ImageSpec {
+            width = gradWidth,
+            height = gradHeight,
+            colorMode = ColorMode.RGB,
+            transparentColor = 0
+        }
+        gradSpec.colorSpace = ColorSpace { sRGB = true }
+        local gradSprite <const> = Sprite(gradSpec)
         gradSprite.filename = string.format(
             "Ok Gradient (%s)",
             colorMode)
@@ -1609,6 +1616,8 @@ dlg:button {
             end
         end
 
+        app.sprite = gradSprite
+        app.layer = segLayer
         app.refresh()
     end
 }
@@ -1814,7 +1823,14 @@ dlg:button {
             end
         end
 
-        local sprite <const> = Sprite(size, size)
+        local wheelSpec <const> = ImageSpec {
+            width = size,
+            height = size,
+            colorMode = ColorMode.RGB,
+            transparentColor = 0
+        }
+        wheelSpec.colorSpace = ColorSpace { sRGB = true }
+        local sprite <const> = Sprite(wheelSpec)
         sprite.filename = string.format(
             "OK Wheel %d (%s Hue)",
             reqFrames,
@@ -1885,6 +1901,8 @@ dlg:button {
             end
         end
 
+        app.sprite = sprite
+        app.layer = gamutLayer
         app.refresh()
     end
 }
