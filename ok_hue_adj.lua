@@ -317,18 +317,13 @@ dlg:button {
     id = "confirm",
     text = "&OK",
     onclick = function()
-        local apiVersion <const> = app.apiVersion
-        local api26 <const> = apiVersion >= 26
-
-        ---@diagnostic disable-next-line: deprecated
-        local activeSprite <const> = api26 and app.sprite or app.activeSprite
+        local activeSprite <const> = app.sprite
         if not activeSprite then
             app.alert { title = "Error", text = "There is no active sprite." }
             return
         end
 
-        ---@diagnostic disable-next-line: deprecated
-        local activeFrame <const> = (api26 and app.frame or app.activeFrame)
+        local activeFrame <const> = app.frame
             or activeSprite.frames[1]
 
         local args <const> = dlg.data
@@ -476,8 +471,7 @@ dlg:button {
                 chosenCels[#chosenCels + 1] = cel
             end
         else
-            ---@diagnostic disable-next-line: deprecated
-            local activeLayer <const> = (api26 and app.layer or app.activeLayer)
+            local activeLayer <const> = app.layer
                 or activeSprite.layers[1]
 
             if (not activeLayer.isReference)

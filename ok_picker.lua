@@ -1125,8 +1125,7 @@ dlg:button {
     focus = false,
     visible = defaults.harmonyType == "SHADING",
     onclick = function()
-        ---@diagnostic disable-next-line: deprecated
-        local activeSprite <const> = app.activeSprite
+        local activeSprite <const> = app.sprite
         if activeSprite then
             local palette <const> = activeSprite.palettes[1]
             local oldLen <const> = #palette
@@ -1873,15 +1872,6 @@ dlg:button {
             palette:setColor(9, Color { r = 165, g = 165, b = 167, a = 255 })
         end)
 
-        -- Because light correlates to frames, the middle
-        -- frame should be the default.
-        if useSat or useHsv then
-            app.activeFrame = sprite.frames[#sprite.frames]
-        else
-            app.activeFrame = sprite.frames[
-            math.ceil(#sprite.frames / 2)]
-        end
-
         -- Turn off onion skin loop through tag frames.
         local appPrefs <const> = app.preferences
         if appPrefs then
@@ -1903,6 +1893,16 @@ dlg:button {
 
         app.sprite = sprite
         app.layer = gamutLayer
+
+        -- Because light correlates to frames, the middle
+        -- frame should be the default.
+        if useSat or useHsv then
+            app.frame = sprite.frames[#sprite.frames]
+        else
+            app.frame = sprite.frames[
+            math.ceil(#sprite.frames / 2)]
+        end
+
         app.refresh()
     end
 }
