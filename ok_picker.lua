@@ -635,28 +635,63 @@ end
 local function setFromHexStr(dialog, primary, shades)
     local args <const> = dialog.data
     local hexStr <const> = args.hexCode --[[@as string]]
-    if #hexStr > 5 then
-        local hexRgb <const> = tonumber(hexStr, 16)
-        if hexRgb then
-            local r255 <const> = hexRgb >> 0x10 & 0xff
-            local g255 <const> = hexRgb >> 0x08 & 0xff
-            local b255 <const> = hexRgb & 0xff
 
-            -- Add a previous and mix with previous.
-            primary = Color { r = r255, g = g255, b = b255, a = 255 }
-            dialog:modify { id = "baseColor", colors = { primary } }
-            dialog:modify { id = "alpha", value = 255 }
+    local s = hexStr
+    if string.sub(s, 1, 1) == '#' then
+        s = string.sub(s, 2)
+    end
 
-            local srgb <const> = aseColorToRgb01(primary)
-            local lab <const> = ok_color.srgb_to_oklab(srgb)
+    local r8, g8, b8, a8 = 0, 0, 0, 0
 
-            setLab(dialog, lab)
-            setHsl(dialog, ok_color.oklab_to_okhsl(lab))
-            setHsv(dialog, ok_color.oklab_to_okhsv(lab))
+    local sn <const> = tonumber(s, 16)
+    if sn then
+        local lens <const> = #s
+        if lens == 3 then
+            local r4 <const> = sn >> 0x8 & 0xf
+            local g4 <const> = sn >> 0x4 & 0xf
+            local b4 <const> = sn & 0xf
 
-            updateHarmonies(dialog, primary)
-            updateShades(dialog, shades)
+            r8 = r4 << 0x4 | r4
+            g8 = g4 << 0x4 | g4
+            b8 = b4 << 0x4 | b4
+            a8 = 255
+        elseif lens == 4 then
+            local r5 <const> = sn >> 0xb & 0x1f
+            local g6 <const> = sn >> 0x5 & 0x3f
+            local b5 <const> = sn & 0x1f
+
+            r8 = math.floor(r5 * 255.0 / 31.0 + 0.5)
+            g8 = math.floor(g6 * 255.0 / 63.0 + 0.5)
+            b8 = math.floor(b5 * 255.0 / 31.0 + 0.5)
+            a8 = 255
+        elseif lens == 6 then
+            r8 = sn >> 0x10 & 0xff
+            g8 = sn >> 0x08 & 0xff
+            b8 = sn & 0xff
+            a8 = 255
+        elseif lens >= 8 then
+            r8 = sn >> 0x18 & 0xff
+            g8 = sn >> 0x10 & 0xff
+            b8 = sn >> 0x08 & 0xff
+            a8 = sn & 0xff
         end
+    end
+
+    if a8 > 0 then
+        -- Add a previous and mix with previous.
+        primary = Color { r = r8, g = g8, b = b8, a = a8 }
+        dialog:modify { id = "baseColor", colors = { primary } }
+        dialog:modify { id = "alpha", value = a8 }
+
+        local srgb <const> = aseColorToRgb01(primary)
+        local lab <const> = ok_color.srgb_to_oklab(srgb)
+
+        setLab(dialog, lab)
+        setHsl(dialog, ok_color.oklab_to_okhsl(lab))
+        setHsv(dialog, ok_color.oklab_to_okhsv(lab))
+
+        updateHarmonies(dialog, primary)
+        updateShades(dialog, shades)
     end
 end
 

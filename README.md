@@ -18,7 +18,7 @@ To install, open Aseprite, go to `File > Scripts > Open Scripts Folder`. Copy an
 
 Select `ok_picker` or `ok_hue_adj` to launch a dialog.
 
-If an error message in Aseprite's console appears, check if the script folder is on a file path that includes characters beyond [UTF-8](https://en.wikipedia.org/wiki/UTF-8), such as 'é' (e acute) or 'ö' (o umlaut). See this [thread](https://community.aseprite.org/t/script-folder-path-cannot-open-no-such-file-or-directory/16818) for discussion of the issue on the community forum.
+If an error message in Aseprite's console appears, check if the script folder is on a file path that includes characters beyond ASCII, such as 'é' (e acute) or 'ö' (o umlaut). See this [thread](https://community.aseprite.org/t/script-folder-path-cannot-open-no-such-file-or-directory/16818) for discussion of the issue on the community forum.
 
 To assign a hotkey to a dialog go to `Edit > Keyboard Shortcuts`.
  
