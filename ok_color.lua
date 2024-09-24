@@ -248,26 +248,28 @@ end
 ---@param L number
 ---@param a_ number
 ---@param b_ number
----@return { C_0: number, C_mid: number, C_max: number}
+---@return number C_0
+---@return number C_mid
+---@return number C_max
 function ok_color.get_Cs(L, a_, b_)
     local cusp <const> = ok_color.find_cusp(a_, b_)
     local C_max <const> = ok_color.find_gamut_intersection(
         a_, b_, L, 1.0, L, cusp)
-    local ST_max <const> = ok_color.to_ST(cusp)
+    local S_max <const>, T_max <const> = ok_color.to_ST(cusp)
 
     -- Scale factor to compensate for the curved part of gamut shape:
     local k = 0.0
-    local k_denom <const> = math.min(L * ST_max.S, (1.0 - L) * ST_max.T)
+    local k_denom <const> = math.min(L * S_max, (1.0 - L) * T_max)
     if k_denom ~= 0.0 then k = C_max / k_denom end
 
     local C_mid = 0.0
     do
-        local ST_mid <const> = ok_color.get_ST_mid(a_, b_)
+        local S_mid <const>, T_mid <const> = ok_color.get_ST_mid(a_, b_)
 
         -- Use a soft minimum function, instead of a sharp triangle
         -- shape to get a smooth value for chroma.
-        local C_a <const> = L * ST_mid.S
-        local C_b <const> = (1.0 - L) * ST_mid.T
+        local C_a <const> = L * S_mid
+        local C_b <const> = (1.0 - L) * T_mid
 
         local cae4 <const> = (C_a * C_a) * (C_a * C_a)
         local cbe4 <const> = (C_b * C_b) * (C_b * C_b)
@@ -288,7 +290,7 @@ function ok_color.get_Cs(L, a_, b_)
         C_0 = math.sqrt(1.0 / (1.0 / cae2 + 1.0 / cbe2))
     end
 
-    return { C_0 = C_0, C_mid = C_mid, C_max = C_max }
+    return C_0, C_mid, C_max
 end
 
 -- Returns a smooth approximation of the location of the cusp
@@ -296,7 +298,8 @@ end
 -- It has been designed so that S_mid < S_max and T_mid < T_max
 ---@param a_ number
 ---@param b_ number
----@return { S: number, T: number }
+---@return number S
+---@return number T
 function ok_color.get_ST_mid(a_, b_)
     local S = 0.11516993
     local s_denom <const> = 7.4477897 + 4.1590124 * b_
@@ -318,7 +321,7 @@ function ok_color.get_ST_mid(a_, b_)
         T = 0.11239642 + 1.0 / t_denom
     end
 
-    return { S = S, T = T }
+    return S, T
 end
 
 ---@param c { r: number, g: number, b: number }
@@ -370,10 +373,9 @@ function ok_color.okhsl_to_oklab(hsl)
     local b_ <const> = math.sin(h_rad)
     local L <const> = ok_color.toe_inv(l)
 
-    local cs <const> = ok_color.get_Cs(L, a_, b_)
-    local C_0 <const> = cs.C_0
-    local C_mid <const> = cs.C_mid
-    local C_max <const> = cs.C_max
+    local C_0 <const>,
+    C_mid <const>,
+    C_max <const> = ok_color.get_Cs(L, a_, b_)
 
     local mid <const> = 0.8
     local mid_inv <const> = 1.25
@@ -446,9 +448,7 @@ function ok_color.okhsv_to_oklab(hsv)
     local b_ <const> = math.sin(h_rad)
 
     local cusp <const> = ok_color.find_cusp(a_, b_)
-    local ST_max <const> = ok_color.to_ST(cusp)
-    local S_max <const> = ST_max.S
-    local T_max <const> = ST_max.T
+    local S_max <const>, T_max <const> = ok_color.to_ST(cusp)
     local S_0 <const> = 0.5
     local k = 1.0
     if S_max ~= 0.0 then
@@ -520,14 +520,14 @@ function ok_color.oklab_to_linear_srgb(lab)
     local b <const> = lab.b
 
     local l_cbrt <const> = 0.9999999984505196 * lgt
-    + 0.39633779217376774 * a
-    + 0.2158037580607588 * b
+        + 0.39633779217376774 * a
+        + 0.2158037580607588 * b
     local m_cbrt <const> = 1.0000000088817607 * lgt
-    - 0.10556134232365633 * a
-    - 0.0638541747717059 * b
+        - 0.10556134232365633 * a
+        - 0.0638541747717059 * b
     local s_cbrt <const> = 1.0000000546724108 * lgt
-    - 0.08948418209496574 * a
-    - 1.2914855378640917 * b
+        - 0.08948418209496574 * a
+        - 1.2914855378640917 * b
 
     local l <const> = (l_cbrt * l_cbrt) * l_cbrt
     local m <const> = (m_cbrt * m_cbrt) * m_cbrt
@@ -564,10 +564,9 @@ function ok_color.oklab_to_okhsl(lab)
         -- 1.0 / tau = 0.1591549430919
         local h <const> = math.atan(-b_, -a_) * 0.1591549430919 + 0.5
 
-        local cs <const> = ok_color.get_Cs(L, a_, b_)
-        local C_0 <const> = cs.C_0
-        local C_mid <const> = cs.C_mid
-        local C_max <const> = cs.C_max
+        local C_0 <const>,
+        C_mid <const>,
+        C_max <const> = ok_color.get_Cs(L, a_, b_)
 
         -- Inverse of the interpolation in okhsl_to_srgb:
         local mid <const> = 0.8
@@ -635,9 +634,7 @@ function ok_color.oklab_to_okhsv(lab)
         local h <const> = math.atan(-b_, -a_) * 0.1591549430919 + 0.5
 
         local cusp <const> = ok_color.find_cusp(a_, b_)
-        local ST_max <const> = ok_color.to_ST(cusp)
-        local S_max <const> = ST_max.S
-        local T_max <const> = ST_max.T
+        local S_max <const>, T_max <const> = ok_color.to_ST(cusp)
         local S_0 <const> = 0.5
         local k = 1.0
         if S_max ~= 0.0 then
@@ -751,18 +748,19 @@ function ok_color.srgb_transfer_function_inv(a)
 end
 
 ---@param cusp { L: number, C: number }
----@return { S: number, T: number }
+---@return number S
+---@return number T
 function ok_color.to_ST(cusp)
     local L <const> = cusp.L
     local C <const> = cusp.C
     if L ~= 0.0 and L ~= 1.0 then
-        return { S = C / L, T = C / (1.0 - L) }
+        return C / L, C / (1.0 - L)
     elseif L ~= 0.0 then
-        return { S = C / L, T = 0.0 }
+        return C / L, 0.0
     elseif L ~= 1.0 then
-        return { S = 0.0, T = C / (1.0 - L) }
+        return 0.0, C / (1.0 - L)
     else
-        return { S = 0.0, T = 0.0 }
+        return 0.0, 0.0
     end
 end
 
