@@ -65,10 +65,7 @@ local function adjustColor(
     useHsv,
     useCool, useOmit, useZero, useWarm,
     hVio, hYel, hZero)
-    local r8n = 0
-    local g8n = 0
-    local b8n = 0
-    local a8n = 0
+    local r8n, g8n, b8n, a8n = 0, 0, 0, 0
 
     if a8 > 0 then
         local alphaNew <const> = a8 + aAdj
@@ -77,23 +74,19 @@ local function adjustColor(
         if a8n > 0 then
             local isGray <const> = r8 == g8 and r8 == b8
 
-            local srgb <const> = {
-                r = r8 / 255.0,
-                g = g8 / 255.0,
-                b = b8 / 255.0
-            }
-            local oklab <const> = ok_color.srgb_to_oklab(srgb)
+            local okl <const>, oka <const>, okb <const> = ok_color.srgb_to_oklab(
+                r8 / 255.0, g8 / 255.0, b8 / 255.0)
 
-            local okhsx <const> = useHsv
-                and ok_color.oklab_to_okhsv(oklab)
-                or ok_color.oklab_to_okhsl(oklab)
-
-            local sNew = okhsx.s
-            local hNew = okhsx.h
+            local hNew, sNew, xNew = 0.0, 0.0, 0.0
+            if useHsv then
+                hNew, sNew, xNew = ok_color.oklab_to_okhsv(okl, oka, okb)
+            else
+                hNew, sNew, xNew = ok_color.oklab_to_okhsl(okl, oka, okb)
+            end
 
             if isGray then
                 if useCool then
-                    local t <const> = oklab.L
+                    local t <const> = okl
                     local u <const> = 1.0 - t
                     hNew = u * hVio + t * hYel
                     hNew = hNew + hScl
@@ -105,7 +98,7 @@ local function adjustColor(
                     hNew = hZero + hScl
                     sNew = sNew + sScl
                 elseif useWarm then
-                    local t <const> = oklab.L
+                    local t <const> = okl
                     local u <const> = 1.0 - t
                     hNew = u * hVio + t * (hYel + 1.0)
                     hNew = hNew + hScl
@@ -119,30 +112,21 @@ local function adjustColor(
                 sNew = sNew + sScl
             end
 
-            local oklabNew = nil
+            local oklNew, okaNew, okbNew = 0.0, 0.0, 0.0
             if useHsv then
-                local okhsvNew <const> = {
-                    h = hNew,
-                    s = sNew,
-                    v = okhsx.v + vScl
-                }
-                oklabNew = ok_color.okhsv_to_oklab(okhsvNew)
+                oklNew, okaNew, okbNew = ok_color.okhsv_to_oklab(hNew, sNew, xNew + vScl)
             else
-                local okhslNew <const> = {
-                    h = hNew,
-                    s = sNew,
-                    l = okhsx.l + lScl
-                }
-                oklabNew = ok_color.okhsl_to_oklab(okhslNew)
+                oklNew, okaNew, okbNew = ok_color.okhsl_to_oklab(hNew, sNew, xNew + lScl)
             end
 
-            local srgbNew <const> = ok_color.oklab_to_srgb(oklabNew)
+            local rNew <const>, gNew <const>, bNew <const> = ok_color.oklab_to_srgb(
+                oklNew, okaNew, okbNew)
             b8n = math.floor(math.min(math.max(
-                srgbNew.b, 0.0), 1.0) * 255.0 + 0.5)
+                bNew, 0.0), 1.0) * 255.0 + 0.5)
             g8n = math.floor(math.min(math.max(
-                srgbNew.g, 0.0), 1.0) * 255.0 + 0.5)
+                gNew, 0.0), 1.0) * 255.0 + 0.5)
             r8n = math.floor(math.min(math.max(
-                srgbNew.r, 0.0), 1.0) * 255.0 + 0.5)
+                rNew, 0.0), 1.0) * 255.0 + 0.5)
         end
     end
 

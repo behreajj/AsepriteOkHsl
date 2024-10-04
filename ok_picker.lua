@@ -201,13 +201,14 @@ local function copyColorByValue(ase)
 end
 
 ---@param ase Color
----@return { r: number, g: number, b: number }
+---@return number r
+---@return number g
+---@return number b
+---@nodiscard
 local function aseColorToRgb01(ase)
-    return {
-        r = ase.red / 255.0,
-        g = ase.green / 255.0,
-        b = ase.blue / 255.0
-    }
+    return ase.red / 255.0,
+        ase.green / 255.0,
+        ase.blue / 255.0
 end
 
 ---@param ase Color
@@ -383,26 +384,29 @@ local function quantizeUnsigned(a, levels)
     end
 end
 
----@param srgb { r: number, g: number, b: number }
----@param alpha integer?
+---@param r number
+---@param g number
+---@param b number
+---@param a integer?
 ---@return integer
-local function srgb01ToHex(srgb, alpha)
-    local va <const> = alpha or 255
-    return (va << 0x18)
-        | math.floor(math.min(math.max(srgb.b, 0.0), 1.0) * 255.0 + 0.5) << 0x10
-        | math.floor(math.min(math.max(srgb.g, 0.0), 1.0) * 255.0 + 0.5) << 0x08
-        | math.floor(math.min(math.max(srgb.r, 0.0), 1.0) * 255.0 + 0.5)
+local function srgb01ToHex(r, g, b, a)
+    return ((a or 255) << 0x18)
+        | math.floor(math.min(math.max(b, 0.0), 1.0) * 255.0 + 0.5) << 0x10
+        | math.floor(math.min(math.max(g, 0.0), 1.0) * 255.0 + 0.5) << 0x08
+        | math.floor(math.min(math.max(r, 0.0), 1.0) * 255.0 + 0.5)
 end
 
----@param srgb { r: number, g: number, b: number }
----@param alpha integer?
+---@param r number
+---@param g number
+---@param b number
+---@param a integer?
 ---@return Color
-local function srgb01ToAseColor(srgb, alpha)
+local function srgb01ToAseColor(r, g, b, a)
     return Color {
-        r = math.floor(math.min(math.max(srgb.r, 0.0), 1.0) * 255.0 + 0.5),
-        g = math.floor(math.min(math.max(srgb.g, 0.0), 1.0) * 255.0 + 0.5),
-        b = math.floor(math.min(math.max(srgb.b, 0.0), 1.0) * 255.0 + 0.5),
-        a = alpha or 255
+        r = math.floor(math.min(math.max(r, 0.0), 1.0) * 255.0 + 0.5),
+        g = math.floor(math.min(math.max(g, 0.0), 1.0) * 255.0 + 0.5),
+        b = math.floor(math.min(math.max(b, 0.0), 1.0) * 255.0 + 0.5),
+        a = a or 255
     }
 end
 
@@ -514,12 +518,9 @@ local function updateShades(dialog, shades)
         local cMixed = (1.0 - lZig) * cVal + lZig * chromaTarget
         cMixed = math.max(minChroma, cMixed)
 
-        local clr <const> = ok_color.okhsl_to_srgb({
-            h = hMixed,
-            s = cMixed,
-            l = lMixed
-        })
-        local aseColor <const> = srgb01ToAseColor(clr, alpha)
+        local r <const>, g <const>, b <const> = ok_color.okhsl_to_srgb(
+            hMixed, cMixed, lMixed)
+        local aseColor <const> = srgb01ToAseColor(r, g, b, alpha)
         shades[i] = aseColor
     end
 
@@ -529,11 +530,8 @@ end
 ---@param dialog Dialog
 ---@param primary Color
 local function updateHarmonies(dialog, primary)
-    local srgb <const> = aseColorToRgb01(primary)
-    local srcHsl <const> = ok_color.srgb_to_okhsl(srgb)
-    local l <const> = srcHsl.l
-    local s <const> = srcHsl.s
-    local h <const> = srcHsl.h
+    local r01 <const>, g01 <const>, b01 <const> = aseColorToRgb01(primary)
+    local h <const>, s <const>, l <const> = ok_color.srgb_to_okhsl(r01, g01, b01)
 
     local h30 <const> = 0.08333333333333333
     local h90 <const> = 0.25
@@ -549,38 +547,38 @@ local function updateHarmonies(dialog, primary)
     local lSpl <const> = (2.5 - 2.0 * l) / 3.0
     local lSqr <const> = 0.5
 
-    local ana0 <const> = ok_color.okhsl_to_srgb({ h = h - h30, s = s, l = lAna })
-    local ana1 <const> = ok_color.okhsl_to_srgb({ h = h + h30, s = s, l = lAna })
+    local rAna0 <const>, gAna0 <const>, bAna0 <const> = ok_color.okhsl_to_srgb(h - h30, s, lAna)
+    local rAna1 <const>, gAna1 <const>, bAna1 <const> = ok_color.okhsl_to_srgb(h + h30, s, lAna)
 
-    local tri0 <const> = ok_color.okhsl_to_srgb({ h = h - h120, s = s, l = lTri })
-    local tri1 <const> = ok_color.okhsl_to_srgb({ h = h + h120, s = s, l = lTri })
+    local rTri0 <const>, gTri0 <const>, bTri0 <const> = ok_color.okhsl_to_srgb(h - h120, s, lTri)
+    local rTri1 <const>, gTri1 <const>, bTri1 <const> = ok_color.okhsl_to_srgb(h + h120, s, lTri)
 
-    local split0 <const> = ok_color.okhsl_to_srgb({ h = h + h150, s = s, l = lSpl })
-    local split1 <const> = ok_color.okhsl_to_srgb({ h = h + h210, s = s, l = lSpl })
+    local rSpl0 <const>, gSpl0 <const>, bSpl0 <const> = ok_color.okhsl_to_srgb(h + h150, s, lSpl)
+    local rSpl1 <const>, gSpl1 <const>, bSpl1 <const> = ok_color.okhsl_to_srgb(h + h210, s, lSpl)
 
-    local square0 <const> = ok_color.okhsl_to_srgb({ h = h + h90, s = s, l = lSqr })
-    local square1 <const> = ok_color.okhsl_to_srgb({ h = h + h180, s = s, l = lOpp })
-    local square2 <const> = ok_color.okhsl_to_srgb({ h = h + h270, s = s, l = lSqr })
+    local rSqr0 <const>, gSqr0 <const>, bSqr0 <const> = ok_color.okhsl_to_srgb(h + h90, s, lSqr)
+    local rSqr1 <const>, gSqr1 <const>, bSqr1 <const> = ok_color.okhsl_to_srgb(h + h180, s, lOpp)
+    local rSqr2 <const>, gSqr2 <const>, bSqr2 <const> = ok_color.okhsl_to_srgb(h + h270, s, lSqr)
 
     local tris <const> = {
-        srgb01ToAseColor(tri0),
-        srgb01ToAseColor(tri1)
+        srgb01ToAseColor(rTri0, gTri0, bTri0),
+        srgb01ToAseColor(rTri1, gTri1, bTri1)
     }
 
     local analogues <const> = {
-        srgb01ToAseColor(ana0),
-        srgb01ToAseColor(ana1)
+        srgb01ToAseColor(rAna0, gAna0, bAna0),
+        srgb01ToAseColor(rAna1, gAna1, bAna1)
     }
 
     local splits <const> = {
-        srgb01ToAseColor(split0),
-        srgb01ToAseColor(split1)
+        srgb01ToAseColor(rSpl0, gSpl0, bSpl0),
+        srgb01ToAseColor(rSpl1, gSpl1, bSpl1)
     }
 
     local squares <const> = {
-        srgb01ToAseColor(square0),
-        srgb01ToAseColor(square1),
-        srgb01ToAseColor(square2)
+        srgb01ToAseColor(rSqr0, gSqr0, bSqr0),
+        srgb01ToAseColor(rSqr1, gSqr1, bSqr1),
+        srgb01ToAseColor(rSqr2, gSqr2, bSqr2)
     }
 
     dialog:modify { id = "complement", colors = { squares[2] } }
@@ -591,22 +589,26 @@ local function updateHarmonies(dialog, primary)
 end
 
 ---@param dialog Dialog
----@param lab { L: number, a: number, b: number }
-local function setLab(dialog, lab)
-    local labLgtInt <const> = math.floor(lab.L * 255.0 + 0.5)
-    local labAInt <const> = round(lab.a * 1000.0)
-    local labBInt <const> = round(lab.b * 1000.0)
+---@param l number
+---@param a number
+---@param b number
+local function setLab(dialog, l, a, b)
+    local labLgtInt <const> = math.floor(l * 255.0 + 0.5)
+    local labAInt <const> = round(a * 1000.0)
+    local labBInt <const> = round(b * 1000.0)
     dialog:modify { id = "labLgt", value = labLgtInt }
     dialog:modify { id = "labA", value = labAInt }
     dialog:modify { id = "labB", value = labBInt }
 end
 
 ---@param dialog Dialog
----@param hsl { h: number, s: number, l: number }
-local function setHsl(dialog, hsl)
-    local hslLgtInt <const> = math.floor(hsl.l * 255.0 + 0.5)
-    local hslSatInt <const> = math.floor(hsl.s * 255.0 + 0.5)
-    local hslHueInt <const> = math.floor(hsl.h * 360.0 + 0.5)
+---@param h number
+---@param s number
+---@param l number
+local function setHsl(dialog, h, s, l)
+    local hslLgtInt <const> = math.floor(l * 255.0 + 0.5)
+    local hslSatInt <const> = math.floor(s * 255.0 + 0.5)
+    local hslHueInt <const> = math.floor(h * 360.0 + 0.5)
     if hslSatInt > 0
         and hslLgtInt > 0
         and hslLgtInt < 255 then
@@ -617,11 +619,13 @@ local function setHsl(dialog, hsl)
 end
 
 ---@param dialog Dialog
----@param hsv { h: number, s: number, v: number }
-local function setHsv(dialog, hsv)
-    local hsvValInt <const> = math.floor(hsv.v * 255.0 + 0.5)
-    local hsvSatInt <const> = math.floor(hsv.s * 255.0 + 0.5)
-    local hsvHueInt <const> = math.floor(hsv.h * 360.0 + 0.5)
+---@param h number
+---@param s number
+---@param v number
+local function setHsv(dialog, h, s, v)
+    local hsvValInt <const> = math.floor(v * 255.0 + 0.5)
+    local hsvSatInt <const> = math.floor(s * 255.0 + 0.5)
+    local hsvHueInt <const> = math.floor(h * 360.0 + 0.5)
     if hsvSatInt > 0 and hsvValInt > 0 then
         dialog:modify { id = "hsvHue", value = hsvHueInt }
     end
@@ -683,12 +687,12 @@ local function setFromHexStr(dialog, primary, shades)
         dialog:modify { id = "baseColor", colors = { primary } }
         dialog:modify { id = "alpha", value = a8 }
 
-        local srgb <const> = aseColorToRgb01(primary)
-        local lab <const> = ok_color.srgb_to_oklab(srgb)
+        local r01 <const>, g01 <const>, b01 <const> = aseColorToRgb01(primary)
+        local l <const>, a <const>, b <const> = ok_color.srgb_to_oklab(r01, g01, b01)
 
-        setLab(dialog, lab)
-        setHsl(dialog, ok_color.oklab_to_okhsl(lab))
-        setHsv(dialog, ok_color.oklab_to_okhsv(lab))
+        setLab(dialog, l, a, b)
+        setHsl(dialog, ok_color.oklab_to_okhsl(l, a, b))
+        setHsv(dialog, ok_color.oklab_to_okhsv(l, a, b))
 
         updateHarmonies(dialog, primary)
         updateShades(dialog, shades)
@@ -705,12 +709,12 @@ local function setFromAse(dialog, aseColor, primary, shades)
     dialog:modify { id = "alpha", value = primary.alpha }
     dialog:modify { id = "hexCode", text = colorToHexWeb(primary) }
 
-    local srgb <const> = aseColorToRgb01(primary)
-    local lab <const> = ok_color.srgb_to_oklab(srgb)
+    local r01 <const>, g01 <const>, b01 <const> = aseColorToRgb01(primary)
+    local l <const>, a <const>, b <const> = ok_color.srgb_to_oklab(r01, g01, b01)
 
-    setLab(dialog, lab)
-    setHsl(dialog, ok_color.oklab_to_okhsl(lab))
-    setHsv(dialog, ok_color.oklab_to_okhsv(lab))
+    setLab(dialog, l, a, b)
+    setHsl(dialog, ok_color.oklab_to_okhsl(l, a, b))
+    setHsv(dialog, ok_color.oklab_to_okhsv(l, a, b))
 
     updateHarmonies(dialog, primary)
     updateShades(dialog, shades)
@@ -729,52 +733,45 @@ local function updateColor(dialog, primary, shades)
         local hsvSat <const> = args.hsvSat --[[@as integer]]
         local hsvVal <const> = args.hsvVal --[[@as integer]]
 
-        local lab <const> = ok_color.okhsv_to_oklab({
-            h = hsvHue / 360.0,
-            s = hsvSat / 255.0,
-            v = hsvVal / 255.0
-        })
-        local rgb01 <const> = ok_color.oklab_to_srgb(lab)
-        primary = srgb01ToAseColor(rgb01, alpha)
+        local l <const>, a <const>, b <const> = ok_color.okhsv_to_oklab(
+            hsvHue / 360.0, hsvSat / 255.0, hsvVal / 255.0)
+        local r01 <const>, g01 <const>, b01 <const> = ok_color.oklab_to_srgb(l, a, b)
+        primary = srgb01ToAseColor(r01, g01, b01, alpha)
 
         -- Update other color sliders.
-        local hsl <const> = ok_color.oklab_to_okhsl(lab)
-        setHsl(dialog, hsl)
-        setLab(dialog, lab)
+        local hHsl <const>, sHsl <const>, lHsl <const> = ok_color.oklab_to_okhsl(l, a, b)
+        setHsl(dialog, hHsl, sHsl, lHsl)
+        setLab(dialog, l, a, b)
     elseif colorMode == "LAB" then
         local labLgt <const> = args.labLgt --[[@as integer]]
         local labA <const> = args.labA --[[@as integer]]
         local labB <const> = args.labB --[[@as integer]]
-        local lab <const> = {
-            L = labLgt / 255.0,
-            a = labA * 0.001,
-            b = labB * 0.001
-        }
-        local rgb01 <const> = ok_color.oklab_to_srgb(lab)
-        primary = srgb01ToAseColor(rgb01, alpha)
+
+        local l <const> = labLgt / 255.0
+        local a <const> = labA * 0.001
+        local b <const> = labB * 0.001
+        local r01 <const>, g01 <const>, b01 <const> = ok_color.oklab_to_srgb(l, a, b)
+        primary = srgb01ToAseColor(r01, g01, b01, alpha)
 
         -- Update other color sliders.
-        local hsl <const> = ok_color.oklab_to_okhsl(lab)
-        local hsv <const> = ok_color.oklab_to_okhsv(lab)
-        setHsl(dialog, hsl)
-        setHsv(dialog, hsv)
+        local hHsl <const>, sHsl <const>, lHsl <const> = ok_color.oklab_to_okhsl(l, a, b)
+        local hHsv <const>, sHsv <const>, vHsv <const> = ok_color.oklab_to_okhsv(l, a, b)
+        setHsl(dialog, hHsl, sHsl, lHsl)
+        setHsv(dialog, hHsv, sHsv, vHsv)
     else
         local hslHue <const> = args.hslHue --[[@as integer]]
         local hslSat <const> = args.hslSat --[[@as integer]]
         local hslLgt <const> = args.hslLgt --[[@as integer]]
 
-        local lab <const> = ok_color.okhsl_to_oklab({
-            h = hslHue / 360.0,
-            s = hslSat / 255.0,
-            l = hslLgt / 255.0
-        })
-        local rgb01 <const> = ok_color.oklab_to_srgb(lab)
-        primary = srgb01ToAseColor(rgb01, alpha)
+        local l <const>, a <const>, b <const> = ok_color.okhsl_to_oklab(
+            hslHue / 360.0, hslSat / 255.0, hslLgt / 255.0)
+        local r01 <const>, g01 <const>, b01 <const> = ok_color.oklab_to_srgb(l, a, b)
+        primary = srgb01ToAseColor(r01, g01, b01, alpha)
 
         -- Update other color sliders.
-        local hsv <const> = ok_color.oklab_to_okhsv(lab)
-        setHsv(dialog, hsv)
-        setLab(dialog, lab)
+        local hHsv <const>, sHsv <const>, vHsv <const> = ok_color.oklab_to_okhsv(l, a, b)
+        setHsv(dialog, hHsv, sHsv, vHsv)
+        setLab(dialog, l, a, b)
     end
 
     dialog:modify {
@@ -1495,13 +1492,13 @@ dlg:button {
 
         local foreColor <const> = app.fgColor
         local foreHex <const> = 0xff000000 | foreColor.rgbaPixel
-        local foreSrgb01 <const> = aseColorToRgb01(foreColor)
-        local foreLab <const> = ok_color.srgb_to_oklab(foreSrgb01)
+        local r01Fore <const>, g01Fore <const>, b01Fore <const> = aseColorToRgb01(foreColor)
+        local lFore <const>, aFore <const>, bFore <const> = ok_color.srgb_to_oklab(r01Fore, g01Fore, b01Fore)
 
         local backColor <const> = app.bgColor
         local backHex <const> = 0xff000000 | backColor.rgbaPixel
-        local backSrgb01 <const> = aseColorToRgb01(backColor)
-        local backLab <const> = ok_color.srgb_to_oklab(backSrgb01)
+        local r01Back <const>, g01Back <const>, b01Back <const> = aseColorToRgb01(backColor)
+        local lBack <const>, aBack <const>, bBack <const> = ok_color.srgb_to_oklab(r01Back, g01Back, b01Back)
 
         local hueFunc = lerpAngleNear
         if hueDir == "CW" then
@@ -1513,49 +1510,47 @@ dlg:button {
         ---@type fun(fac: number): integer
         local lerpLab <const> = function(fac)
             local u <const> = 1.0 - fac
-            local csrgb01 <const> = ok_color.oklab_to_srgb({
-                L = u * backLab.L + fac * foreLab.L,
-                a = u * backLab.a + fac * foreLab.a,
-                b = u * backLab.b + fac * foreLab.b
-            })
-            return srgb01ToHex(csrgb01)
+            local cr <const>, cg <const>, cb <const> = ok_color.oklab_to_srgb(
+                u * lBack + fac * lFore,
+                u * aBack + fac * aFore,
+                u * bBack + fac * bFore
+            )
+            return srgb01ToHex(cr, cg, cb)
         end
 
         local lerpFunc = lerpLab
         if colorMode == "HSL" then
-            local foreHsl <const> = ok_color.oklab_to_okhsl(foreLab)
-            local backHsl <const> = ok_color.oklab_to_okhsl(backLab)
-            if foreHsl.s < 0.00001 or backHsl.s < 0.00001 then
+            local hHslFore <const>, sHslFore <const>, lHslFore <const> = ok_color.oklab_to_okhsl(lFore, aFore, bFore)
+            local hHslBack <const>, sHslBack <const>, lHslBack <const> = ok_color.oklab_to_okhsl(lBack, aBack, bBack)
+            if sHslFore < 0.00001 or sHslBack < 0.00001 then
                 lerpFunc = lerpLab
             else
                 lerpFunc = function(fac)
                     if fac <= 0.0 then return backHex end
                     if fac >= 1.0 then return foreHex end
                     local u <const> = 1.0 - fac
-                    local csrgb01 = ok_color.okhsl_to_srgb({
-                        h = hueFunc(backHsl.h, foreHsl.h, fac, 1.0),
-                        s = u * backHsl.s + fac * foreHsl.s,
-                        l = u * backHsl.l + fac * foreHsl.l
-                    })
-                    return srgb01ToHex(csrgb01)
+                    local cr <const>, cg <const>, cb <const> = ok_color.okhsl_to_srgb(
+                        hueFunc(hHslBack, hHslFore, fac, 1.0),
+                        u * sHslBack + fac * sHslFore,
+                        u * lHslBack + fac * lHslFore)
+                    return srgb01ToHex(cr, cg, cb)
                 end
             end
         elseif colorMode == "HSV" then
-            local foreHsv <const> = ok_color.oklab_to_okhsv(foreLab)
-            local backHsv <const> = ok_color.oklab_to_okhsv(backLab)
-            if foreHsv.s < 0.00001 or backHsv.s < 0.00001 then
+            local hHsvFore <const>, sHsvFore <const>, vHsvFore <const> = ok_color.oklab_to_okhsv(lFore, aFore, bFore)
+            local hHsvBack <const>, sHsvBack <const>, vHsvBack <const> = ok_color.oklab_to_okhsb(lBack, aBack, bBack)
+            if sHsvFore < 0.00001 or sHsvBack < 0.00001 then
                 lerpFunc = lerpLab
             else
                 lerpFunc = function(fac)
                     if fac <= 0.0 then return backHex end
                     if fac >= 1.0 then return foreHex end
                     local u <const> = 1.0 - fac
-                    local csrgb01 = ok_color.okhsv_to_srgb({
-                        h = hueFunc(backHsv.h, foreHsv.h, fac, 1.0),
-                        s = u * backHsv.s + fac * foreHsv.s,
-                        v = u * backHsv.v + fac * foreHsv.v
-                    })
-                    return srgb01ToHex(csrgb01)
+                    local cr <const>, cg <const>, cb <const> = ok_color.okhsv_to_srgb(
+                        hueFunc(hHsvBack, hHsvFore, fac, 1.0),
+                        u * sHsvBack + fac * sHsvFore,
+                        u * vHsvBack + fac * vHsvFore)
+                    return srgb01ToHex(cr, cg, cb)
                 end
             end
         end
@@ -1779,7 +1774,7 @@ dlg:button {
                 -- Magnitude correlates with saturation.
                 local magSq <const> = xSgn * xSgn + ySgn * ySgn
                 if magSq <= 1.0 then
-                    local srgb = { r = 0.0, g = 0.0, b = 0.0 }
+                    local r01, g01, b01 = 0, 0, 0
 
                     -- Convert from [-PI, PI] to [0.0, 1.0].
                     -- 1 / TAU approximately equals 0.159.
@@ -1815,24 +1810,16 @@ dlg:button {
                     end
 
                     if useHsv then
-                        srgb = hsv_to_srgb({
-                            h = hue,
-                            s = sat,
-                            v = value
-                        })
+                        r01, g01, b01 = hsv_to_srgb(hue, sat, value)
                     else
-                        srgb = hsl_to_srgb({
-                            h = hue,
-                            s = sat,
-                            l = light
-                        })
+                        r01, g01, b01 = hsl_to_srgb(hue, sat, light)
                     end
 
                     -- Values still go out of gamut, particularly for
                     -- saturated blues at medium light.
-                    r8 = floor(min(max(srgb.r, 0.0), 1.0) * 255 + 0.5)
-                    g8 = floor(min(max(srgb.g, 0.0), 1.0) * 255 + 0.5)
-                    b8 = floor(min(max(srgb.b, 0.0), 1.0) * 255 + 0.5)
+                    r8 = floor(min(max(r01, 0.0), 1.0) * 255 + 0.5)
+                    g8 = floor(min(max(g01, 0.0), 1.0) * 255 + 0.5)
+                    b8 = floor(min(max(b01, 0.0), 1.0) * 255 + 0.5)
                     a8 = 255
                 end
 
