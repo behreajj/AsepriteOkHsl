@@ -5,12 +5,16 @@ local oneTau <const> = 0.1591549430919
 
 local defaults <const> = {
     -- TODO: Account for screen scale?
-    wheelReticleSize = 8,
-    wheelReticleStroke = 2,
-    wCanvasWheel = 180,
-    hCanvasWheel = 180,
-    textDisplayLimit = 50,
+    wCanvasCircle = 180,
+    hCanvasCircle = 180,
 
+    wCanvasAxis = 180,
+    hCanvasAxis = 24,
+
+    circleReticleSize = 8,
+    circleReticleStroke = 2,
+    swatchSize = 17,
+    textDisplayLimit = 50,
     radiansOffset = math.rad(30),
 
     useBack = false,
@@ -25,12 +29,17 @@ local defaults <const> = {
 }
 
 local active <const> = {
-    wCanvasWheel = defaults.wCanvasWheel,
-    hCanvasWheel = defaults.hCanvasWheel,
-    radiansOffset = defaults.radiansOffset,
-    triggerWheelRepaint = true,
-    byteStrWheel = "",
+    wCanvasCircle = defaults.wCanvasCircle,
+    hCanvasCircle = defaults.hCanvasCircle,
+    triggerCircleRepaint = true,
+    byteStrCircle = "",
 
+    wCanvasAxis = defaults.wCanvasAxis,
+    hCanvasAxis = defaults.hCanvasAxis,
+    triggerAxisRepaint = true,
+    byteStrAxis = "",
+
+    radiansOffset = defaults.radiansOffset,
     useBack = defaults.useBack,
     useSat = defaults.useSat,
     satAxis = defaults.satAxis,
@@ -58,7 +67,7 @@ local active <const> = {
 }
 
 ---@param event { context: GraphicsContext }
-local function onPaintWheel(event)
+local function onPaintCircle(event)
     local ctx <const> = event.context
     ctx.antialias = false
     ctx.blendMode = BlendMode.SRC
@@ -85,13 +94,13 @@ local function onPaintWheel(event)
     local satActive <const> = useBack and satBack or satFore
     local lightActive <const> = useBack and lightBack or lightFore
 
-    local needsRepaint <const> = active.triggerWheelRepaint
-        or active.wCanvasWheel ~= wCanvas
-        or active.hCanvasWheel ~= hCanvas
+    local needsRepaint <const> = active.triggerCircleRepaint
+        or active.wCanvasCircle ~= wCanvas
+        or active.hCanvasCircle ~= hCanvas
         or (useSat and satAxis ~= satActive
             or lightAxis ~= lightActive)
-    active.wCanvasWheel = wCanvas
-    active.hCanvasWheel = hCanvas
+    active.wCanvasCircle = wCanvas
+    active.hCanvasCircle = hCanvas
 
     local xCenter <const> = wCanvas * 0.5
     local yCenter <const> = hCanvas * 0.5
@@ -166,8 +175,8 @@ local function onPaintWheel(event)
             byteStrs[i] = byteStr
         end -- End image loop.
 
-        active.byteStrWheel = table.concat(byteStrs)
-        active.triggerWheelRepaint = false
+        active.byteStrCircle = table.concat(byteStrs)
+        active.triggerCircleRepaint = false
     end
 
     -- Draw picker canvas.
@@ -178,9 +187,42 @@ local function onPaintWheel(event)
         colorMode = ColorMode.RGB
     }
     local img <const> = Image(imgSpec)
-    img.bytes = active.byteStrWheel
+    img.bytes = active.byteStrCircle
     local drawRect <const> = Rectangle(0, 0, wCanvas, hCanvas)
     ctx:drawImage(img, drawRect, drawRect)
+
+    local swatchSize <const> = defaults.swatchSize
+    local offset <const> = swatchSize // 2
+
+    local redBack <const> = active.redBack or 0.0
+    local greenBack <const> = active.greenBack or 0.0
+    local blueBack <const> = active.blueBack or 0.0
+    local alphaBack <const> = active.alphaBack or 1.0
+
+    local r8Back <const> = math.floor(redBack * 255 + 0.5)
+    local g8Back <const> = math.floor(greenBack * 255 + 0.5)
+    local b8Back <const> = math.floor(blueBack * 255 + 0.5)
+
+    local redFore <const> = active.redFore or 0.0
+    local greenFore <const> = active.greenFore or 0.0
+    local blueFore <const> = active.blueFore or 0.0
+    local alphaFore <const> = active.alphaFore or 1.0
+
+    local r8Fore <const> = math.floor(redFore * 255 + 0.5)
+    local g8Fore <const> = math.floor(greenFore * 255 + 0.5)
+    local b8Fore <const> = math.floor(blueFore * 255 + 0.5)
+
+    -- Draw background color swatch.
+    ctx.color = Color { r = r8Back, g = g8Back, b = b8Back, a = 255 }
+    ctx:fillRect(Rectangle(
+        offset, hCanvas - swatchSize - 1,
+        swatchSize, swatchSize))
+
+    -- Draw foreground color swatch.
+    ctx.color = Color { r = r8Fore, g = g8Fore, b = b8Fore, a = 255 }
+    ctx:fillRect(Rectangle(
+        0, hCanvas - swatchSize - 1 - offset,
+        swatchSize, swatchSize))
 
     -- Draw reticle.
     local radiansActive <const> = hueActive * tau - radiansOffset
@@ -191,17 +233,18 @@ local function onPaintWheel(event)
     local xReticle <const> = xCenter + math.cos(radiansActive) * magCanvas
     local yReticle <const> = yCenter - math.sin(radiansActive) * magCanvas
 
-    local reticleSize <const> = defaults.wheelReticleSize
+    local reticleSize <const> = defaults.circleReticleSize
     local reticleHalf <const> = reticleSize // 2
     local reticleColor <const> = lightActive < 0.5
         and Color(255, 255, 255, 255)
         or Color(0, 0, 0, 255)
     ctx.color = reticleColor
-    ctx.strokeWidth = defaults.wheelReticleStroke
+    ctx.strokeWidth = defaults.circleReticleStroke
     ctx:strokeRect(Rectangle(
         xReticle - reticleHalf, yReticle - reticleHalf,
         reticleSize, reticleSize))
 
+    -- Draw diagnostic text.
     if (wCanvas - hCanvas) > defaults.textDisplayLimit then
         local textSize <const> = ctx:measureText("E")
         local yIncr <const> = textSize.height + 4
@@ -221,24 +264,6 @@ local function onPaintWheel(event)
 
         ctx:fillText(string.format(
             "L: %.2f%%", lightActive * 100), 2, 2 + yIncr * 2)
-
-        local redBack <const> = active.redBack or 0.0
-        local greenBack <const> = active.greenBack or 0.0
-        local blueBack <const> = active.blueBack or 0.0
-        local alphaBack <const> = active.alphaBack or 1.0
-
-        local r8Back <const> = math.floor(redBack * 255 + 0.5)
-        local g8Back <const> = math.floor(greenBack * 255 + 0.5)
-        local b8Back <const> = math.floor(blueBack * 255 + 0.5)
-
-        local redFore <const> = active.redFore or 0.0
-        local greenFore <const> = active.greenFore or 0.0
-        local blueFore <const> = active.blueFore or 0.0
-        local alphaFore <const> = active.alphaFore or 1.0
-
-        local r8Fore <const> = math.floor(redFore * 255 + 0.5)
-        local g8Fore <const> = math.floor(greenFore * 255 + 0.5)
-        local b8Fore <const> = math.floor(blueFore * 255 + 0.5)
 
         local redActive <const> = useBack
             and redBack
@@ -273,20 +298,12 @@ end
 
 local dlg <const> = Dialog { title = "OkHsl Color Picker" }
 
----@param event KeyEvent
-local function onKeyDownWheel(event)
-end
-
 ---@param event MouseEvent
-local function onMouseDownWheel(event)
-end
-
----@param event MouseEvent
-local function onMouseMoveWheel(event)
+local function onMouseMoveCircle(event)
     if event.button == MouseButton.NONE then return end
 
-    local wCanvas <const> = active.wCanvasWheel
-    local hCanvas <const> = active.hCanvasWheel
+    local wCanvas <const> = active.wCanvasCircle
+    local hCanvas <const> = active.hCanvasCircle
     if wCanvas <= 1 or hCanvas <= 1 then return end
 
     local xCenter <const> = wCanvas * 0.5
@@ -303,8 +320,11 @@ local function onMouseMoveWheel(event)
     local xDlt <const> = xCanvas - xCenter
     local xNrm <const> = xDlt * radiusCanvasInv
 
-    local sqMag <const> = math.min(math.max(
-        xNrm * xNrm + yNrm * yNrm, 0.00001), 1.0)
+    -- If sqMag is clamped to [epsilon, 1.0] instead of returning early,
+    -- then this interferes with swapping the fore and background colors.
+    local sqMag <const> = xNrm * xNrm + yNrm * yNrm
+    if sqMag < 0.00001 then return end
+    if sqMag >= 1.0 then return end
 
     local radiansOffset <const> = active.radiansOffset
     local useSat <const> = active.useSat
@@ -357,23 +377,67 @@ local function onMouseMoveWheel(event)
         app.fgColor = Color { r = r8, g = g8, b = b8, a = a8 }
     end
 
+    active.triggerAxisRepaint = true
     dlg:repaint()
 end
 
 ---@param event MouseEvent
-local function onMouseUpWheel(event)
+local function onMouseUpCircle(event)
+    local xMouseUp <const> = event.x
+    local yMouseUp <const> = event.y
+
+    local swatchSize <const> = defaults.swatchSize
+    local offset <const> = swatchSize // 2
+    local hCanvas <const> = active.hCanvasCircle
+    if xMouseUp >= 0 and xMouseUp < offset + swatchSize
+        and yMouseUp >= hCanvas - swatchSize - 1 - offset
+        and yMouseUp < hCanvas then
+        local hTemp <const> = active.hueBack
+        local sTemp <const> = active.satBack
+        local lTemp <const> = active.lightBack
+
+        local rTemp <const> = active.redBack
+        local gTemp <const> = active.greenBack
+        local bTemp <const> = active.blueBack
+
+        local aTemp <const> = active.alphaBack
+
+        active.hueBack = active.hueFore
+        active.satBack = active.satFore
+        active.lightBack = active.lightFore
+
+        active.redBack = active.redFore
+        active.greenBack = active.greenFore
+        active.blueBack = active.blueFore
+
+        active.alphaBack = active.alphaFore
+
+        active.hueFore = hTemp
+        active.satFore = sTemp
+        active.lightFore = lTemp
+
+        active.redFore = rTemp
+        active.greenFore = gTemp
+        active.blueFore = bTemp
+
+        active.alphaFore = aTemp
+
+        active.triggerAxisRepaint = true
+        active.triggerCircleRepaint = true
+        dlg:repaint()
+        app.command.SwitchColors()
+    end
 end
 
 dlg:canvas {
-    id = "wheelCanvas",
+    id = "circleCanvas",
     focus = true,
-    width = defaults.wCanvasWheel,
-    height = defaults.hCanvasWheel,
-    onkeydown = onKeyDownWheel,
-    onmousedown = onMouseDownWheel,
-    onmousemove = onMouseMoveWheel,
-    onmouseup = onMouseUpWheel,
-    onpaint = onPaintWheel,
+    width = defaults.wCanvasCircle,
+    height = defaults.hCanvasCircle,
+    onmousedown = onMouseMoveCircle,
+    onmousemove = onMouseMoveCircle,
+    onmouseup = onMouseUpCircle,
+    onpaint = onPaintCircle,
 }
 
 dlg:newrow { always = false }
