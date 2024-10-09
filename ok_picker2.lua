@@ -11,8 +11,8 @@ local defaults <const> = {
     hCanvasAxis = 12,
     hCanvasAlpha = 12,
 
-    aCheck = 0x80 / 0xff,
-    bCheck = 0xca / 0xff,
+    aCheck = 0.5,
+    bCheck = 0.8,
     wCheck = 6,
     hCheck = 6,
 
@@ -557,6 +557,87 @@ end
 
 local dlg <const> = Dialog { title = "OkHsl Color Picker" }
 
+local function getFromCanvas()
+    local editor <const> = app.editor
+    if not editor then return end
+
+    local sprite <const> = app.sprite
+    if not sprite then return end
+
+    local frame <const> = app.frame or sprite.frames[1]
+
+    local mouse <const> = editor.spritePos
+    local x = mouse.x
+    local y = mouse.y
+
+    local docPrefs <const> = app.preferences.document(sprite)
+    local tiledMode <const> = docPrefs.tiled.mode
+
+    if tiledMode == 3 then
+        -- Tiling on both axes.
+        x = x % sprite.width
+        y = y % sprite.height
+    elseif tiledMode == 2 then
+        -- Vertical tiling.
+        y = y % sprite.height
+    elseif tiledMode == 1 then
+        -- Horizontal tiling.
+        x = x % sprite.width
+    end
+
+    local spriteSpec <const> = sprite.spec
+    local colorMode <const> = spriteSpec.colorMode
+    local alphaIndex <const> = spriteSpec.transparentColor
+    local mouseSpec <const> = ImageSpec {
+        width = 1,
+        height = 1,
+        colorMode = colorMode,
+        transparentColor = alphaIndex
+    }
+    mouseSpec.colorSpace = spriteSpec.colorSpace
+    local flat <const> = Image(mouseSpec)
+    flat:drawSprite(sprite, frame, Point(-x, -y))
+    local bpp <const> = flat.bytesPerPixel
+    local bytes <const> = flat.bytes
+    local pixel <const> = string.unpack("<I" .. bpp, bytes)
+
+    -- print(string.format("x: %d, y: %d, p: %x", x, y, pixel))
+
+    local r8, g8, b8, t8 = 0, 0, 0, 0
+    if colorMode == ColorMode.INDEXED then
+        local hasBkg <const> = sprite.backgroundLayer ~= nil
+            and sprite.backgroundLayer.isVisible
+        local palette <const> = sprite.palettes[1]
+        local lenPalette <const> = #palette
+        if (hasBkg or pixel ~= alphaIndex)
+            and pixel >= 0 and pixel < lenPalette then
+            local aseColor <const> = palette:getColor(pixel)
+            r8 = aseColor.red
+            g8 = aseColor.green
+            b8 = aseColor.blue
+            t8 = aseColor.alpha
+        end
+    elseif colorMode == ColorMode.GRAY then
+        local v8 <const> = pixel >> 0x00 & 0xff
+        r8, g8, b8 = v8, v8, v8
+        t8 = pixel >> 0x08 & 0xff
+    else
+        r8 = pixel >> 0x00 & 0xff
+        g8 = pixel >> 0x08 & 0xff
+        b8 = pixel >> 0x10 & 0xff
+        t8 = pixel >> 0x18 & 0xff
+    end
+
+    if t8 > 0 then
+        updateFromAse(r8, g8, b8, t8, false)
+        active.triggerAlphaRepaint = true
+        active.triggerAxisRepaint = true
+        active.triggerCircleRepaint = true
+        dlg:repaint()
+        app.fgColor = Color { r = r8, g = g8, b = b8, a = t8 }
+    end
+end
+
 ---@param event MouseEvent
 local function onMouseMoveAlpha(event)
     if event.button == MouseButton.NONE then return end
@@ -890,9 +971,7 @@ dlg:button {
 dlg:button {
     id = "canvasButton",
     text = defaults.canvasKey,
-    onclick = function()
-        -- TODO: Implement.
-    end
+    onclick = getFromCanvas
 }
 
 dlg:button {
