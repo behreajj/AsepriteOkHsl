@@ -7,8 +7,8 @@ local defaults <const> = {
     -- TODO: Account for screen scale?
     wCanvas = 180,
     hCanvasCircle = 180,
-    hCanvasAxis = 24,
-    hCanvasAlpha = 24,
+    hCanvasAxis = 16,
+    hCanvasAlpha = 16,
 
     circleReticleSize = 8,
     circleReticleStroke = 2,
@@ -72,6 +72,114 @@ local active <const> = {
 }
 
 ---@param event { context: GraphicsContext }
+local function onPaintAxis(event)
+    local ctx <const> = event.context
+    ctx.antialias = false
+    ctx.blendMode = BlendMode.SRC
+
+    local wCanvas <const> = ctx.width
+    local hCanvas <const> = ctx.height
+    if wCanvas <= 1 or hCanvas <= 1 then return end
+
+    local useSat <const> = active.useSat
+    local useBack <const> = active.useBack
+
+    local satAxis <const> = active.satAxis
+    local lightAxis <const> = active.lightAxis
+
+    local hueFore <const> = active.hueFore
+    local satFore <const> = active.satFore
+    local lightFore <const> = active.lightFore
+
+    local hueBack <const> = active.hueBack
+    local satBack <const> = active.satBack
+    local lightBack <const> = active.lightBack
+
+    local hueActive <const> = useBack and hueBack or hueFore
+    local satActive <const> = useBack and satBack or satFore
+    local lightActive <const> = useBack and lightBack or lightFore
+
+    local needsRepaint <const> = active.triggerAxisRepaint
+        or active.wCanvasAxis ~= wCanvas
+        or active.hCanvasAxis ~= hCanvas
+        or (useSat and satAxis ~= satActive
+            or lightAxis ~= lightActive)
+
+    active.wCanvasAxis = wCanvas
+    active.hCanvasAxis = hCanvas
+
+    if needsRepaint then
+        ---@type string[]
+        local byteStrs <const> = {}
+
+        local hslToRgb <const> = ok_color.okhsl_to_srgb
+        local strpack <const> = string.pack
+        local min <const> = math.min
+        local max <const> = math.max
+        local floor <const> = math.floor
+
+        local xToFac <const> = 1.0 / (wCanvas - 1.0)
+
+        local x = 0
+        while x < wCanvas do
+            local fac <const> = x * xToFac
+            local xs <const> = useSat and fac or satActive
+            local xl <const> = useSat and lightActive or fac
+            local r01 <const>, g01 <const>, b01 <const> = hslToRgb(
+                hueActive, xs, xl)
+
+            -- Values still go out of gamut, particularly for
+            -- saturated blues at medium light.
+            local r01cl = min(max(r01, 0), 1)
+            local g01cl = min(max(g01, 0), 1)
+            local b01cl = min(max(b01, 0), 1)
+
+            local r8 <const> = floor(r01cl * 255 + 0.5)
+            local g8 <const> = floor(g01cl * 255 + 0.5)
+            local b8 <const> = floor(b01cl * 255 + 0.5)
+
+            local byteStr <const> = strpack("B B B B", r8, g8, b8, 255)
+
+            x = x + 1
+            byteStrs[x] = byteStr
+        end -- End image loop.
+
+        active.byteStrAxis = table.concat(byteStrs)
+        active.triggerAxisRepaint = false
+    end -- End needs repaint.
+
+    -- Draw axis canvas.
+    local imgSpec <const> = ImageSpec {
+        width = wCanvas,
+        height = 1,
+        transparentColor = 0,
+        colorMode = ColorMode.RGB
+    }
+    local img <const> = Image(imgSpec)
+    img.bytes = active.byteStrAxis
+    ctx:drawImage(img,
+        Rectangle(0, 0, wCanvas, 1),
+        Rectangle(0, 0, wCanvas, hCanvas))
+
+    -- Draw reticle.
+    local x01 <const> = useSat and satAxis or lightAxis
+    local xReticle <const> = math.floor(x01 * wCanvas + 0.5)
+    local yReticle <const> = hCanvas // 2
+
+    local reticleSize <const> = defaults.circleReticleSize
+    local reticleHalf <const> = reticleSize // 2
+    local comparisand <const> = useSat and lightActive or lightAxis
+    local reticleColor <const> = comparisand < 0.5
+        and Color(255, 255, 255, 255)
+        or Color(0, 0, 0, 255)
+    ctx.color = reticleColor
+    ctx.strokeWidth = defaults.circleReticleStroke
+    ctx:strokeRect(Rectangle(
+        xReticle - reticleHalf, yReticle - reticleHalf,
+        reticleSize, reticleSize))
+end
+
+---@param event { context: GraphicsContext }
 local function onPaintCircle(event)
     local ctx <const> = event.context
     ctx.antialias = false
@@ -104,19 +212,22 @@ local function onPaintCircle(event)
         or active.hCanvasCircle ~= hCanvas
         or (useSat and satAxis ~= satActive
             or lightAxis ~= lightActive)
+
     active.wCanvasCircle = wCanvas
     active.hCanvasCircle = hCanvas
 
     local xCenter <const> = wCanvas * 0.5
     local yCenter <const> = hCanvas * 0.5
     local shortEdge <const> = math.min(wCanvas, hCanvas)
-    -- local diamCanvas <const> = shortEdge - 1.0
     local radiusCanvas <const> = (shortEdge - 1.0) * 0.5
 
     local themeColors <const> = app.theme.color
     local radiansOffset <const> = active.radiansOffset
 
     if needsRepaint then
+        ---@type string[]
+        local byteStrs <const> = {}
+
         -- Cache method used in while loop.
         local strpack <const> = string.pack
         local min <const> = math.min
@@ -132,8 +243,6 @@ local function onPaintCircle(event)
         local packZero <const> = strpack("B B B B",
             bkgColor.red, bkgColor.green, bkgColor.blue, 255)
 
-        ---@type string[]
-        local byteStrs <const> = {}
         local lenCanvas <const> = wCanvas * hCanvas
         local i = 0
         while i < lenCanvas do
@@ -182,7 +291,7 @@ local function onPaintCircle(event)
 
         active.byteStrCircle = table.concat(byteStrs)
         active.triggerCircleRepaint = false
-    end
+    end -- End needs repaint.
 
     -- Draw picker canvas.
     local imgSpec <const> = ImageSpec {
@@ -355,9 +464,10 @@ local function onMouseMoveCircle(event)
 
     -- If sqMag is clamped to [epsilon, 1.0] instead of returning early,
     -- then this interferes with swapping the fore and background colors.
+    -- However, a little grace is needed to move along the circumference.
     local sqMag <const> = xNrm * xNrm + yNrm * yNrm
     if sqMag < 0.00001 then return end
-    if sqMag >= 1.0 then return end
+    if sqMag > 1.125 then return end
 
     local radiansOffset <const> = active.radiansOffset
     local useSat <const> = active.useSat
@@ -369,7 +479,7 @@ local function onMouseMoveCircle(event)
     local rUnsigned <const> = rSgnOffset % tau
     local hueMouse <const> = rUnsigned * oneTau
 
-    local mag <const> = math.sqrt(sqMag)
+    local mag <const> = math.sqrt(math.min(sqMag, 1.0))
     local lightMouse <const> = useSat and 1.0 - mag or lightAxis
     local satMouse <const> = useSat and satAxis or mag
 
@@ -462,6 +572,20 @@ local function onMouseUpCircle(event)
         active.triggerCircleRepaint = true
         active.triggerAlphaRepaint = true
         dlg:repaint()
+
+        app.fgColor = Color {
+            r = math.floor(active.redFore * 255 + 0.5),
+            g = math.floor(active.greenFore * 255 + 0.5),
+            b = math.floor(active.blueFore * 255 + 0.5),
+            a = 255
+        }
+        app.command.SwitchColors()
+        app.fgColor = Color {
+            r = math.floor(active.redBack * 255 + 0.5),
+            g = math.floor(active.greenBack * 255 + 0.5),
+            b = math.floor(active.blueBack * 255 + 0.5),
+            a = 255
+        }
         app.command.SwitchColors()
     end
 end
@@ -479,6 +603,16 @@ dlg:canvas {
 
 dlg:newrow { always = false }
 
+dlg:canvas {
+    id = "axisCanvas",
+    focus = false,
+    width = defaults.wCanvas,
+    height = defaults.hCanvasAxis,
+    onpaint = onPaintAxis,
+}
+
+dlg:newrow { always = false }
+
 dlg:button {
     id = "getForeButton",
     text = defaults.foreKey,
@@ -488,6 +622,7 @@ dlg:button {
         local g8fg <const> = fgColor.green
         local b8fg <const> = fgColor.blue
         local t8fg <const> = fgColor.alpha
+
         updateFromAse(r8fg, g8fg, b8fg, t8fg, false)
         active.triggerCircleRepaint = true
         active.triggerAxisRepaint = true
@@ -506,12 +641,13 @@ dlg:button {
         local g8bg <const> = bgColor.green
         local b8bg <const> = bgColor.blue
         local t8bg <const> = bgColor.alpha
+        app.command.SwitchColors()
+
         updateFromAse(r8bg, g8bg, b8bg, t8bg, true)
         active.triggerCircleRepaint = true
         active.triggerAxisRepaint = true
         active.triggerAlphaRepaint = true
         dlg:repaint()
-        app.command.SwitchColors()
     end
 }
 
@@ -531,8 +667,27 @@ dlg:button {
 }
 
 do
-    -- TODO: Initialize picker fore and back color
-    -- from Aseprite fore and back color.
+    local fgColor <const> = app.fgColor
+    local r8fg <const> = fgColor.red
+    local g8fg <const> = fgColor.green
+    local b8fg <const> = fgColor.blue
+    local t8fg <const> = fgColor.alpha
+    updateFromAse(r8fg, g8fg, b8fg, t8fg, false)
+
+    app.command.SwitchColors()
+    local bgColor <const> = app.fgColor
+    local r8bg <const> = bgColor.red
+    local g8bg <const> = bgColor.green
+    local b8bg <const> = bgColor.blue
+    local t8bg <const> = bgColor.alpha
+    app.command.SwitchColors()
+    updateFromAse(r8bg, g8bg, b8bg, t8bg, true)
+
+    active.triggerCircleRepaint = true
+    active.triggerAxisRepaint = true
+    active.triggerAlphaRepaint = true
+
+    dlg:repaint()
 end
 
 dlg:show {
