@@ -5,11 +5,10 @@ local oneTau <const> = 0.1591549430919
 
 local defaults <const> = {
     -- TODO: Account for screen scale?
-    wCanvasCircle = 180,
+    wCanvas = 180,
     hCanvasCircle = 180,
-
-    wCanvasAxis = 180,
     hCanvasAxis = 24,
+    hCanvasAlpha = 24,
 
     circleReticleSize = 8,
     circleReticleStroke = 2,
@@ -29,17 +28,23 @@ local defaults <const> = {
 }
 
 local active <const> = {
-    wCanvasCircle = defaults.wCanvasCircle,
+    radiansOffset = defaults.radiansOffset,
+
+    wCanvasCircle = defaults.wCanvas,
     hCanvasCircle = defaults.hCanvasCircle,
     triggerCircleRepaint = true,
     byteStrCircle = "",
 
-    wCanvasAxis = defaults.wCanvasAxis,
+    wCanvasAxis = defaults.wCanvas,
     hCanvasAxis = defaults.hCanvasAxis,
     triggerAxisRepaint = true,
     byteStrAxis = "",
 
-    radiansOffset = defaults.radiansOffset,
+    wCanvasAlpha = defaults.wCanvas,
+    hCanvasAlpha = defaults.hCanvasAlpha,
+    triggerAlphaRepaint = true,
+    byteStrAlpha = "",
+
     useBack = defaults.useBack,
     useSat = defaults.useSat,
     satAxis = defaults.satAxis,
@@ -296,6 +301,34 @@ local function onPaintCircle(event)
     end
 end
 
+---@param r8 integer
+---@param g8 integer
+---@param b8 integer
+---@param t8 integer
+---@param useBack boolean
+local function updateFromAse(r8, g8, b8, t8, useBack)
+    local r01 <const>, g01 <const>, b01 <const> = r8 / 255.0, g8 / 255.0, b8 / 255.0
+    local h <const>, s <const>, l <const> = ok_color.srgb_to_okhsl(r01, g01, b01)
+
+    if l > 0.0 and l < 1.0 then
+        if s > 0.0 then
+            active[useBack and "hueBack" or "hueFore"] = h
+        end
+        active[useBack and "satBack" or "satFore"] = s
+    end
+    active[useBack and "lightBack" or "lightFore"] = l
+
+    active[useBack and "redBack" or "redFore"] = r01
+    active[useBack and "greenBack" or "greenFore"] = g01
+    active[useBack and "blueBack" or "blueFore"] = b01
+    active[useBack and "alphaBack" or "alphaFore"] = t8 / 255.0
+
+    if not useBack then
+        active.satAxis = s
+        active.lightAxis = l
+    end
+end
+
 local dlg <const> = Dialog { title = "OkHsl Color Picker" }
 
 ---@param event MouseEvent
@@ -422,8 +455,12 @@ local function onMouseUpCircle(event)
 
         active.alphaFore = aTemp
 
+        active.lightAxis = lTemp
+        active.satAxis = sTemp
+
         active.triggerAxisRepaint = true
         active.triggerCircleRepaint = true
+        active.triggerAlphaRepaint = true
         dlg:repaint()
         app.command.SwitchColors()
     end
@@ -432,7 +469,7 @@ end
 dlg:canvas {
     id = "circleCanvas",
     focus = true,
-    width = defaults.wCanvasCircle,
+    width = defaults.wCanvas,
     height = defaults.hCanvasCircle,
     onmousedown = onMouseMoveCircle,
     onmousemove = onMouseMoveCircle,
@@ -446,6 +483,16 @@ dlg:button {
     id = "getForeButton",
     text = defaults.foreKey,
     onclick = function()
+        local fgColor <const> = app.fgColor
+        local r8fg <const> = fgColor.red
+        local g8fg <const> = fgColor.green
+        local b8fg <const> = fgColor.blue
+        local t8fg <const> = fgColor.alpha
+        updateFromAse(r8fg, g8fg, b8fg, t8fg, false)
+        active.triggerCircleRepaint = true
+        active.triggerAxisRepaint = true
+        active.triggerAlphaRepaint = true
+        dlg:repaint()
     end
 }
 
@@ -453,6 +500,18 @@ dlg:button {
     id = "getBackButton",
     text = defaults.backKey,
     onclick = function()
+        app.command.SwitchColors()
+        local bgColor <const> = app.fgColor
+        local r8bg <const> = bgColor.red
+        local g8bg <const> = bgColor.green
+        local b8bg <const> = bgColor.blue
+        local t8bg <const> = bgColor.alpha
+        updateFromAse(r8bg, g8bg, b8bg, t8bg, true)
+        active.triggerCircleRepaint = true
+        active.triggerAxisRepaint = true
+        active.triggerAlphaRepaint = true
+        dlg:repaint()
+        app.command.SwitchColors()
     end
 }
 
