@@ -1683,7 +1683,8 @@ dlgOptions:combobox {
     label = "Easing:",
     option = defaults.huePreset,
     options = huePresets,
-    focus = false
+    focus = false,
+    visible = defaults.showGradientButton
 }
 
 dlgOptions:separator { text = "Hex Depth" }
