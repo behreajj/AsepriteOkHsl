@@ -1,8 +1,16 @@
 dofile("./ok_color.lua")
 
 local axes <const> = { "LIGHTNESS", "SATURATION" }
-local harmonyTypes <const> = { "ANALOGOUS", "COMPLEMENT", "NONE",
-    "SHADING", "SPLIT", "SQUARE", "TETRADIC", "TRIADIC" }
+local harmonyTypes <const> = {
+    "ANALOGOUS",
+    "COMPLEMENT",
+    "NONE",
+    "SHADING",
+    "SPLIT",
+    "SQUARE",
+    "TETRADIC",
+    "TRIADIC"
+}
 local huePresets <const> = { "CCW", "CW", "FAR", "NEAR" }
 
 local tau <const> = 6.2831853071796
@@ -12,9 +20,10 @@ local sqrt32 <const> = 0.86602540378444
 local defaults <const> = {
     -- TODO: Account for screen scale?
     wCanvas = 180,
-    hCanvasCircle = 180,
     hCanvasAxis = 12,
     hCanvasAlpha = 12,
+    hCanvasCircle = 180,
+    hCanvasHarmony = 12,
 
     aCheck = 0.5,
     bCheck = 0.8,
@@ -75,10 +84,15 @@ local active <const> = {
     triggerAlphaRepaint = true,
     byteStrAlpha = "",
 
+    wCanvasHarmony = defaults.wCanvas,
+    hCanvasHarmony = defaults.hCanvasHarmony,
+    triggerHarmonyRepaint = false,
+    byteStrHarmony = "",
+    harmonyType = defaults.harmonyType,
+
     useBack = defaults.useBack,
     satAxis = defaults.satAxis,
     lightAxis = defaults.lightAxis,
-    harmonyType = defaults.harmonyType,
 
     rBitDepth = defaults.rBitDepth,
     gBitDepth = defaults.gBitDepth,
@@ -105,6 +119,32 @@ local active <const> = {
 
     alphaBack = 1.0,
 }
+
+---@param h number hue
+---@param s number saturation
+---@param l number lightness
+---@return integer r8
+---@return integer g8
+---@return integer b8
+---@return number r01
+---@return number g01
+---@return number b01
+local function okhslToRgb24(h, s, l)
+    local r01 <const>, g01 <const>, b01 <const> = ok_color.okhsl_to_srgb(
+        h, s, l)
+
+    -- Values still go out of gamut, particularly for
+    -- saturated blues at medium light.
+    local r01cl = math.min(math.max(r01, 0), 1)
+    local g01cl = math.min(math.max(g01, 0), 1)
+    local b01cl = math.min(math.max(b01, 0), 1)
+
+    local r8 <const> = math.floor(r01cl * 255 + 0.5)
+    local g8 <const> = math.floor(g01cl * 255 + 0.5)
+    local b8 <const> = math.floor(b01cl * 255 + 0.5)
+
+    return r8, g8, b8, r01cl, g01cl, b01cl
+end
 
 ---@param event { context: GraphicsContext }
 local function onPaintAlpha(event)
@@ -251,12 +291,7 @@ local function onPaintAxis(event)
         ---@type string[]
         local byteStrs <const> = {}
 
-        local hslToRgb <const> = ok_color.okhsl_to_srgb
         local strpack <const> = string.pack
-        local min <const> = math.min
-        local max <const> = math.max
-        local floor <const> = math.floor
-
         local xToFac <const> = 1.0 / (wCanvas - 1.0)
 
         local x = 0
@@ -264,19 +299,10 @@ local function onPaintAxis(event)
             local fac <const> = x * xToFac
             local xs <const> = useSat and fac or satActive
             local xl <const> = useSat and lightActive or fac
-            local r01 <const>, g01 <const>, b01 <const> = hslToRgb(
+
+            local r8 <const>, g8 <const>, b8 <const>,
+            _ <const>, _ <const>, _ <const> = okhslToRgb24(
                 hueActive, xs, xl)
-
-            -- Values still go out of gamut, particularly for
-            -- saturated blues at medium light.
-            local r01cl = min(max(r01, 0), 1)
-            local g01cl = min(max(g01, 0), 1)
-            local b01cl = min(max(b01, 0), 1)
-
-            local r8 <const> = floor(r01cl * 255 + 0.5)
-            local g8 <const> = floor(g01cl * 255 + 0.5)
-            local b8 <const> = floor(b01cl * 255 + 0.5)
-
             local byteStr <const> = strpack("B B B B", r8, g8, b8, 255)
 
             x = x + 1
@@ -328,24 +354,6 @@ local function onPaintCircle(event)
     local hCanvas <const> = ctx.height
     if wCanvas <= 1 or hCanvas <= 1 then return end
 
-    local useSat <const> = active.useSat
-    local useBack <const> = active.useBack
-
-    local satAxis <const> = active.satAxis
-    local lightAxis <const> = active.lightAxis
-
-    local hueFore <const> = active.hueFore
-    local satFore <const> = active.satFore
-    local lightFore <const> = active.lightFore
-
-    local hueBack <const> = active.hueBack
-    local satBack <const> = active.satBack
-    local lightBack <const> = active.lightBack
-
-    local hueActive <const> = useBack and hueBack or hueFore
-    local satActive <const> = useBack and satBack or satFore
-    local lightActive <const> = useBack and lightBack or lightFore
-
     local needsRepaint <const> = active.triggerCircleRepaint
         or active.wCanvasCircle ~= wCanvas
         or active.hCanvasCircle ~= hCanvas
@@ -361,24 +369,38 @@ local function onPaintCircle(event)
     local themeColors <const> = app.theme.color
     local radiansOffset <const> = active.radiansOffset
 
+    local useSat <const> = active.useSat
+    local useBack <const> = active.useBack
+
+    local hueFore <const> = active.hueFore
+    local satFore <const> = active.satFore
+    local lightFore <const> = active.lightFore
+
+    local hueBack <const> = active.hueBack
+    local satBack <const> = active.satBack
+    local lightBack <const> = active.lightBack
+
+    local hueActive <const> = useBack and hueBack or hueFore
+    local satActive <const> = useBack and satBack or satFore
+    local lightActive <const> = useBack and lightBack or lightFore
+
     if needsRepaint then
         ---@type string[]
         local byteStrs <const> = {}
 
         -- Cache method used in while loop.
         local strpack <const> = string.pack
-        local min <const> = math.min
-        local max <const> = math.max
-        local floor <const> = math.floor
         local atan2 <const> = math.atan
         local sqrt <const> = math.sqrt
-        local hslToRgb <const> = ok_color.okhsl_to_srgb
 
         -- local diamCanvasInv <const> = 1.0 / diamCanvas
         local radiusCanvasInv <const> = 1.0 / radiusCanvas
         local bkgColor <const> = themeColors.window_face
         local packZero <const> = strpack("B B B B",
             bkgColor.red, bkgColor.green, bkgColor.blue, 255)
+
+        local satAxis <const> = active.satAxis
+        local lightAxis <const> = active.lightAxis
 
         local lenCanvas <const> = wCanvas * hCanvas
         local i = 0
@@ -406,19 +428,9 @@ local function onPaintCircle(event)
                 local sat <const> = useSat and satAxis or mag
                 -- If you want to support quantize, use unsigned q here.
 
-                local r01 <const>, g01 <const>, b01 <const> = hslToRgb(
+                local r8 <const>, g8 <const>, b8 <const>,
+                _ <const>, _ <const>, _ <const> = okhslToRgb24(
                     hue, sat, light)
-
-                -- Values still go out of gamut, particularly for
-                -- saturated blues at medium light.
-                local r01cl = min(max(r01, 0), 1)
-                local g01cl = min(max(g01, 0), 1)
-                local b01cl = min(max(b01, 0), 1)
-
-                local r8 <const> = floor(r01cl * 255 + 0.5)
-                local g8 <const> = floor(g01cl * 255 + 0.5)
-                local b8 <const> = floor(b01cl * 255 + 0.5)
-
                 byteStr = strpack("B B B B", r8, g8, b8, 255)
             end -- End within circle.
 
@@ -496,6 +508,7 @@ local function onPaintCircle(event)
         (yCenter - yReticle * magCanvas) - reticleHalf,
         reticleSize, reticleSize))
 
+    -- Draw harmony reticles.
     local harmonyType <const> = active.harmonyType
     if harmonyType ~= "NONE" and harmonyType ~= "SHADING" then
         local harmRetSize = defaults.harmonyReticleSize
@@ -694,6 +707,112 @@ local function onPaintCircle(event)
 
         ctx:fillText(string.format("#%0" .. hexPad .. "X", hex),
             2, 2 + yIncr * 10)
+    end
+end
+
+---@param event { context: GraphicsContext }
+local function onPaintHarmony(event)
+    local ctx <const> = event.context
+    ctx.antialias = false
+    ctx.blendMode = BlendMode.SRC
+
+    local wCanvas <const> = ctx.width
+    local hCanvas <const> = ctx.height
+    if wCanvas <= 1 or hCanvas <= 1 then return end
+
+    local needsRepaint <const> = active.triggerHarmonyRepaint
+        or active.wCanvasHarmony ~= wCanvas
+        or active.hCanvasHarmony ~= hCanvas
+
+    active.wCanvasHarmony = wCanvas
+    active.hCanvasHarmony = hCanvas
+
+    local harmonyType <const> = active.harmonyType
+    local isAnalog <const> = harmonyType == "ANALOGOUS"
+    local isCompl <const> = harmonyType == "COMPLEMENT"
+    local isNone <const> = harmonyType == "NONE"
+    local isShading <const> = harmonyType == "SHADING"
+    local isSplit <const> = harmonyType == "SPLIT"
+    local isSquare <const> = harmonyType == "SQUARE"
+    local isTetradic <const> = harmonyType == "TETRADIC"
+    local isTriadic <const> = harmonyType == "TRIADIC"
+
+    if needsRepaint then
+        local useBack <const> = active.useBack
+
+        local hueFore <const> = active.hueFore
+        local satFore <const> = active.satFore
+        local lightFore <const> = active.lightFore
+
+        local hueBack <const> = active.hueBack
+        local satBack <const> = active.satBack
+        local lightBack <const> = active.lightBack
+
+        local hueActive <const> = useBack and hueBack or hueFore
+        local satActive <const> = useBack and satBack or satFore
+        local lightActive <const> = useBack and lightBack or lightFore
+
+        if isAnalog then
+            local lAna <const> = (lightActive * 2.0 + 0.5) / 3.0
+
+            local h030 <const> = hueActive + 0.083333333
+            local h330 <const> = hueActive - 0.083333333
+
+            local r0 <const>, g0 <const>, b0 <const> = ok_color.okhsl_to_srgb(h030, satActive, lAna)
+            local r1 <const>, g1 <const>, b1 <const> = ok_color.okhsl_to_srgb(h330, satActive, lAna)
+        elseif isCompl then
+            local lCmp <const> = 1.0 - lightActive
+
+            local h180 <const> = hueActive + 0.5
+        elseif isNone then
+        elseif isShading then
+        elseif isSplit then
+            local lSpl <const> = (2.5 - lightActive * 2.0) / 3.0
+
+            local h150 = hueActive + 0.41666667
+            local h210 = hueActive - 0.41666667
+        elseif isSquare then
+            local lCmp <const> = 1.0 - lightActive
+            local lSqr <const> = 0.5
+
+            local h090 = hueActive + 0.25
+            local h180 = hueActive + 0.5
+            local h270 = hueActive - 0.25
+        elseif isTetradic then
+            local lTri <const> = (2.0 - lightActive) / 3.0
+            local lCmp <const> = 1.0 - lightActive
+            local lTet <const> = (1.0 + lightActive) / 3.0
+
+            local h120 <const> = hueActive + 0.33333333
+            local h180 <const> = hueActive + 0.5
+            local h300 <const> = hueActive - 0.16666667
+        elseif isTriadic then
+            local lTri <const> = (2.0 - lightActive) / 3.0
+
+            local h120 <const> = hueActive + 0.33333333
+            local h240 <const> = hueActive - 0.33333333
+        end
+    end
+
+    local wCanvasNative = 1
+    local hCanvasNative <const> = 1
+    if isAnalog then
+        wCanvasNative = 2
+    elseif isCompl then
+        wCanvasNative = 1
+    elseif isNone then
+        wCanvasNative = 1
+    elseif isShading then
+        -- TODO: This should be adjustable.
+        wCanvasNative = 7
+    elseif isSplit then
+        wCanvasNative = 2
+    elseif isSquare then
+        wCanvasNative = 3
+    elseif isTetradic then
+        wCanvasNative = 3
+    elseif isTriadic then
+        wCanvasNative = 2
     end
 end
 
@@ -1083,30 +1202,21 @@ local function onMouseMoveAxis(event)
         active[useBack and "lightBack" or "lightFore"] = xNrm
     end
 
-    -- TODO: Much of this can become its own function hsl->rgb32
     local hActive <const> = useBack and active.hueBack or active.hueFore
     local sActive <const> = useBack and active.satBack or active.satFore
     local lActive <const> = useBack and active.lightBack or active.lightFore
-    local r01 <const>, g01 <const>, b01 <const> = ok_color.okhsl_to_srgb(
+
+    local r8 <const>, g8 <const>, b8 <const>,
+    r01 <const>, g01 <const>, b01 <const> = okhslToRgb24(
         hActive, sActive, lActive)
 
-    -- Values still go out of gamut, particularly for
-    -- saturated blues at medium light.
-    local r01cl = math.min(math.max(r01, 0), 1)
-    local g01cl = math.min(math.max(g01, 0), 1)
-    local b01cl = math.min(math.max(b01, 0), 1)
-
-    active[useBack and "redBack" or "redFore"] = r01cl
-    active[useBack and "greenBack" or "greenFore"] = g01cl
-    active[useBack and "blueBack" or "blueFore"] = b01cl
+    active[useBack and "redBack" or "redFore"] = r01
+    active[useBack and "greenBack" or "greenFore"] = g01
+    active[useBack and "blueBack" or "blueFore"] = b01
 
     local alphaActive <const> = useBack
         and active.alphaBack
         or active.alphaFore
-
-    local r8 <const> = math.floor(r01cl * 255 + 0.5)
-    local g8 <const> = math.floor(g01cl * 255 + 0.5)
-    local b8 <const> = math.floor(b01cl * 255 + 0.5)
     local a8 <const> = math.floor(alphaActive * 255 + 0.5)
 
     if useBack then
@@ -1177,26 +1287,17 @@ local function onMouseMoveCircle(event)
     active[useBack and "satBack" or "satFore"] = satMouse
     active[useBack and "lightBack" or "lightFore"] = lightMouse
 
-    local r01 <const>, g01 <const>, b01 <const> = ok_color.okhsl_to_srgb(
+    local r8 <const>, g8 <const>, b8 <const>,
+    r01 <const>, g01 <const>, b01 <const> = okhslToRgb24(
         hueMouse, satMouse, lightMouse)
 
-    -- Values still go out of gamut, particularly for
-    -- saturated blues at medium light.
-    local r01cl = math.min(math.max(r01, 0), 1)
-    local g01cl = math.min(math.max(g01, 0), 1)
-    local b01cl = math.min(math.max(b01, 0), 1)
-
-    active[useBack and "redBack" or "redFore"] = r01cl
-    active[useBack and "greenBack" or "greenFore"] = g01cl
-    active[useBack and "blueBack" or "blueFore"] = b01cl
+    active[useBack and "redBack" or "redFore"] = r01
+    active[useBack and "greenBack" or "greenFore"] = g01
+    active[useBack and "blueBack" or "blueFore"] = b01
 
     local alphaActive <const> = useBack
         and active.alphaBack
         or active.alphaFore
-
-    local r8 <const> = math.floor(r01cl * 255 + 0.5)
-    local g8 <const> = math.floor(g01cl * 255 + 0.5)
-    local b8 <const> = math.floor(b01cl * 255 + 0.5)
     local a8 <const> = math.floor(alphaActive * 255 + 0.5)
 
     if useBack then
@@ -1311,6 +1412,16 @@ dlgMain:canvas {
     onmousedown = onMouseMoveAlpha,
     onmousemove = onMouseMoveAlpha,
     onpaint = onPaintAlpha,
+}
+
+dlgMain:newrow { always = false }
+
+dlgMain:canvas {
+    id = "harmonyCanvas",
+    focus = false,
+    width = defaults.wCanvas,
+    height = defaults.hCanvasHarmony,
+    onpaint = onPaintHarmony,
 }
 
 dlgMain:newrow { always = false }
@@ -1490,7 +1601,7 @@ dlgOptions:slider {
     visible = false,
 }
 
-dlgOptions:newrow { always = false }
+dlgOptions:separator {}
 
 dlgOptions:check {
     id = "showFore",
@@ -1597,6 +1708,10 @@ dlgOptions:button {
     text = "&CANCEL",
     focus = false,
     onclick = function()
+        -- TODO: If show gradient button check box is ticked when dialog is
+        -- open, then it is closed and reopened, the button check is still
+        -- ticked, even though OK hasn't been pressed and the option has not
+        -- been applied to the main dialog.
         dlgOptions:close()
     end
 }
