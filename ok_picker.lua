@@ -32,18 +32,19 @@ local defaults <const> = {
 
     foreKey = "&FORE",
     backKey = "&BACK",
-    -- optionsKey = "&OPTIONS",
     optionsKey = "&+",
     sampleKey = "S&AMPLE",
     closeKey = "&X",
+
+    showSampleButton = false,
+    showForeButton = true,
+    showBackButton = true,
+    showExitButton = true,
 }
 
 local active <const> = {
     radiansOffset = defaults.radiansOffset,
     useSat = defaults.useSat,
-    showSampleButton = true,
-    showForeButton = true,
-    showBackButton = true,
 
     wCanvasCircle = defaults.wCanvas,
     hCanvasCircle = defaults.hCanvasCircle,
@@ -954,8 +955,8 @@ dlgMain:newrow { always = false }
 dlgMain:button {
     id = "getForeButton",
     text = defaults.foreKey,
-    visible = true,
     focus = false,
+    visible = defaults.showForeButton,
     onclick = function()
         local fgColor <const> = app.fgColor
         local r8fg <const> = fgColor.red
@@ -974,8 +975,8 @@ dlgMain:button {
 dlgMain:button {
     id = "getBackButton",
     text = defaults.backKey,
-    visible = true,
     focus = false,
+    visible = defaults.showBackButton,
     onclick = function()
         app.command.SwitchColors()
         local bgColor <const> = app.fgColor
@@ -997,6 +998,7 @@ dlgMain:button {
     id = "sampleButton",
     text = defaults.sampleKey,
     focus = false,
+    visible = defaults.showSampleButton,
     onclick = getFromCanvas
 }
 
@@ -1004,6 +1006,7 @@ dlgMain:button {
     id = "optionsButton",
     text = defaults.optionsKey,
     focus = false,
+    visible = true,
     onclick = function()
         dlgOptions:show { autoscrollbars = true, wait = true }
     end
@@ -1013,7 +1016,7 @@ dlgMain:button {
     id = "exitMainButton",
     text = defaults.closeKey,
     focus = false,
-    visible = true,
+    visible = defaults.showExitButton,
     onclick = function()
         dlgMain:close()
     end
