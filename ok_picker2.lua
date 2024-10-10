@@ -1013,6 +1013,7 @@ dlgMain:button {
     id = "exitMainButton",
     text = defaults.closeKey,
     focus = false,
+    visible = true,
     onclick = function()
         dlgMain:close()
     end
@@ -1058,6 +1059,12 @@ dlgOptions:check {
     selected = true
 }
 
+dlgOptions:check {
+    id = "showClose",
+    text = "X",
+    selected = true
+}
+
 dlgOptions:newrow { always = false }
 
 dlgOptions:button {
@@ -1071,6 +1078,7 @@ dlgOptions:button {
         local showFore <const> = args.showFore --[[@as boolean]]
         local showBack <const> = args.showBack --[[@as boolean]]
         local showSample <const> = args.showSample --[[@as boolean]]
+        local showClose <const> = args.showClose --[[@as boolean]]
 
         local oldRadiansOffset <const> = active.radiansOffset
         local oldUseSat <const> = active.useSat
@@ -1090,6 +1098,7 @@ dlgOptions:button {
         dlgMain:modify { id = "getForeButton", visible = showFore }
         dlgMain:modify { id = "getBackButton", visible = showBack }
         dlgMain:modify { id = "sampleButton", visible = showSample }
+        dlgMain:modify { id = "exitMainButton", visible = showClose }
 
         dlgOptions:close()
     end
