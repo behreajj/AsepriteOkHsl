@@ -1481,6 +1481,7 @@ dlgMain:canvas {
     focus = false,
     width = defaults.wCanvas,
     height = defaults.hCanvasHarmony,
+    visible = defaults.harmonyType ~= "NONE",
     onpaint = onPaintHarmony,
 }
 
@@ -1752,6 +1753,7 @@ dlgOptions:button {
         dlgMain:modify { id = "gradientButton", visible = showGradient }
         dlgMain:modify { id = "sampleButton", visible = showSample }
         dlgMain:modify { id = "exitMainButton", visible = showExit }
+        dlgMain:modify { id = "harmonyCanvas", visible = harmonyType ~= "NONE" }
 
         dlgOptions:close()
     end
