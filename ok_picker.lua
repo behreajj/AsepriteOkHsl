@@ -5,7 +5,7 @@ local harmonyTypes <const> = {
     "ANALOGOUS",
     "COMPLEMENT",
     "NONE",
-    "SHADING",
+    -- "SHADING",
     "SPLIT",
     "SQUARE",
     "TETRADIC",
@@ -58,6 +58,7 @@ local defaults <const> = {
     showExitButton = true,
 
     swatchCount = 5,
+    shadingCount = 7,
     huePreset = "NEAR",
     rBitDepth = 8,
     gBitDepth = 8,
@@ -119,6 +120,95 @@ local active <const> = {
 
     alphaBack = 1.0,
 }
+
+---@param orig number origin angle
+---@param dest number destination angle
+---@param t number factor
+---@param range number? range
+---@return number
+---@nodiscard
+local function lerpAngleCcw(orig, dest, t, range)
+    local valRange <const> = range or 360.0
+    local o <const> = orig % valRange
+    local d <const> = dest % valRange
+    local diff <const> = d - o
+    if diff == 0.0 then return o end
+
+    local u <const> = 1.0 - t
+    if o > d then
+        return (u * o + t * (d + valRange)) % valRange
+    else
+        return u * o + t * d
+    end
+end
+
+---@param orig number origin angle
+---@param dest number destination angle
+---@param t number factor
+---@param range number? range
+---@return number
+---@nodiscard
+local function lerpAngleCw(orig, dest, t, range)
+    local valRange <const> = range or 360.0
+    local o <const> = orig % valRange
+    local d <const> = dest % valRange
+    local diff <const> = d - o
+    if diff == 0.0 then return d end
+
+    local u <const> = 1.0 - t
+    if o < d then
+        return (u * (o + valRange) + t * d) % valRange
+    else
+        return u * o + t * d
+    end
+end
+
+---@param orig number origin angle
+---@param dest number destination angle
+---@param t number factor
+---@param range number? range
+---@return number
+---@nodiscard
+local function lerpAngleFar(orig, dest, t, range)
+    local valRange <const> = range or 360.0
+    local halfRange <const> = valRange * 0.5
+    local o <const> = orig % valRange
+    local d <const> = dest % valRange
+    local diff <const> = d - o
+    local u <const> = 1.0 - t
+
+    if diff == 0.0 or (o < d and diff < halfRange) then
+        return (u * (o + valRange) + t * d) % valRange
+    elseif o > d and diff > -halfRange then
+        return (u * o + t * (d + valRange)) % valRange
+    else
+        return u * o + t * d
+    end
+end
+
+---@param orig number origin angle
+---@param dest number destination angle
+---@param t number factor
+---@param range number? range
+---@return number
+---@nodiscard
+local function lerpAngleNear(orig, dest, t, range)
+    local valRange <const> = range or 360.0
+    local o <const> = orig % valRange
+    local d <const> = dest % valRange
+    local diff <const> = d - o
+    if diff == 0.0 then return o end
+
+    local u <const> = 1.0 - t
+    local halfRange <const> = valRange * 0.5
+    if o < d and diff > halfRange then
+        return (u * (o + valRange) + t * d) % valRange
+    elseif o > d and diff < -halfRange then
+        return (u * o + t * (d + valRange)) % valRange
+    else
+        return u * o + t * d
+    end
+end
 
 ---@param h number hue
 ---@param s number saturation
@@ -754,48 +844,90 @@ local function onPaintHarmony(event)
 
         if isAnalog then
             local lAna <const> = (lightActive * 2.0 + 0.5) / 3.0
-
             local h030 <const> = hueActive + 0.083333333
             local h330 <const> = hueActive - 0.083333333
 
-            local r0 <const>, g0 <const>, b0 <const> = ok_color.okhsl_to_srgb(h030, satActive, lAna)
-            local r1 <const>, g1 <const>, b1 <const> = ok_color.okhsl_to_srgb(h330, satActive, lAna)
+            local r0 <const>, g0 <const>, b0 <const> = okhslToRgb24(h030, satActive, lAna)
+            local r1 <const>, g1 <const>, b1 <const> = okhslToRgb24(h330, satActive, lAna)
+
+            active.byteStrHarmony = string.pack(
+                "B B B B B B B B",
+                r0, g0, b0, 255, r1, g1, b1, 255)
         elseif isCompl then
             local lCmp <const> = 1.0 - lightActive
-
             local h180 <const> = hueActive + 0.5
+
+            local r0 <const>, g0 <const>, b0 <const> = okhslToRgb24(h180, satActive, lCmp)
+
+            active.byteStrHarmony = string.pack(
+                "B B B B",
+                r0, g0, b0, 255)
         elseif isNone then
+            local themeColors <const> = app.theme.color
+            local bkgColor <const> = themeColors.window_face
+            active.byteStrHarmony = string.pack(
+                "B B B B",
+                bkgColor.red, bkgColor.green, bkgColor.blue, 255)
         elseif isShading then
+            -- TODO: Implement.
+
+            -- TODO: This should be adjustable.
+            local shadingCount <const> = defaults.shadingCount
         elseif isSplit then
             local lSpl <const> = (2.5 - lightActive * 2.0) / 3.0
-
             local h150 = hueActive + 0.41666667
             local h210 = hueActive - 0.41666667
+
+            local r0 <const>, g0 <const>, b0 <const> = okhslToRgb24(h150, satActive, lSpl)
+            local r1 <const>, g1 <const>, b1 <const> = okhslToRgb24(h210, satActive, lSpl)
+
+            active.byteStrHarmony = string.pack(
+                "B B B B B B B B",
+                r0, g0, b0, 255, r1, g1, b1, 255)
         elseif isSquare then
             local lCmp <const> = 1.0 - lightActive
             local lSqr <const> = 0.5
-
             local h090 = hueActive + 0.25
             local h180 = hueActive + 0.5
             local h270 = hueActive - 0.25
+
+            local r0 <const>, g0 <const>, b0 <const> = okhslToRgb24(h090, satActive, lSqr)
+            local r1 <const>, g1 <const>, b1 <const> = okhslToRgb24(h180, satActive, lCmp)
+            local r2 <const>, g2 <const>, b2 <const> = okhslToRgb24(h270, satActive, lSqr)
+
+            active.byteStrHarmony = string.pack(
+                "B B B B B B B B B B B B",
+                r0, g0, b0, 255, r1, g1, b1, 255, r2, g2, b2, 255)
         elseif isTetradic then
             local lTri <const> = (2.0 - lightActive) / 3.0
             local lCmp <const> = 1.0 - lightActive
             local lTet <const> = (1.0 + lightActive) / 3.0
-
             local h120 <const> = hueActive + 0.33333333
             local h180 <const> = hueActive + 0.5
             local h300 <const> = hueActive - 0.16666667
+
+            local r0 <const>, g0 <const>, b0 <const> = okhslToRgb24(h120, satActive, lTri)
+            local r1 <const>, g1 <const>, b1 <const> = okhslToRgb24(h180, satActive, lCmp)
+            local r2 <const>, g2 <const>, b2 <const> = okhslToRgb24(h300, satActive, lTet)
+
+            active.byteStrHarmony = string.pack(
+                "B B B B B B B B B B B B",
+                r0, g0, b0, 255, r1, g1, b1, 255, r2, g2, b2, 255)
         elseif isTriadic then
             local lTri <const> = (2.0 - lightActive) / 3.0
-
             local h120 <const> = hueActive + 0.33333333
             local h240 <const> = hueActive - 0.33333333
+
+            local r0 <const>, g0 <const>, b0 <const> = okhslToRgb24(h120, satActive, lTri)
+            local r1 <const>, g1 <const>, b1 <const> = okhslToRgb24(h240, satActive, lTri)
+
+            active.byteStrHarmony = string.pack(
+                "B B B B B B B B",
+                r0, g0, b0, 255, r1, g1, b1, 255)
         end
     end
 
     local wCanvasNative = 1
-    local hCanvasNative <const> = 1
     if isAnalog then
         wCanvasNative = 2
     elseif isCompl then
@@ -804,7 +936,7 @@ local function onPaintHarmony(event)
         wCanvasNative = 1
     elseif isShading then
         -- TODO: This should be adjustable.
-        wCanvasNative = 7
+        wCanvasNative = defaults.shadingCount
     elseif isSplit then
         wCanvasNative = 2
     elseif isSquare then
@@ -814,6 +946,19 @@ local function onPaintHarmony(event)
     elseif isTriadic then
         wCanvasNative = 2
     end
+
+    -- Draw harmony canvas.
+    local imgSpec <const> = ImageSpec {
+        width = wCanvasNative,
+        height = 1,
+        transparentColor = 0,
+        colorMode = ColorMode.RGB
+    }
+    local img <const> = Image(imgSpec)
+    img.bytes = active.byteStrHarmony
+    ctx:drawImage(img,
+        Rectangle(0, 0, wCanvasNative, 1),
+        Rectangle(0, 0, wCanvas, hCanvas))
 end
 
 ---@param r8 integer
@@ -854,95 +999,6 @@ local dlgOptions <const> = Dialog {
     title = "Options",
     parent = dlgMain
 }
-
----@param orig number origin angle
----@param dest number destination angle
----@param t number factor
----@param range number? range
----@return number
----@nodiscard
-local function lerpAngleCcw(orig, dest, t, range)
-    local valRange <const> = range or 360.0
-    local o <const> = orig % valRange
-    local d <const> = dest % valRange
-    local diff <const> = d - o
-    if diff == 0.0 then return o end
-
-    local u <const> = 1.0 - t
-    if o > d then
-        return (u * o + t * (d + valRange)) % valRange
-    else
-        return u * o + t * d
-    end
-end
-
----@param orig number origin angle
----@param dest number destination angle
----@param t number factor
----@param range number? range
----@return number
----@nodiscard
-local function lerpAngleCw(orig, dest, t, range)
-    local valRange <const> = range or 360.0
-    local o <const> = orig % valRange
-    local d <const> = dest % valRange
-    local diff <const> = d - o
-    if diff == 0.0 then return d end
-
-    local u <const> = 1.0 - t
-    if o < d then
-        return (u * (o + valRange) + t * d) % valRange
-    else
-        return u * o + t * d
-    end
-end
-
----@param orig number origin angle
----@param dest number destination angle
----@param t number factor
----@param range number? range
----@return number
----@nodiscard
-local function lerpAngleFar(orig, dest, t, range)
-    local valRange <const> = range or 360.0
-    local halfRange <const> = valRange * 0.5
-    local o <const> = orig % valRange
-    local d <const> = dest % valRange
-    local diff <const> = d - o
-    local u <const> = 1.0 - t
-
-    if diff == 0.0 or (o < d and diff < halfRange) then
-        return (u * (o + valRange) + t * d) % valRange
-    elseif o > d and diff > -halfRange then
-        return (u * o + t * (d + valRange)) % valRange
-    else
-        return u * o + t * d
-    end
-end
-
----@param orig number origin angle
----@param dest number destination angle
----@param t number factor
----@param range number? range
----@return number
----@nodiscard
-local function lerpAngleNear(orig, dest, t, range)
-    local valRange <const> = range or 360.0
-    local o <const> = orig % valRange
-    local d <const> = dest % valRange
-    local diff <const> = d - o
-    if diff == 0.0 then return o end
-
-    local u <const> = 1.0 - t
-    local halfRange <const> = valRange * 0.5
-    if o < d and diff > halfRange then
-        return (u * (o + valRange) + t * d) % valRange
-    elseif o > d and diff < -halfRange then
-        return (u * o + t * (d + valRange)) % valRange
-    else
-        return u * o + t * d
-    end
-end
 
 local function genGradient()
     local sprite <const> = app.sprite
@@ -1129,6 +1185,7 @@ local function getFromCanvas()
         active.triggerAlphaRepaint = true
         active.triggerAxisRepaint = true
         active.triggerCircleRepaint = true
+        active.triggerHarmonyRepaint = true
         dlgMain:repaint()
         app.fgColor = Color { r = r8, g = g8, b = b8, a = t8 }
     end
@@ -1229,6 +1286,7 @@ local function onMouseMoveAxis(event)
 
     active.triggerCircleRepaint = true
     active.triggerAlphaRepaint = true
+    active.triggerHarmonyRepaint = true
     dlgMain:repaint()
 end
 
@@ -1310,6 +1368,7 @@ local function onMouseMoveCircle(event)
 
     active.triggerAxisRepaint = true
     active.triggerAlphaRepaint = true
+    active.triggerHarmonyRepaint = true
     dlgMain:repaint()
 end
 
@@ -1360,6 +1419,7 @@ local function onMouseUpCircle(event)
         active.triggerAlphaRepaint = true
         active.triggerAxisRepaint = true
         active.triggerCircleRepaint = true
+        active.triggerHarmonyRepaint = true
         dlgMain:repaint()
 
         app.fgColor = Color {
@@ -1442,6 +1502,7 @@ dlgMain:button {
         active.triggerAlphaRepaint = true
         active.triggerAxisRepaint = true
         active.triggerCircleRepaint = true
+        active.triggerHarmonyRepaint = true
         dlgMain:repaint()
     end
 }
@@ -1464,6 +1525,7 @@ dlgMain:button {
         active.triggerAlphaRepaint = true
         active.triggerAxisRepaint = true
         active.triggerCircleRepaint = true
+        active.triggerHarmonyRepaint = true
         dlgMain:repaint()
     end
 }
@@ -1670,10 +1732,6 @@ dlgOptions:button {
         local bBitDepth <const> = args.bBitDepth --[[@as integer]]
         local tBitDepth <const> = args.tBitDepth --[[@as integer]]
 
-        local oldRadiansOffset <const> = active.radiansOffset
-        local oldUseSat <const> = active.useSat
-        local oldHarmonyType <const> = active.harmonyType
-
         active.radiansOffset = (-math.rad(degreesOffset)) % tau
         active.useSat = axis == "SATURATION"
         active.harmonyType = harmonyType
@@ -1682,14 +1740,10 @@ dlgOptions:button {
         active.bBitDepth = bBitDepth
         active.tBitDepth = tBitDepth
 
-        -- TODO: What will change in harmony type impact? Maybe simplify this
-        -- by redrawing eveything anyway.
-        if oldUseSat ~= active.useSat
-            or oldRadiansOffset ~= active.radiansOffset then
-            active.triggerAlphaRepaint = true
-            active.triggerAxisRepaint = true
-            active.triggerCircleRepaint = true
-        end
+        active.triggerAlphaRepaint = true
+        active.triggerAxisRepaint = true
+        active.triggerCircleRepaint = true
+        active.triggerHarmonyRepaint = true
 
         dlgMain:repaint()
 
@@ -1736,6 +1790,7 @@ do
     active.triggerAlphaRepaint = true
     active.triggerAxisRepaint = true
     active.triggerCircleRepaint = true
+    active.triggerHarmonyRepaint = true
     dlgMain:repaint()
 end
 
