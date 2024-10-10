@@ -1,22 +1,9 @@
 dofile("./ok_color.lua")
 
 local axes <const> = { "LIGHTNESS", "SATURATION" }
-local harmonyTypes <const> = {
-    "ANALOGOUS",
-    "COMPLEMENT",
-    "NONE",
-    "SHADING",
-    "SPLIT",
-    "SQUARE",
-    "TETRADIC",
-    "TRIADIC"
-}
-local huePresets <const> = {
-    "CCW",
-    "CW",
-    "FAR",
-    "NEAR",
-}
+local harmonyTypes <const> = { "ANALOGOUS", "COMPLEMENT", "NONE",
+    "SHADING", "SPLIT", "SQUARE", "TETRADIC", "TRIADIC" }
+local huePresets <const> = { "CCW", "CW", "FAR", "NEAR" }
 
 local tau <const> = 6.2831853071796
 local oneTau <const> = 0.1591549430919
@@ -63,6 +50,10 @@ local defaults <const> = {
 
     swatchCount = 5,
     huePreset = "NEAR",
+    rBitDepth = 8,
+    gBitDepth = 8,
+    bBitDepth = 8,
+    tBitDepth = 8,
 }
 
 local active <const> = {
@@ -88,6 +79,11 @@ local active <const> = {
     satAxis = defaults.satAxis,
     lightAxis = defaults.lightAxis,
     harmonyType = defaults.harmonyType,
+
+    rBitDepth = defaults.rBitDepth,
+    gBitDepth = defaults.gBitDepth,
+    bBitDepth = defaults.bBitDepth,
+    tBitDepth = defaults.tBitDepth,
 
     hueFore = 0.0,
     satFore = 1.0,
@@ -528,6 +524,7 @@ local function onPaintCircle(event)
                 (xCenter + xAna1 * lAna) - harmRetHalf,
                 (yCenter - yAna1 * lAna) - harmRetHalf)
         elseif harmonyType == "COMPLEMENT" then
+            -- 180 degrees
             local lCmp <const> = useSat
                 and (1.0 - magActive) * radiusCanvas
                 or magCanvas
@@ -556,6 +553,7 @@ local function onPaintCircle(event)
                 (xCenter + xSpl1 * lSpl) - harmRetHalf,
                 (yCenter - ySpl1 * lSpl) - harmRetHalf)
         elseif harmonyType == "SQUARE" then
+            -- 90, 180, 270 degrees
             local lCmp <const> = useSat
                 and (1.0 - magActive) * radiusCanvas
                 or magCanvas
@@ -636,8 +634,6 @@ local function onPaintCircle(event)
 
     -- Draw diagnostic text.
     if (wCanvas - hCanvas) > defaults.textDisplayLimit then
-        -- TODO: Display OK LAB values?
-
         local textSize <const> = ctx:measureText("E")
         local yIncr <const> = textSize.height + 4
         local textColor <const> = themeColors.text
@@ -679,12 +675,24 @@ local function onPaintCircle(event)
         ctx:fillText(string.format(
             "A: %.2f%%", alphaActive * 100), 2, 2 + yIncr * 8)
 
-        local r8Active <const> = useBack and r8Back or r8Fore
-        local g8Active <const> = useBack and g8Back or g8Fore
-        local b8Active <const> = useBack and b8Back or b8Fore
+        local rBitDepth <const> = active.rBitDepth
+        local gBitDepth <const> = active.gBitDepth
+        local bBitDepth <const> = active.bBitDepth
 
-        ctx:fillText(string.format("#%06X",
-                r8Active << 0x10|g8Active << 0x08|b8Active),
+        local bShift <const> = 0
+        local gShift <const> = bShift + bBitDepth
+        local rShift <const> = gShift + gBitDepth
+        local hexPad <const> = math.ceil((rShift + rBitDepth) * 0.25)
+
+        local bMax <const> = (1 << bBitDepth) - 1
+        local gMax <const> = (1 << gBitDepth) - 1
+        local rMax <const> = (1 << rBitDepth) - 1
+
+        local hex <const> = math.floor(redActive * rMax + 0.5) << rShift
+            | math.floor(greenActive * gMax + 0.5) << gShift
+            | math.floor(blueActive * bMax + 0.5) << bShift
+
+        ctx:fillText(string.format("#%0" .. hexPad .. "X", hex),
             2, 2 + yIncr * 10)
     end
 end
@@ -1436,6 +1444,52 @@ dlgOptions:combobox {
     focus = false
 }
 
+dlgOptions:separator { text = "Hex Depth" }
+
+dlgOptions:slider {
+    id = "rBitDepth",
+    label = "Red:",
+    value = defaults.rBitDepth,
+    min = 1,
+    max = 8,
+    focus = false
+}
+
+dlgOptions:newrow { always = false }
+
+dlgOptions:slider {
+    id = "gBitDepth",
+    label = "Green:",
+    value = defaults.gBitDepth,
+    min = 1,
+    max = 8,
+    focus = false
+}
+
+dlgOptions:newrow { always = false }
+
+dlgOptions:slider {
+    id = "bBitDepth",
+    label = "Blue:",
+    value = defaults.bBitDepth,
+    min = 1,
+    max = 8,
+    focus = false
+}
+
+dlgOptions:newrow { always = false }
+
+dlgOptions:slider {
+    id = "tBitDepth",
+    label = "Alpha:",
+    value = defaults.tBitDepth,
+    min = 1,
+    max = 8,
+    focus = false,
+    -- TODO: For now this is unused.
+    visible = false,
+}
+
 dlgOptions:newrow { always = false }
 
 dlgOptions:check {
@@ -1500,6 +1554,11 @@ dlgOptions:button {
         local showSample <const> = args.showSample --[[@as boolean]]
         local showExit <const> = args.showExit --[[@as boolean]]
 
+        local rBitDepth <const> = args.rBitDepth --[[@as integer]]
+        local gBitDepth <const> = args.gBitDepth --[[@as integer]]
+        local bBitDepth <const> = args.bBitDepth --[[@as integer]]
+        local tBitDepth <const> = args.tBitDepth --[[@as integer]]
+
         local oldRadiansOffset <const> = active.radiansOffset
         local oldUseSat <const> = active.useSat
         local oldHarmonyType <const> = active.harmonyType
@@ -1507,8 +1566,13 @@ dlgOptions:button {
         active.radiansOffset = (-math.rad(degreesOffset)) % tau
         active.useSat = axis == "SATURATION"
         active.harmonyType = harmonyType
+        active.rBitDepth = rBitDepth
+        active.gBitDepth = gBitDepth
+        active.bBitDepth = bBitDepth
+        active.tBitDepth = tBitDepth
 
-        -- TODO: What will change in harmony type impact?
+        -- TODO: What will change in harmony type impact? Maybe simplify this
+        -- by redrawing eveything anyway.
         if oldUseSat ~= active.useSat
             or oldRadiansOffset ~= active.radiansOffset then
             active.triggerAlphaRepaint = true
