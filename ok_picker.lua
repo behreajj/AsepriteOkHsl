@@ -495,17 +495,12 @@ local function onPaintCircle(event)
 
     local harmonyType <const> = active.harmonyType
     if harmonyType ~= "NONE" and harmonyType ~= "SHADING" then
-        -- TODO: This is complicated by the saturation axis,
-        -- where light would be inverted on several of these.
-
         local harmRetSize = defaults.harmonyReticleSize
         local harmRetHalf = harmRetSize // 2
 
         ---@type Point[]
         local pts <const> = {}
         if harmonyType == "ANALOGOUS" then
-            -- float lAna = (magActive * 2.0 + 50.0) / 3.0
-
             -- 30, 330 degrees
             local rt32x <const> = sqrt32 * xReticle
             local rt32y <const> = sqrt32 * yReticle
@@ -515,21 +510,25 @@ local function onPaintCircle(event)
             local xAna0 <const>, yAna0 <const> = rt32x - halfy, rt32y + halfx
             local xAna1 <const>, yAna1 <const> = rt32x + halfy, rt32y - halfx
 
+            local lAna <const> = useSat
+                and ((magActive * 2.0 + 0.5) / 3.0) * radiusCanvas
+                or magCanvas
+
             pts[1] = Point(
-                (xCenter + xAna0) - harmRetHalf,
-                (yCenter - yAna0) - harmRetHalf)
+                (xCenter + xAna0 * lAna) - harmRetHalf,
+                (yCenter - yAna0 * lAna) - harmRetHalf)
             pts[2] = Point(
-                (xCenter + xAna1) - harmRetHalf,
-                (yCenter - yAna1) - harmRetHalf)
+                (xCenter + xAna1 * lAna) - harmRetHalf,
+                (yCenter - yAna1 * lAna) - harmRetHalf)
         elseif harmonyType == "COMPLEMENT" then
-            -- float lCmp = 100.0f - c.l;
+            local lCmp <const> = useSat
+                and (1.0 - magActive) * radiusCanvas
+                or magCanvas
 
             pts[1] = Point(
-                (xCenter - xReticle) - harmRetHalf,
-                (yCenter + yReticle) - harmRetHalf)
+                (xCenter - xReticle * lCmp) - harmRetHalf,
+                (yCenter + yReticle * lCmp) - harmRetHalf)
         elseif harmonyType == "SPLIT" then
-            -- float lSpl = (250.0f - c.l * 2.0f) / 3.0f;
-
             -- 150, 210 degrees
             local rt32x <const> = -sqrt32 * xReticle
             local rt32y <const> = -sqrt32 * yReticle
@@ -539,30 +538,34 @@ local function onPaintCircle(event)
             local xSpl0 <const>, ySpl0 <const> = rt32x - halfy, rt32y + halfx
             local xSpl1 <const>, ySpl1 <const> = rt32x + halfy, rt32y - halfx
 
+            local lSpl <const> = useSat
+                and ((2.5 - magActive * 2.0) / 3.0) * radiusCanvas
+                or magCanvas
+
             pts[1] = Point(
-                (xCenter + xSpl0) - harmRetHalf,
-                (yCenter - ySpl0) - harmRetHalf)
+                (xCenter + xSpl0 * lSpl) - harmRetHalf,
+                (yCenter - ySpl0 * lSpl) - harmRetHalf)
             pts[2] = Point(
-                (xCenter + xSpl1) - harmRetHalf,
-                (yCenter - ySpl1) - harmRetHalf)
+                (xCenter + xSpl1 * lSpl) - harmRetHalf,
+                (yCenter - ySpl1 * lSpl) - harmRetHalf)
         elseif harmonyType == "SQUARE" then
-            -- float lCmp = 100.0f - c.l;
-            -- float lSqr = 50.0f
+            local lCmp <const> = useSat
+                and (1.0 - magActive) * radiusCanvas
+                or magCanvas
+            local lSqr <const> = useSat
+                and 0.5 * radiusCanvas
+                or magCanvas
 
             pts[1] = Point(
-                (xCenter - yReticle) - harmRetHalf,
-                (yCenter - xReticle) - harmRetHalf)
+                (xCenter - yReticle * lSqr) - harmRetHalf,
+                (yCenter - xReticle * lSqr) - harmRetHalf)
             pts[2] = Point(
-                (xCenter - xReticle) - harmRetHalf,
-                (yCenter + yReticle) - harmRetHalf)
+                (xCenter - xReticle * lCmp) - harmRetHalf,
+                (yCenter + yReticle * lCmp) - harmRetHalf)
             pts[3] = Point(
-                (xCenter + yReticle) - harmRetHalf,
-                (yCenter + xReticle) - harmRetHalf)
+                (xCenter + yReticle * lSqr) - harmRetHalf,
+                (yCenter + xReticle * lSqr) - harmRetHalf)
         elseif harmonyType == "TETRADIC" then
-            -- float lTri = (200.0f - c.l) / 3.0f;
-            -- float lCmp = 100.0f - c.l;
-            -- float lTet = (100.0f + c.l) / 3.0f;
-
             -- 120, 300 degrees
             local rt32x <const> = sqrt32 * xReticle
             local rt32y <const> = sqrt32 * yReticle
@@ -572,18 +575,26 @@ local function onPaintCircle(event)
             local xTet0 <const>, yTet0 <const> = -halfx - rt32y, -halfy + rt32x
             local xTet2 <const>, yTet2 <const> = halfx + rt32y, halfy - rt32x
 
-            pts[1] = Point(
-                (xCenter + xTet0) - harmRetHalf,
-                (yCenter - yTet0) - harmRetHalf)
-            pts[2] = Point(
-                (xCenter - xReticle) - harmRetHalf,
-                (yCenter + yReticle) - harmRetHalf)
-            pts[3] = Point(
-                (xCenter + xTet2) - harmRetHalf,
-                (yCenter - yTet2) - harmRetHalf)
-        elseif harmonyType == "TRIADIC" then
-            -- float lTri = (200.0f - c.l) / 3.0f;
+            local lTri <const> = useSat
+                and ((2.0 - magActive) / 3.0) * radiusCanvas
+                or magCanvas
+            local lCmp <const> = useSat
+                and (1.0 - magActive) * radiusCanvas
+                or magCanvas
+            local lTet <const> = useSat
+                and ((1.0 + magActive) / 3.0) * radiusCanvas
+                or magCanvas
 
+            pts[1] = Point(
+                (xCenter + xTet0 * lTri) - harmRetHalf,
+                (yCenter - yTet0 * lTri) - harmRetHalf)
+            pts[2] = Point(
+                (xCenter - xReticle * lCmp) - harmRetHalf,
+                (yCenter + yReticle * lCmp) - harmRetHalf)
+            pts[3] = Point(
+                (xCenter + xTet2 * lTet) - harmRetHalf,
+                (yCenter - yTet2 * lTet) - harmRetHalf)
+        elseif harmonyType == "TRIADIC" then
             -- 120, 240 degrees
             local rt32x <const> = sqrt32 * xReticle
             local rt32y <const> = sqrt32 * yReticle
@@ -593,12 +604,16 @@ local function onPaintCircle(event)
             local xTri0 <const>, yTri0 <const> = halfx - rt32y, halfy + rt32x
             local xTri1 <const>, yTri1 <const> = halfx + rt32y, halfy - rt32x
 
+            local lTri <const> = useSat
+                and ((2.0 - magActive) / 3.0) * radiusCanvas
+                or magCanvas
+
             pts[1] = Point(
-                (xCenter + xTri0) - harmRetHalf,
-                (yCenter - yTri0) - harmRetHalf)
+                (xCenter + xTri0 * lTri) - harmRetHalf,
+                (yCenter - yTri0 * lTri) - harmRetHalf)
             pts[2] = Point(
-                (xCenter + xTri1) - harmRetHalf,
-                (yCenter - yTri1) - harmRetHalf)
+                (xCenter + xTri1 * lTri) - harmRetHalf,
+                (yCenter - yTri1 * lTri) - harmRetHalf)
         end
 
         ctx.strokeWidth = defaults.harmonyReticleStroke
