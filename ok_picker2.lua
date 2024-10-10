@@ -23,7 +23,7 @@ local defaults <const> = {
     reticleStroke = 2,
     swatchSize = 17,
     textDisplayLimit = 50,
-    radiansOffset = math.rad(30),
+    radiansOffset = math.rad(60),
 
     useBack = false,
     useSat = false,
@@ -32,13 +32,18 @@ local defaults <const> = {
 
     foreKey = "&FORE",
     backKey = "&BACK",
-    optionsKey = "&OPTIONS",
+    -- optionsKey = "&OPTIONS",
+    optionsKey = "&+",
     sampleKey = "S&AMPLE",
     closeKey = "&X",
 }
 
 local active <const> = {
     radiansOffset = defaults.radiansOffset,
+    useSat = defaults.useSat,
+    showSampleButton = true,
+    showForeButton = true,
+    showBackButton = true,
 
     wCanvasCircle = defaults.wCanvas,
     hCanvasCircle = defaults.hCanvasCircle,
@@ -56,7 +61,6 @@ local active <const> = {
     byteStrAlpha = "",
 
     useBack = defaults.useBack,
-    useSat = defaults.useSat,
     satAxis = defaults.satAxis,
     lightAxis = defaults.lightAxis,
 
@@ -950,7 +954,7 @@ dlgMain:newrow { always = false }
 dlgMain:button {
     id = "getForeButton",
     text = defaults.foreKey,
-    visible = false,
+    visible = true,
     focus = false,
     onclick = function()
         local fgColor <const> = app.fgColor
@@ -970,7 +974,7 @@ dlgMain:button {
 dlgMain:button {
     id = "getBackButton",
     text = defaults.backKey,
-    visible = false,
+    visible = true,
     focus = false,
     onclick = function()
         app.command.SwitchColors()
@@ -990,19 +994,19 @@ dlgMain:button {
 }
 
 dlgMain:button {
+    id = "sampleButton",
+    text = defaults.sampleKey,
+    focus = false,
+    onclick = getFromCanvas
+}
+
+dlgMain:button {
     id = "optionsButton",
     text = defaults.optionsKey,
     focus = false,
     onclick = function()
         dlgOptions:show { autoscrollbars = true, wait = true }
     end
-}
-
-dlgMain:button {
-    id = "sampleButton",
-    text = defaults.sampleKey,
-    focus = false,
-    onclick = getFromCanvas
 }
 
 dlgMain:button {
@@ -1017,7 +1021,7 @@ dlgMain:button {
 dlgOptions:slider {
     id = "degreesOffset",
     label = "Angle:",
-    value = math.floor(math.deg(active.radiansOffset) + 0.5),
+    value = 300,
     min = 0,
     max = 360,
     focus = false,
@@ -1035,6 +1039,27 @@ dlgOptions:combobox {
 
 dlgOptions:newrow { always = false }
 
+dlgOptions:check {
+    id = "showFore",
+    label = "Buttons:",
+    text = "Fore",
+    selected = true
+}
+
+dlgOptions:check {
+    id = "showBack",
+    text = "Back",
+    selected = true
+}
+
+dlgOptions:check {
+    id = "showSample",
+    text = "Sample",
+    selected = true
+}
+
+dlgOptions:newrow { always = false }
+
 dlgOptions:button {
     id = "confirmOptionsButton",
     text = "&OK",
@@ -1043,11 +1068,14 @@ dlgOptions:button {
         local args <const> = dlgOptions.data
         local degreesOffset <const> = args.degreesOffset --[[@as integer]]
         local axis <const> = args.axis --[[@as string]]
+        local showFore <const> = args.showFore --[[@as boolean]]
+        local showBack <const> = args.showBack --[[@as boolean]]
+        local showSample <const> = args.showSample --[[@as boolean]]
 
         local oldRadiansOffset <const> = active.radiansOffset
         local oldUseSat <const> = active.useSat
 
-        active.radiansOffset = math.rad(degreesOffset)
+        active.radiansOffset = (-math.rad(degreesOffset)) % tau
         active.useSat = axis == "SATURATION"
 
         if oldUseSat ~= active.useSat
@@ -1058,6 +1086,11 @@ dlgOptions:button {
         end
 
         dlgMain:repaint()
+
+        dlgMain:modify { id = "getForeButton", visible = showFore }
+        dlgMain:modify { id = "getBackButton", visible = showBack }
+        dlgMain:modify { id = "sampleButton", visible = showSample }
+
         dlgOptions:close()
     end
 }
