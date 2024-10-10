@@ -1,9 +1,20 @@
 dofile("./ok_color.lua")
 
 local axes <const> = { "LIGHTNESS", "SATURATION" }
+local harmonyTypes <const> = {
+    "ANALOGOUS",
+    "COMPLEMENT",
+    "NONE",
+    "SHADING",
+    "SPLIT",
+    "SQUARE",
+    "TETRADIC",
+    "TRIADIC"
+}
 
 local tau <const> = 6.2831853071796
 local oneTau <const> = 0.1591549430919
+local sqrt32 <const> = 0.86602540378444
 
 local defaults <const> = {
     -- TODO: Account for screen scale?
@@ -21,6 +32,8 @@ local defaults <const> = {
 
     reticleSize = 8,
     reticleStroke = 2,
+    harmonyReticleSize = 4,
+    harmonyReticleStroke = 1,
     swatchSize = 17,
     textDisplayLimit = 50,
     radiansOffset = math.rad(60),
@@ -29,6 +42,7 @@ local defaults <const> = {
     useSat = false,
     satAxis = 1.0,
     lightAxis = 0.5,
+    harmonyType = "NONE",
 
     foreKey = "&FORE",
     backKey = "&BACK",
@@ -64,6 +78,7 @@ local active <const> = {
     useBack = defaults.useBack,
     satAxis = defaults.satAxis,
     lightAxis = defaults.lightAxis,
+    harmonyType = defaults.harmonyType,
 
     hueFore = 0.0,
     satFore = 1.0,
@@ -463,8 +478,8 @@ local function onPaintCircle(event)
         and 1.0 - lightActive
         or satActive
     local magCanvas <const> = magActive * radiusCanvas
-    local xReticle <const> = xCenter + math.cos(radiansActive) * magCanvas
-    local yReticle <const> = yCenter - math.sin(radiansActive) * magCanvas
+    local xReticle <const> = math.cos(radiansActive)
+    local yReticle <const> = math.sin(radiansActive)
 
     local reticleSize <const> = defaults.reticleSize
     local reticleHalf <const> = reticleSize // 2
@@ -474,8 +489,128 @@ local function onPaintCircle(event)
     ctx.color = reticleColor
     ctx.strokeWidth = defaults.reticleStroke
     ctx:strokeRect(Rectangle(
-        xReticle - reticleHalf, yReticle - reticleHalf,
+        (xCenter + xReticle * magCanvas) - reticleHalf,
+        (yCenter - yReticle * magCanvas) - reticleHalf,
         reticleSize, reticleSize))
+
+    local harmonyType <const> = active.harmonyType
+    if harmonyType ~= "NONE" and harmonyType ~= "SHADING" then
+        -- TODO: This is complicated by the saturation axis,
+        -- where light would be inverted on several of these.
+
+        local harmRetSize = defaults.harmonyReticleSize
+        local harmRetHalf = harmRetSize // 2
+
+        ---@type Point[]
+        local pts <const> = {}
+        if harmonyType == "ANALOGOUS" then
+            -- float lAna = (magActive * 2.0 + 50.0) / 3.0
+
+            -- 30, 330 degrees
+            local rt32x <const> = sqrt32 * xReticle
+            local rt32y <const> = sqrt32 * yReticle
+            local halfx <const> = 0.5 * xReticle
+            local halfy <const> = 0.5 * yReticle
+
+            local xAna0 <const>, yAna0 <const> = rt32x - halfy, rt32y + halfx
+            local xAna1 <const>, yAna1 <const> = rt32x + halfy, rt32y - halfx
+
+            pts[1] = Point(
+                (xCenter + xAna0) - harmRetHalf,
+                (yCenter - yAna0) - harmRetHalf)
+            pts[2] = Point(
+                (xCenter + xAna1) - harmRetHalf,
+                (yCenter - yAna1) - harmRetHalf)
+        elseif harmonyType == "COMPLEMENT" then
+            -- float lCmp = 100.0f - c.l;
+
+            pts[1] = Point(
+                (xCenter - xReticle) - harmRetHalf,
+                (yCenter + yReticle) - harmRetHalf)
+        elseif harmonyType == "SPLIT" then
+            -- float lSpl = (250.0f - c.l * 2.0f) / 3.0f;
+
+            -- 150, 210 degrees
+            local rt32x <const> = -sqrt32 * xReticle
+            local rt32y <const> = -sqrt32 * yReticle
+            local halfx <const> = 0.5 * xReticle
+            local halfy <const> = 0.5 * yReticle
+
+            local xSpl0 <const>, ySpl0 <const> = rt32x - halfy, rt32y + halfx
+            local xSpl1 <const>, ySpl1 <const> = rt32x + halfy, rt32y - halfx
+
+            pts[1] = Point(
+                (xCenter + xSpl0) - harmRetHalf,
+                (yCenter - ySpl0) - harmRetHalf)
+            pts[2] = Point(
+                (xCenter + xSpl1) - harmRetHalf,
+                (yCenter - ySpl1) - harmRetHalf)
+        elseif harmonyType == "SQUARE" then
+            -- float lCmp = 100.0f - c.l;
+            -- float lSqr = 50.0f
+
+            pts[1] = Point(
+                (xCenter - yReticle) - harmRetHalf,
+                (yCenter - xReticle) - harmRetHalf)
+            pts[2] = Point(
+                (xCenter - xReticle) - harmRetHalf,
+                (yCenter + yReticle) - harmRetHalf)
+            pts[3] = Point(
+                (xCenter + yReticle) - harmRetHalf,
+                (yCenter + xReticle) - harmRetHalf)
+        elseif harmonyType == "TETRADIC" then
+            -- float lTri = (200.0f - c.l) / 3.0f;
+            -- float lCmp = 100.0f - c.l;
+            -- float lTet = (100.0f + c.l) / 3.0f;
+
+            -- 120, 300 degrees
+            local rt32x <const> = sqrt32 * xReticle
+            local rt32y <const> = sqrt32 * yReticle
+            local halfx <const> = 0.5 * xReticle
+            local halfy <const> = 0.5 * yReticle
+
+            local xTet0 <const>, yTet0 <const> = -halfx - rt32y, -halfy + rt32x
+            local xTet2 <const>, yTet2 <const> = halfx + rt32y, halfy - rt32x
+
+            pts[1] = Point(
+                (xCenter + xTet0) - harmRetHalf,
+                (yCenter - yTet0) - harmRetHalf)
+            pts[2] = Point(
+                (xCenter - xReticle) - harmRetHalf,
+                (yCenter + yReticle) - harmRetHalf)
+            pts[3] = Point(
+                (xCenter + xTet2) - harmRetHalf,
+                (yCenter - yTet2) - harmRetHalf)
+        elseif harmonyType == "TRIADIC" then
+            -- float lTri = (200.0f - c.l) / 3.0f;
+
+            -- 120, 240 degrees
+            local rt32x <const> = sqrt32 * xReticle
+            local rt32y <const> = sqrt32 * yReticle
+            local halfx <const> = -0.5 * xReticle
+            local halfy <const> = -0.5 * yReticle
+
+            local xTri0 <const>, yTri0 <const> = halfx - rt32y, halfy + rt32x
+            local xTri1 <const>, yTri1 <const> = halfx + rt32y, halfy - rt32x
+
+            pts[1] = Point(
+                (xCenter + xTri0) - harmRetHalf,
+                (yCenter - yTri0) - harmRetHalf)
+            pts[2] = Point(
+                (xCenter + xTri1) - harmRetHalf,
+                (yCenter - yTri1) - harmRetHalf)
+        end
+
+        ctx.strokeWidth = defaults.harmonyReticleStroke
+        local lenPts <const> = #pts
+        local i = 0
+        while i < lenPts do
+            i = i + 1
+            local pt <const> = pts[i]
+            ctx:strokeRect(Rectangle(
+                pt.x, pt.y, harmRetSize, harmRetSize))
+        end
+    end
 
     -- Draw diagnostic text.
     if (wCanvas - hCanvas) > defaults.textDisplayLimit then
@@ -1043,6 +1178,16 @@ dlgOptions:combobox {
 
 dlgOptions:newrow { always = false }
 
+dlgOptions:combobox {
+    id = "harmonyType",
+    label = "Harmony:",
+    option = defaults.harmonyType,
+    options = harmonyTypes,
+    focus = false
+}
+
+dlgOptions:newrow { always = false }
+
 dlgOptions:check {
     id = "showFore",
     label = "Buttons:",
@@ -1078,6 +1223,7 @@ dlgOptions:button {
         local args <const> = dlgOptions.data
         local degreesOffset <const> = args.degreesOffset --[[@as integer]]
         local axis <const> = args.axis --[[@as string]]
+        local harmonyType <const> = args.harmonyType --[[@as string]]
         local showFore <const> = args.showFore --[[@as boolean]]
         local showBack <const> = args.showBack --[[@as boolean]]
         local showSample <const> = args.showSample --[[@as boolean]]
@@ -1085,10 +1231,13 @@ dlgOptions:button {
 
         local oldRadiansOffset <const> = active.radiansOffset
         local oldUseSat <const> = active.useSat
+        local oldHarmonyType <const> = active.harmonyType
 
         active.radiansOffset = (-math.rad(degreesOffset)) % tau
         active.useSat = axis == "SATURATION"
+        active.harmonyType = harmonyType
 
+        -- TODO: What will change in harmony type impact?
         if oldUseSat ~= active.useSat
             or oldRadiansOffset ~= active.radiansOffset then
             active.triggerAlphaRepaint = true
