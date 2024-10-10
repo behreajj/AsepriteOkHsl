@@ -1,14 +1,12 @@
 dofile("./ok_color.lua")
 
+local axes <const> = { "LIGHTNESS", "SATURATION" }
+
 local tau <const> = 6.2831853071796
 local oneTau <const> = 0.1591549430919
 
 local defaults <const> = {
     -- TODO: Account for screen scale?
-    -- TODO: Open a child dialog for a settings menu?
-    -- TOOD: Control click on mouse up to reset reticles to neutral position:
-    -- center for wheel, which varies with useSat; center of light axis;
-    -- maximum saturation axis; maximum alpha.
     -- TODO: Make a shades/harmonies canvas. Then have a button in the bottom
     -- row which cycles through them: none, shades, complement, etc.
     wCanvas = 180,
@@ -34,6 +32,7 @@ local defaults <const> = {
 
     foreKey = "&FORE",
     backKey = "&BACK",
+    optionsKey = "&OPTIONS",
     sampleKey = "S&AMPLE",
     closeKey = "&X",
 }
@@ -560,7 +559,12 @@ local function updateFromAse(r8, g8, b8, t8, useBack)
     end
 end
 
-local dlg <const> = Dialog { title = "OkHsl Color Picker" }
+local dlgMain <const> = Dialog { title = "OkHsl Color Picker" }
+
+local dlgOptions <const> = Dialog {
+    title = "Options",
+    parent = dlgMain
+}
 
 local function getFromCanvas()
     local editor <const> = app.editor
@@ -638,7 +642,7 @@ local function getFromCanvas()
         active.triggerAlphaRepaint = true
         active.triggerAxisRepaint = true
         active.triggerCircleRepaint = true
-        dlg:repaint()
+        dlgMain:repaint()
         app.fgColor = Color { r = r8, g = g8, b = b8, a = t8 }
     end
 end
@@ -652,7 +656,9 @@ local function onMouseMoveAlpha(event)
     if wCanvas <= 1 or hCanvas <= 1 then return end
 
     local xCanvas <const> = math.min(math.max(event.x, 0), wCanvas - 1)
-    local xNrm <const> = xCanvas / (wCanvas - 1.0)
+    local xNrm <const> = event.ctrlKey
+        and 1.0
+        or xCanvas / (wCanvas - 1.0)
 
     -- TODO: Use mouse button click. Assign to active use back.
     local useBack <const> = active.useBack
@@ -681,7 +687,7 @@ local function onMouseMoveAlpha(event)
         app.fgColor = Color { r = r8, g = g8, b = b8, a = a8 }
     end
 
-    dlg:repaint()
+    dlgMain:repaint()
 end
 
 ---@param event MouseEvent
@@ -692,10 +698,11 @@ local function onMouseMoveAxis(event)
     local hCanvas <const> = active.hCanvasAxis
     if wCanvas <= 1 or hCanvas <= 1 then return end
 
-    local xCanvas <const> = math.min(math.max(event.x, 0), wCanvas - 1)
-    local xNrm <const> = xCanvas / (wCanvas - 1.0)
-
     local useSat <const> = active.useSat
+    local xCanvas <const> = math.min(math.max(event.x, 0), wCanvas - 1)
+    local xNrm <const> = event.ctrlKey
+        and (useSat and 1.0 or 0.5)
+        or xCanvas / (wCanvas - 1.0)
 
     -- TODO: Use mouse button click. Assign to active use back.
     local useBack <const> = active.useBack
@@ -744,7 +751,7 @@ local function onMouseMoveAxis(event)
 
     active.triggerCircleRepaint = true
     active.triggerAlphaRepaint = true
-    dlg:repaint()
+    dlgMain:repaint()
 end
 
 ---@param event MouseEvent
@@ -763,17 +770,22 @@ local function onMouseMoveCircle(event)
 
     local yCanvas <const> = event.y
     local yDlt <const> = yCenter - yCanvas
-    local yNrm <const> = yDlt * radiusCanvasInv
+    local yNrm <const> = event.ctrlKey
+        and 0.0
+        or yDlt * radiusCanvasInv
 
     local xCanvas <const> = event.x
     local xDlt <const> = xCanvas - xCenter
-    local xNrm <const> = xDlt * radiusCanvasInv
+    local xNrm <const> = event.ctrlKey
+        and 0.0
+        or xDlt * radiusCanvasInv
 
     -- If sqMag is clamped to [epsilon, 1.0] instead of returning early,
     -- then this interferes with swapping the fore and background colors.
     -- However, a little grace is needed to move along the circumference.
     local sqMag <const> = xNrm * xNrm + yNrm * yNrm
-    if sqMag < 0.00001 then return end
+
+    if sqMag < 0.0 then return end
     if sqMag > 1.125 then return end
 
     local radiansOffset <const> = active.radiansOffset
@@ -829,7 +841,7 @@ local function onMouseMoveCircle(event)
 
     active.triggerAxisRepaint = true
     active.triggerAlphaRepaint = true
-    dlg:repaint()
+    dlgMain:repaint()
 end
 
 ---@param event MouseEvent
@@ -879,7 +891,7 @@ local function onMouseUpCircle(event)
         active.triggerAlphaRepaint = true
         active.triggerAxisRepaint = true
         active.triggerCircleRepaint = true
-        dlg:repaint()
+        dlgMain:repaint()
 
         app.fgColor = Color {
             r = math.floor(active.redFore * 255 + 0.5),
@@ -898,7 +910,7 @@ local function onMouseUpCircle(event)
     end
 end
 
-dlg:canvas {
+dlgMain:canvas {
     id = "circleCanvas",
     focus = true,
     width = defaults.wCanvas,
@@ -909,9 +921,9 @@ dlg:canvas {
     onpaint = onPaintCircle,
 }
 
-dlg:newrow { always = false }
+dlgMain:newrow { always = false }
 
-dlg:canvas {
+dlgMain:canvas {
     id = "axisCanvas",
     focus = false,
     width = defaults.wCanvas,
@@ -921,9 +933,9 @@ dlg:canvas {
     onpaint = onPaintAxis,
 }
 
-dlg:newrow { always = false }
+dlgMain:newrow { always = false }
 
-dlg:canvas {
+dlgMain:canvas {
     id = "alphaCanvas",
     focus = false,
     width = defaults.wCanvas,
@@ -933,11 +945,13 @@ dlg:canvas {
     onpaint = onPaintAlpha,
 }
 
-dlg:newrow { always = false }
+dlgMain:newrow { always = false }
 
-dlg:button {
+dlgMain:button {
     id = "getForeButton",
     text = defaults.foreKey,
+    visible = false,
+    focus = false,
     onclick = function()
         local fgColor <const> = app.fgColor
         local r8fg <const> = fgColor.red
@@ -949,13 +963,15 @@ dlg:button {
         active.triggerAlphaRepaint = true
         active.triggerAxisRepaint = true
         active.triggerCircleRepaint = true
-        dlg:repaint()
+        dlgMain:repaint()
     end
 }
 
-dlg:button {
+dlgMain:button {
     id = "getBackButton",
     text = defaults.backKey,
+    visible = false,
+    focus = false,
     onclick = function()
         app.command.SwitchColors()
         local bgColor <const> = app.fgColor
@@ -969,21 +985,89 @@ dlg:button {
         active.triggerAlphaRepaint = true
         active.triggerAxisRepaint = true
         active.triggerCircleRepaint = true
-        dlg:repaint()
+        dlgMain:repaint()
     end
 }
 
-dlg:button {
-    id = "canvasButton",
+dlgMain:button {
+    id = "optionsButton",
+    text = defaults.optionsKey,
+    focus = false,
+    onclick = function()
+        dlgOptions:show { autoscrollbars = true, wait = true }
+    end
+}
+
+dlgMain:button {
+    id = "sampleButton",
     text = defaults.sampleKey,
+    focus = false,
     onclick = getFromCanvas
 }
 
-dlg:button {
-    id = "exitButton",
+dlgMain:button {
+    id = "exitMainButton",
     text = defaults.closeKey,
+    focus = false,
     onclick = function()
-        dlg:close()
+        dlgMain:close()
+    end
+}
+
+dlgOptions:slider {
+    id = "degreesOffset",
+    label = "Angle:",
+    value = math.floor(math.deg(active.radiansOffset) + 0.5),
+    min = 0,
+    max = 360,
+    focus = false,
+}
+
+dlgOptions:newrow { always = false }
+
+dlgOptions:combobox {
+    id = "axis",
+    label = "Axis:",
+    option = "LIGHTNESS",
+    options = axes,
+    focus = false
+}
+
+dlgOptions:newrow { always = false }
+
+dlgOptions:button {
+    id = "confirmOptionsButton",
+    text = "&OK",
+    focus = false,
+    onclick = function()
+        local args <const> = dlgOptions.data
+        local degreesOffset <const> = args.degreesOffset --[[@as integer]]
+        local axis <const> = args.axis --[[@as string]]
+
+        local oldRadiansOffset <const> = active.radiansOffset
+        local oldUseSat <const> = active.useSat
+
+        active.radiansOffset = math.rad(degreesOffset)
+        active.useSat = axis == "SATURATION"
+
+        if oldUseSat ~= active.useSat
+            or oldRadiansOffset ~= active.radiansOffset then
+            active.triggerAlphaRepaint = true
+            active.triggerAxisRepaint = true
+            active.triggerCircleRepaint = true
+        end
+
+        dlgMain:repaint()
+        dlgOptions:close()
+    end
+}
+
+dlgOptions:button {
+    id = "exitOptionsButton",
+    text = "&CANCEL",
+    focus = false,
+    onclick = function()
+        dlgOptions:close()
     end
 }
 
@@ -1007,10 +1091,10 @@ do
     active.triggerAlphaRepaint = true
     active.triggerAxisRepaint = true
     active.triggerCircleRepaint = true
-    dlg:repaint()
+    dlgMain:repaint()
 end
 
-dlg:show {
+dlgMain:show {
     autoscrollbars = false,
     wait = false
 }
