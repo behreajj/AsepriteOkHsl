@@ -966,7 +966,7 @@ end
 ---@param b8 integer
 ---@param t8 integer
 ---@param useBack boolean
-local function updateFromAse(r8, g8, b8, t8, useBack)
+local function updateFromRgba8(r8, g8, b8, t8, useBack)
     local r01 <const>,
     g01 <const>,
     b01 <const> = r8 / 255.0, g8 / 255.0, b8 / 255.0
@@ -1181,7 +1181,7 @@ local function getFromCanvas()
     end
 
     if t8 > 0 then
-        updateFromAse(r8, g8, b8, t8, false)
+        updateFromRgba8(r8, g8, b8, t8, false)
         active.triggerAlphaRepaint = true
         active.triggerAxisRepaint = true
         active.triggerCircleRepaint = true
@@ -1204,7 +1204,6 @@ local function onMouseMoveAlpha(event)
         and 1.0
         or xCanvas / (wCanvas - 1.0)
 
-    -- TODO: Use mouse button click. Assign to active use back.
     local useBack <const> = active.useBack
     active[useBack and "alphaBack" or "alphaFore"] = xNrm
 
@@ -1248,7 +1247,6 @@ local function onMouseMoveAxis(event)
         and (useSat and 1.0 or 0.5)
         or xCanvas / (wCanvas - 1.0)
 
-    -- TODO: Use mouse button click. Assign to active use back.
     local useBack <const> = active.useBack
 
     if useSat then
@@ -1338,7 +1336,6 @@ local function onMouseMoveCircle(event)
     local lightMouse <const> = useSat and 1.0 - mag or lightAxis
     local satMouse <const> = useSat and satAxis or mag
 
-    -- TODO: Use mouse button click. Assign to active use back.
     local useBack <const> = active.useBack
 
     active[useBack and "hueBack" or "hueFore"] = hueMouse
@@ -1370,6 +1367,76 @@ local function onMouseMoveCircle(event)
     active.triggerAlphaRepaint = true
     active.triggerHarmonyRepaint = true
     dlgMain:repaint()
+end
+
+---@param event MouseEvent
+local function onMouseUpHarmony(event)
+    if event.button == MouseButton.NONE then return end
+
+    local wCanvas <const> = active.wCanvasHarmony
+    local hCanvas <const> = active.hCanvasHarmony
+    if wCanvas <= 1 or hCanvas <= 1 then return end
+
+    local harmonyType <const> = active.harmonyType
+    local isAnalog <const> = harmonyType == "ANALOGOUS"
+    local isCompl <const> = harmonyType == "COMPLEMENT"
+    local isNone <const> = harmonyType == "NONE"
+    local isShading <const> = harmonyType == "SHADING"
+    local isSplit <const> = harmonyType == "SPLIT"
+    local isSquare <const> = harmonyType == "SQUARE"
+    local isTetradic <const> = harmonyType == "TETRADIC"
+    local isTriadic <const> = harmonyType == "TRIADIC"
+
+    local shadingCount = 1
+    if isAnalog then
+        shadingCount = 2
+    elseif isCompl then
+        shadingCount = 1
+    elseif isNone then
+        shadingCount = 1
+    elseif isShading then
+        -- TODO: This should be adjustable.
+        shadingCount = defaults.shadingCount
+    elseif isSplit then
+        shadingCount = 2
+    elseif isSquare then
+        shadingCount = 3
+    elseif isTetradic then
+        shadingCount = 3
+    elseif isTriadic then
+        shadingCount = 2
+    end
+
+    local xCanvas <const> = math.min(math.max(event.x, 0), wCanvas - 1)
+    local xNrm <const> = event.ctrlKey
+        and 1.0
+        or xCanvas / (wCanvas - 1.0)
+    local xIdx <const> = math.floor(xNrm * (shadingCount - 1) + 0.5)
+    local r8 <const>,
+    g8 <const>,
+    b8 <const> = string.byte(
+        active.byteStrHarmony, 1 + xIdx * 4, 3 + xIdx * 4)
+
+    local useBack <const> = active.useBack
+    local alphaActive <const> = useBack
+        and active.alphaBack
+        or active.alphaFore
+    local t8 <const> = math.floor(alphaActive * 255.0 + 0.5)
+
+    updateFromRgba8(r8, g8, b8, t8, useBack)
+
+    active.triggerAlphaRepaint = true
+    active.triggerAxisRepaint = true
+    active.triggerCircleRepaint = true
+    dlgMain:repaint()
+
+    if useBack then
+        app.command.SwitchColors()
+        app.fgColor = Color { r = r8, g = g8, b = b8, a = t8 }
+        app.command.SwitchColors()
+    else
+        app.fgColor = Color { r = r8, g = g8, b = b8, a = t8 }
+    end
 end
 
 ---@param event MouseEvent
@@ -1482,6 +1549,7 @@ dlgMain:canvas {
     width = defaults.wCanvas,
     height = defaults.hCanvasHarmony,
     visible = defaults.harmonyType ~= "NONE",
+    onmouseup = onMouseUpHarmony,
     onpaint = onPaintHarmony,
 }
 
@@ -1499,7 +1567,7 @@ dlgMain:button {
         local b8fg <const> = fgColor.blue
         local t8fg <const> = fgColor.alpha
 
-        updateFromAse(r8fg, g8fg, b8fg, t8fg, false)
+        updateFromRgba8(r8fg, g8fg, b8fg, t8fg, false)
         active.triggerAlphaRepaint = true
         active.triggerAxisRepaint = true
         active.triggerCircleRepaint = true
@@ -1522,7 +1590,7 @@ dlgMain:button {
         local t8bg <const> = bgColor.alpha
         app.command.SwitchColors()
 
-        updateFromAse(r8bg, g8bg, b8bg, t8bg, true)
+        updateFromRgba8(r8bg, g8bg, b8bg, t8bg, true)
         active.triggerAlphaRepaint = true
         active.triggerAxisRepaint = true
         active.triggerCircleRepaint = true
@@ -1778,7 +1846,7 @@ do
     local g8fg <const> = fgColor.green
     local b8fg <const> = fgColor.blue
     local t8fg <const> = fgColor.alpha
-    updateFromAse(r8fg, g8fg, b8fg, t8fg, false)
+    updateFromRgba8(r8fg, g8fg, b8fg, t8fg, false)
 
     app.command.SwitchColors()
     local bgColor <const> = app.fgColor
@@ -1787,7 +1855,7 @@ do
     local b8bg <const> = bgColor.blue
     local t8bg <const> = bgColor.alpha
     app.command.SwitchColors()
-    updateFromAse(r8bg, g8bg, b8bg, t8bg, true)
+    updateFromRgba8(r8bg, g8bg, b8bg, t8bg, true)
 
     active.triggerAlphaRepaint = true
     active.triggerAxisRepaint = true
