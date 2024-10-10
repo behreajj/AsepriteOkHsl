@@ -11,6 +11,12 @@ local harmonyTypes <const> = {
     "TETRADIC",
     "TRIADIC"
 }
+local huePresets <const> = {
+    "CCW",
+    "CW",
+    "FAR",
+    "NEAR",
+}
 
 local tau <const> = 6.2831853071796
 local oneTau <const> = 0.1591549430919
@@ -18,8 +24,6 @@ local sqrt32 <const> = 0.86602540378444
 
 local defaults <const> = {
     -- TODO: Account for screen scale?
-    -- TODO: Make a shades/harmonies canvas. Then have a button in the bottom
-    -- row which cycles through them: none, shades, complement, etc.
     wCanvas = 180,
     hCanvasCircle = 180,
     hCanvasAxis = 12,
@@ -46,14 +50,19 @@ local defaults <const> = {
 
     foreKey = "&FORE",
     backKey = "&BACK",
-    optionsKey = "&+",
     sampleKey = "S&AMPLE",
-    closeKey = "&X",
+    gradientKey = "&GRADIENT",
+    optionsKey = "&+",
+    exitKey = "&X",
 
-    showSampleButton = false,
     showForeButton = true,
     showBackButton = true,
+    showSampleButton = false,
+    showGradientButton = false,
     showExitButton = true,
+
+    swatchCount = 5,
+    huePreset = "NEAR",
 }
 
 local active <const> = {
@@ -342,10 +351,8 @@ local function onPaintCircle(event)
     local lightActive <const> = useBack and lightBack or lightFore
 
     local needsRepaint <const> = active.triggerCircleRepaint
-        or active.wCanvasCircle ~= wCanvas
-        or active.hCanvasCircle ~= hCanvas
-        or (useSat and satAxis ~= satActive
-            or lightAxis ~= lightActive)
+    or active.wCanvasCircle ~= wCanvas
+    or active.hCanvasCircle ~= hCanvas
 
     active.wCanvasCircle = wCanvas
     active.hCanvasCircle = hCanvas
@@ -720,6 +727,185 @@ local dlgOptions <const> = Dialog {
     title = "Options",
     parent = dlgMain
 }
+
+---@param orig number origin angle
+---@param dest number destination angle
+---@param t number factor
+---@param range number? range
+---@return number
+---@nodiscard
+local function lerpAngleCcw(orig, dest, t, range)
+    local valRange <const> = range or 360.0
+    local o <const> = orig % valRange
+    local d <const> = dest % valRange
+    local diff <const> = d - o
+    if diff == 0.0 then return o end
+
+    local u <const> = 1.0 - t
+    if o > d then
+        return (u * o + t * (d + valRange)) % valRange
+    else
+        return u * o + t * d
+    end
+end
+
+---@param orig number origin angle
+---@param dest number destination angle
+---@param t number factor
+---@param range number? range
+---@return number
+---@nodiscard
+local function lerpAngleCw(orig, dest, t, range)
+    local valRange <const> = range or 360.0
+    local o <const> = orig % valRange
+    local d <const> = dest % valRange
+    local diff <const> = d - o
+    if diff == 0.0 then return d end
+
+    local u <const> = 1.0 - t
+    if o < d then
+        return (u * (o + valRange) + t * d) % valRange
+    else
+        return u * o + t * d
+    end
+end
+
+---@param orig number origin angle
+---@param dest number destination angle
+---@param t number factor
+---@param range number? range
+---@return number
+---@nodiscard
+local function lerpAngleFar(orig, dest, t, range)
+    local valRange <const> = range or 360.0
+    local halfRange <const> = valRange * 0.5
+    local o <const> = orig % valRange
+    local d <const> = dest % valRange
+    local diff <const> = d - o
+    local u <const> = 1.0 - t
+
+    if diff == 0.0 or (o < d and diff < halfRange) then
+        return (u * (o + valRange) + t * d) % valRange
+    elseif o > d and diff > -halfRange then
+        return (u * o + t * (d + valRange)) % valRange
+    else
+        return u * o + t * d
+    end
+end
+
+---@param orig number origin angle
+---@param dest number destination angle
+---@param t number factor
+---@param range number? range
+---@return number
+---@nodiscard
+local function lerpAngleNear(orig, dest, t, range)
+    local valRange <const> = range or 360.0
+    local o <const> = orig % valRange
+    local d <const> = dest % valRange
+    local diff <const> = d - o
+    if diff == 0.0 then return o end
+
+    local u <const> = 1.0 - t
+    local halfRange <const> = valRange * 0.5
+    if o < d and diff > halfRange then
+        return (u * (o + valRange) + t * d) % valRange
+    elseif o > d and diff < -halfRange then
+        return (u * o + t * (d + valRange)) % valRange
+    else
+        return u * o + t * d
+    end
+end
+
+local function genGradient()
+    local sprite <const> = app.sprite
+    if not sprite then return end
+
+    if sprite.colorMode == ColorMode.GRAY then
+        app.alert {
+            title = "Error",
+            text = "Grayscale mode not supported."
+        }
+        return
+    end
+
+    local argsOptions <const> = dlgOptions.data
+    local swatchCount <const> = argsOptions.swatchCount --[[@as integer]]
+    local huePreset <const> = argsOptions.huePreset --[[@as string]]
+
+    local toFac <const> = 1.0 / (swatchCount - 1.0)
+    local hueEasing = lerpAngleNear
+    if huePreset == "CCW" then
+        hueEasing = lerpAngleCcw
+    elseif huePreset == "CW" then
+        hueEasing = lerpAngleCw
+    elseif huePreset == "FAR" then
+        hueEasing = lerpAngleFar
+    end
+
+    local hOrig <const> = active.hueFore
+    local sOrig <const> = active.satFore
+    local lOrig <const> = active.lightFore
+    local tOrig <const> = active.alphaFore
+
+    local hDest <const> = active.hueBack
+    local sDest <const> = active.satBack
+    local lDest <const> = active.lightBack
+    local tDest <const> = active.alphaBack
+
+    local hslToRgb <const> = ok_color.okhsl_to_srgb
+    local min <const> = math.min
+    local max <const> = math.max
+    local floor <const> = math.floor
+
+    ---@type Color[]
+    local aseColors <const> = {}
+    local i = 0
+    while i < swatchCount do
+        local t <const> = i * toFac
+        local u <const> = 1.0 - t
+
+        local hMix <const> = hueEasing(hOrig, hDest, t, 1.0)
+        local sMix <const> = u * sOrig + t * sDest
+        local lMix <const> = u * lOrig + t * lDest
+        local tMix <const> = u * tOrig + t * tDest
+
+        local r01 <const>, g01 <const>, b01 <const> = hslToRgb(hMix, sMix, lMix)
+
+        local r01cl = min(max(r01, 0), 1)
+        local g01cl = min(max(g01, 0), 1)
+        local b01cl = min(max(b01, 0), 1)
+
+        local r8 <const> = floor(r01cl * 255 + 0.5)
+        local g8 <const> = floor(g01cl * 255 + 0.5)
+        local b8 <const> = floor(b01cl * 255 + 0.5)
+        local t8 <const> = floor(tMix * 255 + 0.5)
+
+        i = i + 1
+        aseColors[i] = Color { r = r8, g = g8, b = b8, a = t8 }
+    end
+
+    local spritePalettes <const> = sprite.palettes
+    local lenSpritePalettes <const> = #spritePalettes
+
+    local frame <const> = app.frame or sprite.frames[1]
+    local frIdx <const> = frame.frameNumber
+    local palIdx <const> = frIdx <= lenSpritePalettes and frIdx or 1
+
+    local palette <const> = spritePalettes[palIdx]
+    local lenPaletteOld <const> = #palette
+    local lenPaletteNew <const> = lenPaletteOld + swatchCount
+
+    app.transaction("Palette Gradient", function()
+        palette:resize(lenPaletteNew)
+        local j = 0
+        while j < swatchCount do
+            local aseColor <const> = aseColors[1 + j]
+            palette:setColor(lenPaletteOld + j, aseColor)
+            j = j + 1
+        end
+    end)
+end
 
 local function getFromCanvas()
     local editor <const> = app.editor
@@ -1153,6 +1339,14 @@ dlgMain:button {
 }
 
 dlgMain:button {
+    id = "gradientButton",
+    text = defaults.gradientKey,
+    focus = false,
+    visible = defaults.showGradientButton,
+    onclick = genGradient
+}
+
+dlgMain:button {
     id = "optionsButton",
     text = defaults.optionsKey,
     focus = false,
@@ -1164,7 +1358,7 @@ dlgMain:button {
 
 dlgMain:button {
     id = "exitMainButton",
-    text = defaults.closeKey,
+    text = defaults.exitKey,
     focus = false,
     visible = defaults.showExitButton,
     onclick = function()
@@ -1203,29 +1397,70 @@ dlgOptions:combobox {
 
 dlgOptions:newrow { always = false }
 
+dlgOptions:slider {
+    id = "swatchCount",
+    label = "Swatches:",
+    value = defaults.swatchCount,
+    min = 3,
+    max = 64,
+    focus = false,
+    visible = defaults.showGradientButton
+}
+
+dlgOptions:newrow { always = false }
+
+dlgOptions:combobox {
+    id = "huePreset",
+    label = "Easing:",
+    option = defaults.huePreset,
+    options = huePresets,
+    focus = false
+}
+
+dlgOptions:newrow { always = false }
+
 dlgOptions:check {
     id = "showFore",
     label = "Buttons:",
     text = "Fore",
-    selected = defaults.showForeButton
+    selected = defaults.showForeButton,
+    focus = false
 }
 
 dlgOptions:check {
     id = "showBack",
     text = "Back",
-    selected = defaults.showBackButton
+    selected = defaults.showBackButton,
+    focus = false
 }
+
+dlgOptions:check {
+    id = "showExit",
+    text = "X",
+    selected = defaults.showExitButton,
+    focus = false
+}
+
+dlgOptions:newrow { always = false }
 
 dlgOptions:check {
     id = "showSample",
     text = "Sample",
-    selected = defaults.showSampleButton
+    selected = defaults.showSampleButton,
+    focus = false
 }
 
 dlgOptions:check {
-    id = "showClose",
-    text = "X",
-    selected = defaults.showExitButton
+    id = "showGradient",
+    text = "Gradient",
+    selected = defaults.showGradientButton,
+    focus = false,
+    onclick = function()
+        local args <const> = dlgOptions.data
+        local showGradient <const> = args.showGradient --[[@as boolean]]
+        dlgOptions:modify { id = "swatchCount", visible = showGradient }
+        dlgOptions:modify { id = "huePreset", visible = showGradient }
+    end
 }
 
 dlgOptions:newrow { always = false }
@@ -1239,10 +1474,12 @@ dlgOptions:button {
         local degreesOffset <const> = args.degreesOffset --[[@as integer]]
         local axis <const> = args.axis --[[@as string]]
         local harmonyType <const> = args.harmonyType --[[@as string]]
+
         local showFore <const> = args.showFore --[[@as boolean]]
         local showBack <const> = args.showBack --[[@as boolean]]
+        local showGradient <const> = args.showGradient --[[@as boolean]]
         local showSample <const> = args.showSample --[[@as boolean]]
-        local showClose <const> = args.showClose --[[@as boolean]]
+        local showExit <const> = args.showExit --[[@as boolean]]
 
         local oldRadiansOffset <const> = active.radiansOffset
         local oldUseSat <const> = active.useSat
@@ -1264,8 +1501,9 @@ dlgOptions:button {
 
         dlgMain:modify { id = "getForeButton", visible = showFore }
         dlgMain:modify { id = "getBackButton", visible = showBack }
+        dlgMain:modify { id = "gradientButton", visible = showGradient }
         dlgMain:modify { id = "sampleButton", visible = showSample }
-        dlgMain:modify { id = "exitMainButton", visible = showClose }
+        dlgMain:modify { id = "exitMainButton", visible = showExit }
 
         dlgOptions:close()
     end
