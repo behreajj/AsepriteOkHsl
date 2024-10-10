@@ -6,6 +6,11 @@ local oneTau <const> = 0.1591549430919
 local defaults <const> = {
     -- TODO: Account for screen scale?
     -- TODO: Open a child dialog for a settings menu?
+    -- TOOD: Control click on mouse up to reset reticles to neutral position:
+    -- center for wheel, which varies with useSat; center of light axis;
+    -- maximum saturation axis; maximum alpha.
+    -- TODO: Make a shades/harmonies canvas. Then have a button in the bottom
+    -- row which cycles through them: none, shades, complement, etc.
     wCanvas = 180,
     hCanvasCircle = 180,
     hCanvasAxis = 12,
@@ -29,7 +34,7 @@ local defaults <const> = {
 
     foreKey = "&FORE",
     backKey = "&BACK",
-    canvasKey = "C&ANVAS",
+    sampleKey = "S&AMPLE",
     closeKey = "&X",
 }
 
@@ -970,7 +975,7 @@ dlg:button {
 
 dlg:button {
     id = "canvasButton",
-    text = defaults.canvasKey,
+    text = defaults.sampleKey,
     onclick = getFromCanvas
 }
 
