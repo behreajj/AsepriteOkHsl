@@ -1207,25 +1207,25 @@ dlgOptions:check {
     id = "showFore",
     label = "Buttons:",
     text = "Fore",
-    selected = true
+    selected = defaults.showForeButton
 }
 
 dlgOptions:check {
     id = "showBack",
     text = "Back",
-    selected = true
+    selected = defaults.showBackButton
 }
 
 dlgOptions:check {
     id = "showSample",
     text = "Sample",
-    selected = true
+    selected = defaults.showSampleButton
 }
 
 dlgOptions:check {
     id = "showClose",
     text = "X",
-    selected = true
+    selected = defaults.showExitButton
 }
 
 dlgOptions:newrow { always = false }
