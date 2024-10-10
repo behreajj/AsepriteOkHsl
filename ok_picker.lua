@@ -351,8 +351,8 @@ local function onPaintCircle(event)
     local lightActive <const> = useBack and lightBack or lightFore
 
     local needsRepaint <const> = active.triggerCircleRepaint
-    or active.wCanvasCircle ~= wCanvas
-    or active.hCanvasCircle ~= hCanvas
+        or active.wCanvasCircle ~= wCanvas
+        or active.hCanvasCircle ~= hCanvas
 
     active.wCanvasCircle = wCanvas
     active.hCanvasCircle = hCanvas
@@ -853,7 +853,18 @@ local function genGradient()
     local lDest <const> = active.lightBack
     local tDest <const> = active.alphaBack
 
+    local oIsGray <const> = sOrig < 0.00001
+    local dIsGray <const> = sDest < 0.00001
+    local useLabMix <const> = oIsGray or dIsGray
+    local lLabOrig <const>,
+    aLabOrig <const>,
+    bLabOrig <const> = ok_color.okhsl_to_oklab(hOrig, sOrig, lOrig)
+    local lLabDest <const>,
+    aLabDest <const>,
+    bLabDest <const> = ok_color.okhsl_to_oklab(hDest, sDest, lDest)
+
     local hslToRgb <const> = ok_color.okhsl_to_srgb
+    local labToRgb <const> = ok_color.oklab_to_srgb
     local min <const> = math.min
     local max <const> = math.max
     local floor <const> = math.floor
@@ -865,12 +876,20 @@ local function genGradient()
         local t <const> = i * toFac
         local u <const> = 1.0 - t
 
-        local hMix <const> = hueEasing(hOrig, hDest, t, 1.0)
-        local sMix <const> = u * sOrig + t * sDest
-        local lMix <const> = u * lOrig + t * lDest
         local tMix <const> = u * tOrig + t * tDest
 
-        local r01 <const>, g01 <const>, b01 <const> = hslToRgb(hMix, sMix, lMix)
+        local r01, g01, b01 = 0.0, 0.0, 0.0
+        if useLabMix then
+            local lMix <const> = u * lLabOrig + t * lLabDest
+            local aMix <const> = u * aLabOrig + t * aLabDest
+            local bMix <const> = u * bLabOrig + t * bLabDest
+            r01, g01, b01 = labToRgb(lMix, aMix, bMix)
+        else
+            local hMix <const> = hueEasing(hOrig, hDest, t, 1.0)
+            local sMix <const> = u * sOrig + t * sDest
+            local lMix <const> = u * lOrig + t * lDest
+            r01, g01, b01 = hslToRgb(hMix, sMix, lMix)
+        end
 
         local r01cl = min(max(r01, 0), 1)
         local g01cl = min(max(g01, 0), 1)
