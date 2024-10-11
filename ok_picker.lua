@@ -41,7 +41,7 @@ local defaults <const> = {
     hCheck = math.max(1, 6 // screenScale),
 
     reticleSize = math.max(3, 8 // screenScale),
-    reticleStroke = math.max(1, 2 // screenScale),
+    reticleStroke = math.max(1, 1 // screenScale),
     harmonyReticleSize = math.max(2, 4 // screenScale),
     harmonyReticleStroke = 1,
     swatchSize = math.max(4, 17 // screenScale),
@@ -53,6 +53,7 @@ local defaults <const> = {
     satAxis = 1.0,
     lightAxis = 0.5,
     harmonyType = "NONE",
+    showHarmonyOnWheel = true,
 
     foreKey = "&FORE",
     backKey = "&BACK",
@@ -100,6 +101,7 @@ local active <const> = {
     triggerHarmonyRepaint = false,
     byteStrHarmony = "",
     harmonyType = defaults.harmonyType,
+    showHarmonyOnWheel = defaults.showHarmonyOnWheel,
 
     useBack = defaults.useBack,
     satAxis = defaults.satAxis,
@@ -610,7 +612,10 @@ local function onPaintCircle(event)
 
     -- Draw harmony reticles.
     local harmonyType <const> = active.harmonyType
-    if harmonyType ~= "NONE" and harmonyType ~= "SHADING" then
+    local showHarmonyOnWheel <const> = active.showHarmonyOnWheel
+    if showHarmonyOnWheel
+        and harmonyType ~= "NONE"
+        and harmonyType ~= "SHADING" then
         local harmRetSize = defaults.harmonyReticleSize
         local harmRetHalf = harmRetSize // 2
 
@@ -1671,7 +1676,29 @@ dlgOptions:combobox {
     label = "Harmony:",
     option = defaults.harmonyType,
     options = harmonyTypes,
-    focus = false
+    focus = false,
+    onchange = function()
+        local args <const> = dlgOptions.data
+        local harmonyType <const> = args.harmonyType --[[@as string]]
+        local displayOption = harmonyType ~= "SHADING"
+            and harmonyType ~= "NONE"
+        dlgOptions:modify {
+            id = "showHarmonyOnWheel",
+            visible = displayOption
+        }
+    end
+}
+
+dlgOptions:newrow { always = false }
+
+dlgOptions:check {
+    id = "showHarmonyOnWheel",
+    label = "Display:",
+    text = "Wheel",
+    selected = defaults.showHarmonyOnWheel,
+    focus = false,
+    visible = defaults.harmonyType ~= "SHADING"
+        and defaults.harmonyType ~= "NONE"
 }
 
 dlgOptions:newrow { always = false }
@@ -1800,6 +1827,7 @@ dlgOptions:button {
         local degreesOffset <const> = args.degreesOffset --[[@as integer]]
         local axis <const> = args.axis --[[@as string]]
         local harmonyType <const> = args.harmonyType --[[@as string]]
+        local showHarmonyOnWheel <const> = args.showHarmonyOnWheel --[[@as boolean]]
 
         local showFore <const> = args.showFore --[[@as boolean]]
         local showBack <const> = args.showBack --[[@as boolean]]
@@ -1815,6 +1843,7 @@ dlgOptions:button {
         active.radiansOffset = (-math.rad(degreesOffset)) % tau
         active.useSat = axis == "SATURATION"
         active.harmonyType = harmonyType
+        active.showHarmonyOnWheel = showHarmonyOnWheel
         active.rBitDepth = rBitDepth
         active.gBitDepth = gBitDepth
         active.bBitDepth = bBitDepth
