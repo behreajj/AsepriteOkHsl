@@ -1700,7 +1700,9 @@ local function onMouseUpHarmony(event)
     b8 <const> = string.byte(
         active.byteStrHarmony, 1 + xIdx * 4, 3 + xIdx * 4)
 
-    local useBack <const> = active.useBack
+    local useBack <const> = event.button == MouseButton.RIGHT
+        or (event.button == MouseButton.LEFT
+            and event.ctrlKey)
     local alphaActive <const> = useBack
         and active.alphaBack
         or active.alphaFore
