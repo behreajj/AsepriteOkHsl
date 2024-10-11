@@ -82,6 +82,8 @@ local defaults <const> = {
     gBitDepth = 8,
     bBitDepth = 8,
     tBitDepth = 8,
+
+    keyShiftAmount = 0.01
 }
 
 local active <const> = {
@@ -1305,6 +1307,93 @@ local function onMouseMoveAxis(event)
     dlgMain:repaint()
 end
 
+---@param event KeyEvent
+local function onKeyPressCircle(event)
+    local wCanvas <const> = active.wCanvasCircle
+    local hCanvas <const> = active.hCanvasCircle
+    if wCanvas <= 1 or hCanvas <= 1 then return end
+
+    local code <const> = event.code
+    local isLeft <const> = code == "ArrowLeft"
+    local isRight <const> = code == "ArrowRight"
+    local isUp <const> = code == "ArrowUp"
+    local isDown <const> = code == "ArrowDown"
+    local recognized <const> = isLeft or isRight or isUp or isDown
+
+    if not recognized then return end
+
+    local useBack <const> = active.useBack
+    local useSat <const> = active.useSat
+    local radiansOffset <const> = active.radiansOffset
+    local satAxis <const> = active.satAxis
+    local lightAxis <const> = active.lightAxis
+
+    local hueActive <const> = useBack
+        and active.hueBack
+        or active.hueFore
+    local satActive <const> = useBack
+        and active.satBack
+        or active.satFore
+    local lightActive <const> = useBack
+        and active.lightBack
+        or active.lightFore
+
+    local magActive <const> = useSat
+        and 1.0 - lightActive
+        or satActive
+    local radiansActive <const> = hueActive * tau - radiansOffset
+    local x <const> = math.cos(radiansActive) * magActive
+    local y <const> = math.sin(radiansActive) * magActive
+
+    local xShift = x
+    local yShift = y
+    local shiftAmount <const> = defaults.keyShiftAmount
+    if isLeft then xShift = xShift - shiftAmount end
+    if isRight then xShift = xShift + shiftAmount end
+    if isUp then yShift = yShift + shiftAmount end
+    if isDown then yShift = yShift - shiftAmount end
+
+    local radiansSigned <const> = math.atan(yShift, xShift)
+    local rSgnOffset <const> = radiansSigned + radiansOffset
+    local rUnsigned <const> = rSgnOffset % tau
+    local hueKey <const> = rUnsigned * oneTau
+
+    local sqMag <const> = min(max(xShift * xShift + yShift * yShift, 0), 1)
+    local mag <const> = math.sqrt(sqMag)
+    local lightKey <const> = useSat and 1.0 - mag or lightAxis
+    local satKey <const> = useSat and satAxis or mag
+
+    local r8 <const>, g8 <const>, b8 <const>,
+    r01 <const>, g01 <const>, b01 <const> = okhslToRgb24(
+        hueKey, satKey, lightKey)
+
+    active[useBack and "hueBack" or "hueFore"] = hueKey
+    active[useBack and "satBack" or "satFore"] = satKey
+    active[useBack and "lightBack" or "lightFore"] = lightKey
+
+    active[useBack and "redBack" or "redFore"] = r01
+    active[useBack and "greenBack" or "greenFore"] = g01
+    active[useBack and "blueBack" or "blueFore"] = b01
+
+    local alphaActive <const> = useBack
+        and active.alphaBack
+        or active.alphaFore
+    local a8 <const> = floor(alphaActive * 255 + 0.5)
+
+    if useBack then
+        app.command.SwitchColors()
+        app.fgColor = Color { r = r8, g = g8, b = b8, a = a8 }
+        app.command.SwitchColors()
+    else
+        app.fgColor = Color { r = r8, g = g8, b = b8, a = a8 }
+    end
+
+    active.triggerAxisRepaint = true
+    active.triggerAlphaRepaint = true
+    active.triggerHarmonyRepaint = true
+    dlgMain:repaint()
+end
+
 ---@param event MouseEvent
 local function onMouseMoveCircle(event)
     if event.button == MouseButton.NONE then return end
@@ -1355,13 +1444,13 @@ local function onMouseMoveCircle(event)
 
     local useBack <const> = active.useBack
 
-    active[useBack and "hueBack" or "hueFore"] = hueMouse
-    active[useBack and "satBack" or "satFore"] = satMouse
-    active[useBack and "lightBack" or "lightFore"] = lightMouse
-
     local r8 <const>, g8 <const>, b8 <const>,
     r01 <const>, g01 <const>, b01 <const> = okhslToRgb24(
         hueMouse, satMouse, lightMouse)
+
+    active[useBack and "hueBack" or "hueFore"] = hueMouse
+    active[useBack and "satBack" or "satFore"] = satMouse
+    active[useBack and "lightBack" or "lightFore"] = lightMouse
 
     active[useBack and "redBack" or "redFore"] = r01
     active[useBack and "greenBack" or "greenFore"] = g01
@@ -1528,6 +1617,7 @@ dlgMain:canvas {
     focus = true,
     width = defaults.wCanvas,
     height = defaults.hCanvasCircle,
+    onkeydown = onKeyPressCircle,
     onmousedown = onMouseMoveCircle,
     onmousemove = onMouseMoveCircle,
     onmouseup = onMouseUpCircle,
