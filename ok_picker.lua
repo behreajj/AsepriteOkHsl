@@ -33,7 +33,6 @@ if app.preferences then
 end
 
 local defaults <const> = {
-    -- TODO: Keyboard shortcuts.
     -- TODO: Bring back shading harmony?
 
     wCanvas = max(16, 180 // screenScale),
@@ -444,14 +443,82 @@ local function onPaintAxis(event)
     local reticleSize <const> = defaults.reticleSize
     local reticleHalf <const> = reticleSize // 2
     local comparisand <const> = useSat and lightActive or lightAxis
+    local aseWhite <const> = Color { r = 255, g = 255, b = 255, a = 255 }
+    local aseBlack <const> = Color { r = 0, g = 0, b = 0, a = 255 }
     local reticleColor <const> = comparisand < 0.5
-        and Color(255, 255, 255, 255)
-        or Color(0, 0, 0, 255)
+        and aseWhite
+        or aseBlack
     ctx.color = reticleColor
     ctx.strokeWidth = defaults.reticleStroke
     ctx:strokeRect(Rectangle(
         xReticle - reticleHalf, yReticle - reticleHalf,
         reticleSize, reticleSize))
+
+    if (not useSat)
+        and active.showHarmonyOnWheel then
+        local harmonyType <const> = active.harmonyType
+        local harmRetSize = defaults.harmonyReticleSize
+        local harmRetHalf = harmRetSize // 2
+
+        local harmRetColor <const> = lightActive < 0.5
+            and aseBlack
+            or aseWhite
+        ctx.color = harmRetColor
+        ctx.strokeWidth = defaults.harmonyReticleStroke
+
+        if harmonyType == "ANALOGOUS" then
+            local lAna <const> = (lightActive * 2.0 + 0.5) / 3.0
+            ctx:strokeRect(Rectangle(
+                floor(lAna * (wCanvas - 1.0) + 0.5) - harmRetHalf,
+                yReticle - harmRetHalf,
+                harmRetSize, harmRetSize))
+        elseif harmonyType == "COMPLEMENT" then
+            local lCmp <const> = 1.0 - lightActive
+            ctx:strokeRect(Rectangle(
+                floor(lCmp * (wCanvas - 1.0) + 0.5) - harmRetHalf,
+                yReticle - harmRetHalf,
+                harmRetSize, harmRetSize))
+        elseif harmonyType == "SPLIT" then
+            local lSpl <const> = (2.5 - lightActive * 2.0) / 3.0
+            ctx:strokeRect(Rectangle(
+                floor(lSpl * (wCanvas - 1.0) + 0.5) - harmRetHalf,
+                yReticle - harmRetHalf,
+                harmRetSize, harmRetSize))
+        elseif harmonyType == "SQUARE" then
+            local lCmp <const> = 1.0 - lightActive
+            local lSqr <const> = 0.5
+            ctx:strokeRect(Rectangle(
+                floor(lCmp * (wCanvas - 1.0) + 0.5) - harmRetHalf,
+                yReticle - harmRetHalf,
+                harmRetSize, harmRetSize))
+            ctx:strokeRect(Rectangle(
+                floor(lSqr * (wCanvas - 1.0) + 0.5) - harmRetHalf,
+                yReticle - harmRetHalf,
+                harmRetSize, harmRetSize))
+        elseif harmonyType == "TETRADIC" then
+            local lTri <const> = (2.0 - lightActive) / 3.0
+            local lCmp <const> = 1.0 - lightActive
+            local lTet <const> = (1.0 + lightActive) / 3.0
+            ctx:strokeRect(Rectangle(
+                floor(lTri * (wCanvas - 1.0) + 0.5) - harmRetHalf,
+                yReticle - harmRetHalf,
+                harmRetSize, harmRetSize))
+            ctx:strokeRect(Rectangle(
+                floor(lCmp * (wCanvas - 1.0) + 0.5) - harmRetHalf,
+                yReticle - harmRetHalf,
+                harmRetSize, harmRetSize))
+            ctx:strokeRect(Rectangle(
+                floor(lTet * (wCanvas - 1.0) + 0.5) - harmRetHalf,
+                yReticle - harmRetHalf,
+                harmRetSize, harmRetSize))
+        elseif harmonyType == "TRIADIC" then
+            local lTri <const> = (2.0 - lightActive) / 3.0
+            ctx:strokeRect(Rectangle(
+                floor(lTri * (wCanvas - 1.0) + 0.5) - harmRetHalf,
+                yReticle - harmRetHalf,
+                harmRetSize, harmRetSize))
+        end
+    end
 end
 
 ---@param event { context: GraphicsContext }
@@ -600,11 +667,11 @@ local function onPaintCircle(event)
 
     local reticleSize <const> = defaults.reticleSize
     local reticleHalf <const> = reticleSize // 2
-    local whiteColor <const> = Color(255, 255, 255, 255)
-    local blackColor <const> = Color(0, 0, 0, 255)
+    local aseWhite <const> = Color { r = 255, g = 255, b = 255, a = 255 }
+    local aseBlack <const> = Color { r = 0, g = 0, b = 0, a = 255 }
     local reticleColor <const> = lightActive < 0.5
-        and whiteColor
-        or blackColor
+        and aseWhite
+        or aseBlack
     ctx.color = reticleColor
     ctx.strokeWidth = defaults.reticleStroke
     ctx:strokeRect(Rectangle(
@@ -740,10 +807,10 @@ local function onPaintCircle(event)
                 (xCenter + xTri1 * lTri) - harmRetHalf,
                 (yCenter - yTri1 * lTri) - harmRetHalf)
         end
-        local harmonyRetColor <const> = lightActive < 0.5
-            and blackColor
-            or whiteColor
-        ctx.color = harmonyRetColor
+        local harmRetColor <const> = lightActive < 0.5
+            and aseBlack
+            or aseWhite
+        ctx.color = harmRetColor
         ctx.strokeWidth = defaults.harmonyReticleStroke
         local lenPts <const> = #pts
         local i = 0
@@ -1786,7 +1853,7 @@ dlgOptions:newrow { always = false }
 dlgOptions:check {
     id = "showHarmonyOnWheel",
     label = "Display:",
-    text = "Wheel",
+    text = "Reticle",
     selected = defaults.showHarmonyOnWheel,
     focus = false,
     visible = defaults.harmonyType ~= "SHADING"
