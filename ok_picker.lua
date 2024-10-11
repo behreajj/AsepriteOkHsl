@@ -29,6 +29,9 @@ if app.preferences then
 end
 
 local defaults <const> = {
+    -- TODO: Keyboard shortcuts.
+    -- TODO: Bring back shading harmony?
+
     wCanvas = math.max(16, 180 // screenScale),
     hCanvasAxis = math.max(6, 12 // screenScale),
     hCanvasAlpha = math.max(6, 12 // screenScale),
@@ -600,9 +603,11 @@ local function onPaintCircle(event)
 
     local reticleSize <const> = defaults.reticleSize
     local reticleHalf <const> = reticleSize // 2
+    local whiteColor <const> = Color(255, 255, 255, 255)
+    local blackColor <const> = Color(0, 0, 0, 255)
     local reticleColor <const> = lightActive < 0.5
-        and Color(255, 255, 255, 255)
-        or Color(0, 0, 0, 255)
+        and whiteColor
+        or blackColor
     ctx.color = reticleColor
     ctx.strokeWidth = defaults.reticleStroke
     ctx:strokeRect(Rectangle(
@@ -738,7 +743,10 @@ local function onPaintCircle(event)
                 (xCenter + xTri1 * lTri) - harmRetHalf,
                 (yCenter - yTri1 * lTri) - harmRetHalf)
         end
-
+        local harmonyRetColor <const> = lightActive < 0.5
+            and blackColor
+            or whiteColor
+        ctx.color = harmonyRetColor
         ctx.strokeWidth = defaults.harmonyReticleStroke
         local lenPts <const> = #pts
         local i = 0
@@ -853,26 +861,26 @@ local function onPaintHarmony(event)
         local satBack <const> = active.satBack
         local lightBack <const> = active.lightBack
 
-        local hueActive <const> = useBack and hueBack or hueFore
-        local satActive <const> = useBack and satBack or satFore
-        local lightActive <const> = useBack and lightBack or lightFore
+        local hActive <const> = useBack and hueBack or hueFore
+        local sActive <const> = useBack and satBack or satFore
+        local lActive <const> = useBack and lightBack or lightFore
 
         if isAnalog then
-            local lAna <const> = (lightActive * 2.0 + 0.5) / 3.0
-            local h030 <const> = hueActive + 0.083333333
-            local h330 <const> = hueActive - 0.083333333
+            local lAna <const> = (lActive * 2.0 + 0.5) / 3.0
+            local h030 <const> = hActive + 0.083333333
+            local h330 <const> = hActive - 0.083333333
 
-            local r0 <const>, g0 <const>, b0 <const> = okhslToRgb24(h030, satActive, lAna)
-            local r1 <const>, g1 <const>, b1 <const> = okhslToRgb24(h330, satActive, lAna)
+            local r0 <const>, g0 <const>, b0 <const> = okhslToRgb24(h030, sActive, lAna)
+            local r1 <const>, g1 <const>, b1 <const> = okhslToRgb24(h330, sActive, lAna)
 
             active.byteStrHarmony = string.pack(
                 "B B B B B B B B",
                 r0, g0, b0, 255, r1, g1, b1, 255)
         elseif isCompl then
-            local lCmp <const> = 1.0 - lightActive
-            local h180 <const> = hueActive + 0.5
+            local lCmp <const> = 1.0 - lActive
+            local h180 <const> = hActive + 0.5
 
-            local r0 <const>, g0 <const>, b0 <const> = okhslToRgb24(h180, satActive, lCmp)
+            local r0 <const>, g0 <const>, b0 <const> = okhslToRgb24(h180, sActive, lCmp)
 
             active.byteStrHarmony = string.pack(
                 "B B B B",
@@ -889,52 +897,52 @@ local function onPaintHarmony(event)
             -- TODO: This should be adjustable.
             local shadingCount <const> = defaults.shadingCount
         elseif isSplit then
-            local lSpl <const> = (2.5 - lightActive * 2.0) / 3.0
-            local h150 = hueActive + 0.41666667
-            local h210 = hueActive - 0.41666667
+            local lSpl <const> = (2.5 - lActive * 2.0) / 3.0
+            local h150 = hActive + 0.41666667
+            local h210 = hActive - 0.41666667
 
-            local r0 <const>, g0 <const>, b0 <const> = okhslToRgb24(h150, satActive, lSpl)
-            local r1 <const>, g1 <const>, b1 <const> = okhslToRgb24(h210, satActive, lSpl)
+            local r0 <const>, g0 <const>, b0 <const> = okhslToRgb24(h150, sActive, lSpl)
+            local r1 <const>, g1 <const>, b1 <const> = okhslToRgb24(h210, sActive, lSpl)
 
             active.byteStrHarmony = string.pack(
                 "B B B B B B B B",
                 r0, g0, b0, 255, r1, g1, b1, 255)
         elseif isSquare then
-            local lCmp <const> = 1.0 - lightActive
+            local lCmp <const> = 1.0 - lActive
             local lSqr <const> = 0.5
-            local h090 = hueActive + 0.25
-            local h180 = hueActive + 0.5
-            local h270 = hueActive - 0.25
+            local h090 = hActive + 0.25
+            local h180 = hActive + 0.5
+            local h270 = hActive - 0.25
 
-            local r0 <const>, g0 <const>, b0 <const> = okhslToRgb24(h090, satActive, lSqr)
-            local r1 <const>, g1 <const>, b1 <const> = okhslToRgb24(h180, satActive, lCmp)
-            local r2 <const>, g2 <const>, b2 <const> = okhslToRgb24(h270, satActive, lSqr)
+            local r0 <const>, g0 <const>, b0 <const> = okhslToRgb24(h090, sActive, lSqr)
+            local r1 <const>, g1 <const>, b1 <const> = okhslToRgb24(h180, sActive, lCmp)
+            local r2 <const>, g2 <const>, b2 <const> = okhslToRgb24(h270, sActive, lSqr)
 
             active.byteStrHarmony = string.pack(
                 "B B B B B B B B B B B B",
                 r0, g0, b0, 255, r1, g1, b1, 255, r2, g2, b2, 255)
         elseif isTetradic then
-            local lTri <const> = (2.0 - lightActive) / 3.0
-            local lCmp <const> = 1.0 - lightActive
-            local lTet <const> = (1.0 + lightActive) / 3.0
-            local h120 <const> = hueActive + 0.33333333
-            local h180 <const> = hueActive + 0.5
-            local h300 <const> = hueActive - 0.16666667
+            local lTri <const> = (2.0 - lActive) / 3.0
+            local lCmp <const> = 1.0 - lActive
+            local lTet <const> = (1.0 + lActive) / 3.0
+            local h120 <const> = hActive + 0.33333333
+            local h180 <const> = hActive + 0.5
+            local h300 <const> = hActive - 0.16666667
 
-            local r0 <const>, g0 <const>, b0 <const> = okhslToRgb24(h120, satActive, lTri)
-            local r1 <const>, g1 <const>, b1 <const> = okhslToRgb24(h180, satActive, lCmp)
-            local r2 <const>, g2 <const>, b2 <const> = okhslToRgb24(h300, satActive, lTet)
+            local r0 <const>, g0 <const>, b0 <const> = okhslToRgb24(h120, sActive, lTri)
+            local r1 <const>, g1 <const>, b1 <const> = okhslToRgb24(h180, sActive, lCmp)
+            local r2 <const>, g2 <const>, b2 <const> = okhslToRgb24(h300, sActive, lTet)
 
             active.byteStrHarmony = string.pack(
                 "B B B B B B B B B B B B",
                 r0, g0, b0, 255, r1, g1, b1, 255, r2, g2, b2, 255)
         elseif isTriadic then
-            local lTri <const> = (2.0 - lightActive) / 3.0
-            local h120 <const> = hueActive + 0.33333333
-            local h240 <const> = hueActive - 0.33333333
+            local lTri <const> = (2.0 - lActive) / 3.0
+            local h120 <const> = hActive + 0.33333333
+            local h240 <const> = hActive - 0.33333333
 
-            local r0 <const>, g0 <const>, b0 <const> = okhslToRgb24(h120, satActive, lTri)
-            local r1 <const>, g1 <const>, b1 <const> = okhslToRgb24(h240, satActive, lTri)
+            local r0 <const>, g0 <const>, b0 <const> = okhslToRgb24(h120, sActive, lTri)
+            local r1 <const>, g1 <const>, b1 <const> = okhslToRgb24(h240, sActive, lTri)
 
             active.byteStrHarmony = string.pack(
                 "B B B B B B B B",
@@ -1248,6 +1256,68 @@ local function onMouseMoveAlpha(event)
     dlgMain:repaint()
 end
 
+---@param event KeyEvent
+local function onKeyDownAxis(event)
+    local wCanvas <const> = active.wCanvasAxis
+    local hCanvas <const> = active.hCanvasAxis
+    if wCanvas <= 1 or hCanvas <= 1 then return end
+
+    local code <const> = event.code
+    local isLeft <const> = code == "ArrowLeft"
+    local isRight <const> = code == "ArrowRight"
+    if isLeft or isRight then
+        local useSat <const> = active.useSat
+        local useBack <const> = active.useBack
+
+        local xOld <const> = useSat
+            and active.satAxis
+            or active.lightAxis
+        local xStep <const> = event.shiftKey and 0.05 or 0.01
+        local xSgn <const> = isLeft and -xStep or xStep
+        local xNew <const> = math.min(math.max(xOld + xSgn, 0.0), 1.0)
+
+        -- TODO: All that follows here can become its own function and be used
+        -- for both key down and mouse move.
+        if useSat then
+            active.satAxis = xNew
+            active[useBack and "satBack" or "satFore"] = xNew
+        else
+            active.lightAxis = xNew
+            active[useBack and "lightBack" or "lightFore"] = xNew
+        end
+
+        local hActive <const> = useBack and active.hueBack or active.hueFore
+        local sActive <const> = useBack and active.satBack or active.satFore
+        local lActive <const> = useBack and active.lightBack or active.lightFore
+
+        local r8 <const>, g8 <const>, b8 <const>,
+        r01 <const>, g01 <const>, b01 <const> = okhslToRgb24(
+            hActive, sActive, lActive)
+
+        active[useBack and "redBack" or "redFore"] = r01
+        active[useBack and "greenBack" or "greenFore"] = g01
+        active[useBack and "blueBack" or "blueFore"] = b01
+
+        local alphaActive <const> = useBack
+            and active.alphaBack
+            or active.alphaFore
+        local a8 <const> = math.floor(alphaActive * 255 + 0.5)
+
+        if useBack then
+            app.command.SwitchColors()
+            app.fgColor = Color { r = r8, g = g8, b = b8, a = a8 }
+            app.command.SwitchColors()
+        else
+            app.fgColor = Color { r = r8, g = g8, b = b8, a = a8 }
+        end
+
+        active.triggerCircleRepaint = true
+        active.triggerAlphaRepaint = true
+        active.triggerHarmonyRepaint = true
+        dlgMain:repaint()
+    end
+end
+
 ---@param event MouseEvent
 local function onMouseMoveAxis(event)
     if event.button == MouseButton.NONE then return end
@@ -1257,19 +1327,21 @@ local function onMouseMoveAxis(event)
     if wCanvas <= 1 or hCanvas <= 1 then return end
 
     local useSat <const> = active.useSat
+    local useBack <const> = active.useBack
+
     local xCanvas <const> = math.min(math.max(event.x, 0), wCanvas - 1)
-    local xNrm <const> = event.ctrlKey
+    local xNew <const> = event.ctrlKey
         and (useSat and 1.0 or 0.5)
         or xCanvas / (wCanvas - 1.0)
 
-    local useBack <const> = active.useBack
-
+    -- TODO: All that follows here can become its own function and be used
+    -- for both key down and mouse move.
     if useSat then
-        active.satAxis = xNrm
-        active[useBack and "satBack" or "satFore"] = xNrm
+        active.satAxis = xNew
+        active[useBack and "satBack" or "satFore"] = xNew
     else
-        active.lightAxis = xNrm
-        active[useBack and "lightBack" or "lightFore"] = xNrm
+        active.lightAxis = xNew
+        active[useBack and "lightBack" or "lightFore"] = xNew
     end
 
     local hActive <const> = useBack and active.hueBack or active.hueFore
@@ -1539,6 +1611,7 @@ dlgMain:canvas {
     focus = false,
     width = defaults.wCanvas,
     height = defaults.hCanvasAxis,
+    onkeydown = onKeyDownAxis,
     onmousedown = onMouseMoveAxis,
     onmousemove = onMouseMoveAxis,
     onpaint = onPaintAxis,
