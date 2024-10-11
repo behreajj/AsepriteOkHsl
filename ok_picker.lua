@@ -17,24 +17,34 @@ local tau <const> = 6.2831853071796
 local oneTau <const> = 0.1591549430919
 local sqrt32 <const> = 0.86602540378444
 
+local screenScale = 1
+if app.preferences then
+    local generalPrefs <const> = app.preferences.general
+    if generalPrefs then
+        local ssCand <const> = generalPrefs.screen_scale --[[@as integer]]
+        if ssCand and ssCand > 0 then
+            screenScale = ssCand
+        end
+    end
+end
+
 local defaults <const> = {
-    -- TODO: Account for screen scale?
-    wCanvas = 180,
-    hCanvasAxis = 12,
-    hCanvasAlpha = 12,
-    hCanvasCircle = 180,
-    hCanvasHarmony = 12,
+    wCanvas = math.max(16, 180 // screenScale),
+    hCanvasAxis = math.max(6, 12 // screenScale),
+    hCanvasAlpha = math.max(6, 12 // screenScale),
+    hCanvasCircle = math.max(16, 180 // screenScale),
+    hCanvasHarmony = math.max(6, 12 // screenScale),
 
     aCheck = 0.5,
     bCheck = 0.8,
-    wCheck = 6,
-    hCheck = 6,
+    wCheck = math.max(1, 6 // screenScale),
+    hCheck = math.max(1, 6 // screenScale),
 
-    reticleSize = 8,
-    reticleStroke = 2,
-    harmonyReticleSize = 4,
+    reticleSize = math.max(3, 8 // screenScale),
+    reticleStroke = math.max(1, 2 // screenScale),
+    harmonyReticleSize = math.max(2, 4 // screenScale),
     harmonyReticleStroke = 1,
-    swatchSize = 17,
+    swatchSize = math.max(4, 17 // screenScale),
     textDisplayLimit = 50,
     radiansOffset = math.rad(60),
 
