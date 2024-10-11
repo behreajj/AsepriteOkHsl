@@ -17,6 +17,10 @@ local tau <const> = 6.2831853071796
 local oneTau <const> = 0.1591549430919
 local sqrt32 <const> = 0.86602540378444
 
+local floor <const> = math.floor
+local max <const> = math.max
+local min <const> = math.min
+
 local screenScale = 1
 if app.preferences then
     local generalPrefs <const> = app.preferences.general
@@ -32,22 +36,22 @@ local defaults <const> = {
     -- TODO: Keyboard shortcuts.
     -- TODO: Bring back shading harmony?
 
-    wCanvas = math.max(16, 180 // screenScale),
-    hCanvasAxis = math.max(6, 12 // screenScale),
-    hCanvasAlpha = math.max(6, 12 // screenScale),
-    hCanvasCircle = math.max(16, 180 // screenScale),
-    hCanvasHarmony = math.max(6, 12 // screenScale),
+    wCanvas = max(16, 180 // screenScale),
+    hCanvasAxis = max(6, 12 // screenScale),
+    hCanvasAlpha = max(6, 12 // screenScale),
+    hCanvasCircle = max(16, 180 // screenScale),
+    hCanvasHarmony = max(6, 12 // screenScale),
 
     aCheck = 0.5,
     bCheck = 0.8,
-    wCheck = math.max(1, 6 // screenScale),
-    hCheck = math.max(1, 6 // screenScale),
+    wCheck = max(1, 6 // screenScale),
+    hCheck = max(1, 6 // screenScale),
 
-    reticleSize = math.max(3, 8 // screenScale),
-    reticleStroke = math.max(1, 1 // screenScale),
-    harmonyReticleSize = math.max(2, 4 // screenScale),
+    reticleSize = max(3, 8 // screenScale),
+    reticleStroke = max(1, 1 // screenScale),
+    harmonyReticleSize = max(2, 4 // screenScale),
     harmonyReticleStroke = 1,
-    swatchSize = math.max(4, 17 // screenScale),
+    swatchSize = max(4, 17 // screenScale),
     textDisplayLimit = 50,
     radiansOffset = math.rad(60),
 
@@ -240,13 +244,13 @@ local function okhslToRgb24(h, s, l)
 
     -- Values still go out of gamut, particularly for
     -- saturated blues at medium light.
-    local r01cl = math.min(math.max(r01, 0), 1)
-    local g01cl = math.min(math.max(g01, 0), 1)
-    local b01cl = math.min(math.max(b01, 0), 1)
+    local r01cl = min(max(r01, 0), 1)
+    local g01cl = min(max(g01, 0), 1)
+    local b01cl = min(max(b01, 0), 1)
 
-    local r8 <const> = math.floor(r01cl * 255 + 0.5)
-    local g8 <const> = math.floor(g01cl * 255 + 0.5)
-    local b8 <const> = math.floor(b01cl * 255 + 0.5)
+    local r8 <const> = floor(r01cl * 255 + 0.5)
+    local g8 <const> = floor(g01cl * 255 + 0.5)
+    local b8 <const> = floor(b01cl * 255 + 0.5)
 
     return r8, g8, b8, r01cl, g01cl, b01cl
 end
@@ -279,7 +283,6 @@ local function onPaintAlpha(event)
         local byteStrs <const> = {}
 
         local strpack <const> = string.pack
-        local floor <const> = math.floor
 
         local redActive <const> = useBack
             and active.redBack
@@ -342,7 +345,7 @@ local function onPaintAlpha(event)
     local drawRect <const> = Rectangle(0, 0, wCanvas, hCanvas)
     ctx:drawImage(img, drawRect, drawRect)
 
-    local xReticle <const> = math.floor(alphaActive * (wCanvas - 1.0) + 0.5)
+    local xReticle <const> = floor(alphaActive * (wCanvas - 1.0) + 0.5)
     local yReticle <const> = hCanvas // 2
 
     local reticleSize <const> = defaults.reticleSize
@@ -433,7 +436,7 @@ local function onPaintAxis(event)
 
     -- Draw reticle.
     local x01 <const> = useSat and satAxis or lightAxis
-    local xReticle <const> = math.floor(x01 * (wCanvas - 1.0) + 0.5)
+    local xReticle <const> = floor(x01 * (wCanvas - 1.0) + 0.5)
     local yReticle <const> = hCanvas // 2
 
     local reticleSize <const> = defaults.reticleSize
@@ -468,7 +471,7 @@ local function onPaintCircle(event)
 
     local xCenter <const> = wCanvas * 0.5
     local yCenter <const> = hCanvas * 0.5
-    local shortEdge <const> = math.min(wCanvas, hCanvas)
+    local shortEdge <const> = min(wCanvas, hCanvas)
     local radiusCanvas <const> = (shortEdge - 1.0) * 0.5
 
     local themeColors <const> = app.theme.color
@@ -560,17 +563,17 @@ local function onPaintCircle(event)
     local greenBack <const> = active.greenBack
     local blueBack <const> = active.blueBack
 
-    local r8Back <const> = math.floor(redBack * 255 + 0.5)
-    local g8Back <const> = math.floor(greenBack * 255 + 0.5)
-    local b8Back <const> = math.floor(blueBack * 255 + 0.5)
+    local r8Back <const> = floor(redBack * 255 + 0.5)
+    local g8Back <const> = floor(greenBack * 255 + 0.5)
+    local b8Back <const> = floor(blueBack * 255 + 0.5)
 
     local redFore <const> = active.redFore
     local greenFore <const> = active.greenFore
     local blueFore <const> = active.blueFore
 
-    local r8Fore <const> = math.floor(redFore * 255 + 0.5)
-    local g8Fore <const> = math.floor(greenFore * 255 + 0.5)
-    local b8Fore <const> = math.floor(blueFore * 255 + 0.5)
+    local r8Fore <const> = floor(redFore * 255 + 0.5)
+    local g8Fore <const> = floor(greenFore * 255 + 0.5)
+    local b8Fore <const> = floor(blueFore * 255 + 0.5)
 
     -- Draw background color swatch.
     ctx.color = Color { r = r8Back, g = g8Back, b = b8Back, a = 255 }
@@ -806,9 +809,9 @@ local function onPaintCircle(event)
         local gMax <const> = (1 << gBitDepth) - 1
         local rMax <const> = (1 << rBitDepth) - 1
 
-        local hex <const> = math.floor(redActive * rMax + 0.5) << rShift
-            | math.floor(greenActive * gMax + 0.5) << gShift
-            | math.floor(blueActive * bMax + 0.5) << bShift
+        local hex <const> = floor(redActive * rMax + 0.5) << rShift
+            | floor(greenActive * gMax + 0.5) << gShift
+            | floor(blueActive * bMax + 0.5) << bShift
 
         ctx:fillText(string.format("#%0" .. hexPad .. "X", hex),
             2, 2 + yIncr * 10)
@@ -1063,9 +1066,6 @@ local function genGradient()
 
     local hslToRgb <const> = ok_color.okhsl_to_srgb
     local labToRgb <const> = ok_color.oklab_to_srgb
-    local min <const> = math.min
-    local max <const> = math.max
-    local floor <const> = math.floor
 
     ---@type Color[]
     local aseColors <const> = {}
@@ -1214,7 +1214,7 @@ local function onMouseMoveAlpha(event)
     local hCanvas <const> = active.hCanvasAxis
     if wCanvas <= 1 or hCanvas <= 1 then return end
 
-    local xCanvas <const> = math.min(math.max(event.x, 0), wCanvas - 1)
+    local xCanvas <const> = min(max(event.x, 0), wCanvas - 1)
     local xNrm <const> = event.ctrlKey
         and 1.0
         or xCanvas / (wCanvas - 1.0)
@@ -1232,10 +1232,10 @@ local function onMouseMoveAlpha(event)
         and active.blueBack
         or active.blueFore
 
-    local r8 <const> = math.floor(redActive * 255 + 0.5)
-    local g8 <const> = math.floor(greenActive * 255 + 0.5)
-    local b8 <const> = math.floor(blueActive * 255 + 0.5)
-    local a8 <const> = math.floor(xNrm * 255 + 0.5)
+    local r8 <const> = floor(redActive * 255 + 0.5)
+    local g8 <const> = floor(greenActive * 255 + 0.5)
+    local b8 <const> = floor(blueActive * 255 + 0.5)
+    local a8 <const> = floor(xNrm * 255 + 0.5)
 
     if useBack then
         app.command.SwitchColors()
@@ -1259,7 +1259,7 @@ local function onMouseMoveAxis(event)
     local useSat <const> = active.useSat
     local useBack <const> = active.useBack
 
-    local xCanvas <const> = math.min(math.max(event.x, 0), wCanvas - 1)
+    local xCanvas <const> = min(max(event.x, 0), wCanvas - 1)
     local xNew <const> = event.ctrlKey
         and (useSat and 1.0 or 0.5)
         or xCanvas / (wCanvas - 1.0)
@@ -1289,7 +1289,7 @@ local function onMouseMoveAxis(event)
     local alphaActive <const> = useBack
         and active.alphaBack
         or active.alphaFore
-    local a8 <const> = math.floor(alphaActive * 255 + 0.5)
+    local a8 <const> = floor(alphaActive * 255 + 0.5)
 
     if useBack then
         app.command.SwitchColors()
@@ -1315,7 +1315,7 @@ local function onMouseMoveCircle(event)
 
     local xCenter <const> = wCanvas * 0.5
     local yCenter <const> = hCanvas * 0.5
-    local shortEdge <const> = math.min(wCanvas, hCanvas)
+    local shortEdge <const> = min(wCanvas, hCanvas)
     local radiusCanvas <const> = (shortEdge - 1.0) * 0.5
     local radiusCanvasInv <const> = 1.0 / radiusCanvas
 
@@ -1349,7 +1349,7 @@ local function onMouseMoveCircle(event)
     local rUnsigned <const> = rSgnOffset % tau
     local hueMouse <const> = rUnsigned * oneTau
 
-    local mag <const> = math.sqrt(math.min(sqMag, 1.0))
+    local mag <const> = math.sqrt(min(sqMag, 1.0))
     local lightMouse <const> = useSat and 1.0 - mag or lightAxis
     local satMouse <const> = useSat and satAxis or mag
 
@@ -1370,7 +1370,7 @@ local function onMouseMoveCircle(event)
     local alphaActive <const> = useBack
         and active.alphaBack
         or active.alphaFore
-    local a8 <const> = math.floor(alphaActive * 255 + 0.5)
+    local a8 <const> = floor(alphaActive * 255 + 0.5)
 
     if useBack then
         app.command.SwitchColors()
@@ -1424,11 +1424,11 @@ local function onMouseUpHarmony(event)
         shadingCount = 2
     end
 
-    local xCanvas <const> = math.min(math.max(event.x, 0), wCanvas - 1)
+    local xCanvas <const> = min(max(event.x, 0), wCanvas - 1)
     local xNrm <const> = event.ctrlKey
         and 1.0
         or xCanvas / (wCanvas - 1.0)
-    local xIdx <const> = math.floor(xNrm * (shadingCount - 1) + 0.5)
+    local xIdx <const> = floor(xNrm * (shadingCount - 1) + 0.5)
     local r8 <const>,
     g8 <const>,
     b8 <const> = string.byte(
@@ -1438,7 +1438,7 @@ local function onMouseUpHarmony(event)
     local alphaActive <const> = useBack
         and active.alphaBack
         or active.alphaFore
-    local t8 <const> = math.floor(alphaActive * 255.0 + 0.5)
+    local t8 <const> = floor(alphaActive * 255.0 + 0.5)
 
     updateFromRgba8(r8, g8, b8, t8, useBack)
 
@@ -1507,16 +1507,16 @@ local function onMouseUpCircle(event)
         dlgMain:repaint()
 
         app.fgColor = Color {
-            r = math.floor(active.redFore * 255 + 0.5),
-            g = math.floor(active.greenFore * 255 + 0.5),
-            b = math.floor(active.blueFore * 255 + 0.5),
+            r = floor(active.redFore * 255 + 0.5),
+            g = floor(active.greenFore * 255 + 0.5),
+            b = floor(active.blueFore * 255 + 0.5),
             a = 255
         }
         app.command.SwitchColors()
         app.fgColor = Color {
-            r = math.floor(active.redBack * 255 + 0.5),
-            g = math.floor(active.greenBack * 255 + 0.5),
-            b = math.floor(active.blueBack * 255 + 0.5),
+            r = floor(active.redBack * 255 + 0.5),
+            g = floor(active.greenBack * 255 + 0.5),
+            b = floor(active.blueBack * 255 + 0.5),
             a = 255
         }
         app.command.SwitchColors()
