@@ -5,7 +5,7 @@ local harmonyTypes <const> = {
     "ANALOGOUS",
     "COMPLEMENT",
     "NONE",
-    -- "SHADING",
+    "SHADING",
     "SPLIT",
     "SQUARE",
     "TETRADIC",
@@ -58,8 +58,23 @@ local defaults <const> = {
     useSat = false,
     satAxis = 1.0,
     lightAxis = 0.5,
+
     harmonyType = "NONE",
     showHarmonyOnWheel = true,
+
+    shadingCount = 7,
+    shadowLight = 0.1,
+    dayLight = 0.9,
+    shadowHue = 291.0 / 360.0,
+    dayHue = 96.0 / 360.0,
+    hYel = 109.79 / 360.0,
+    srcLightWeight = 0.3333333333333333,
+    greenHue = 146.0 / 360.0,
+    minGreenOffset = 0.3,
+    maxGreenOffset = 0.6,
+    minChroma = 0.01,
+    lgtDesatFac = 0.75,
+    shdDesatFac = 0.75,
 
     foreKey = "&FORE",
     backKey = "&BACK",
@@ -75,7 +90,6 @@ local defaults <const> = {
     showExitButton = true,
 
     swatchCount = 5,
-    shadingCount = 7,
     huePreset = "NEAR",
     rBitDepth = 8,
     gBitDepth = 8,
@@ -140,6 +154,17 @@ local active <const> = {
 
     alphaBack = 1.0,
 }
+
+---@param a number
+---@param b number
+---@param range number
+---@return number
+local function distAngleUnsigned(a, b, range)
+    local halfRange <const> = range * 0.5
+    return halfRange - math.abs(math.abs(
+            (b % range) - (a % range))
+        - halfRange)
+end
 
 ---@param orig number origin angle
 ---@param dest number destination angle
@@ -228,6 +253,14 @@ local function lerpAngleNear(orig, dest, t, range)
     else
         return u * o + t * d
     end
+end
+
+---@param t number
+---@return number
+local function zigZag(t)
+    local a <const> = t * 0.5
+    local b <const> = a - math.floor(a)
+    return 1.0 - math.abs(b + b - 1.0)
 end
 
 ---@param h number hue
@@ -917,17 +950,15 @@ local function onPaintHarmony(event)
     if needsRepaint then
         local useBack <const> = active.useBack
 
-        local hueFore <const> = active.hueFore
-        local satFore <const> = active.satFore
-        local lightFore <const> = active.lightFore
-
-        local hueBack <const> = active.hueBack
-        local satBack <const> = active.satBack
-        local lightBack <const> = active.lightBack
-
-        local hActive <const> = useBack and hueBack or hueFore
-        local sActive <const> = useBack and satBack or satFore
-        local lActive <const> = useBack and lightBack or lightFore
+        local hActive <const> = useBack
+            and active.hueBack
+            or active.hueFore
+        local sActive <const> = useBack
+            and active.satBack
+            or active.satFore
+        local lActive <const> = useBack
+            and active.lightBack
+            or active.lightFore
 
         if isAnalog then
             local lAna <const> = (lActive * 2.0 + 0.5) / 3.0
@@ -956,10 +987,91 @@ local function onPaintHarmony(event)
                 "B B B B",
                 bkgColor.red, bkgColor.green, bkgColor.blue, 255)
         elseif isShading then
-            -- TODO: Implement.
-
-            -- TODO: This should be adjustable.
+            ---@type string[]
+            local byteStrArr <const> = {}
             local shadingCount <const> = defaults.shadingCount
+            local iToFac <const> = 1.0 / (shadingCount - 1.0)
+            local lOrig <const> = defaults.shadowLight
+            local lDest <const> = defaults.dayLight
+
+            -- Decide on clockwise or counter-clockwise based
+            -- on color's warmth or coolness.
+            -- The LCh hue for yellow is 103 degrees.
+            local hYel <const> = defaults.hYel
+            local hBlu <const> = hYel + 0.5
+            local hueFunc = nil
+            if hActive < hYel or hActive >= hBlu then
+                hueFunc = lerpAngleCcw
+            else
+                hueFunc = lerpAngleCw
+            end
+
+            -- Absolute hues for shadow and light.
+            -- This could also be combined with the origin hue +/-
+            -- a shift which is then mixed with the absolute hue.
+            local shadowHue <const> = defaults.shadowHue
+            local dayHue <const> = defaults.dayHue
+
+            -- Amount to mix between base light and loop light.
+            local srcLightWeight <const> = defaults.srcLightWeight
+            local cmpLightWeight <const> = 1.0 - srcLightWeight
+
+            -- The warm-cool dichotomy works poorly for greens.
+            -- For that reason, the closer a hue is to green,
+            -- the more it uses absolute hue shifting.
+            -- Green is approximately at hue 140.
+            local offsetMix <const> = 2.0 * distAngleUnsigned(
+                hActive, defaults.greenHue, 1.0)
+            local offsetScale <const> = (1.0 - offsetMix) * defaults.maxGreenOffset
+                + offsetMix * defaults.minGreenOffset
+
+            -- Yellows are very saturated at high light;
+            -- Desaturate them to get a better shade.
+            -- Conversely, blues easily fall out of gamut
+            -- so the shade factor is separate.
+            local lgtDesatFac <const> = defaults.lgtDesatFac
+            local shdDesatFac <const> = defaults.shdDesatFac
+            local minChroma <const> = defaults.minChroma
+            local cVal <const> = math.max(minChroma, sActive)
+            local desatChromaLgt <const> = cVal * lgtDesatFac
+            local desatChromaShd <const> = cVal * shdDesatFac
+
+            local strpack <const> = string.pack
+
+            local i = 0
+            while i < shadingCount do
+                local iFac <const> = i * iToFac
+                local cmplFac <const> = 1.0 - iFac
+                local lItr <const> = cmplFac * lOrig + iFac * lDest
+
+                -- Idealized hue from violet shadow to
+                -- off-yellow daylight.
+                local hAbs <const> = hueFunc(shadowHue, dayHue, lItr, 1.0)
+
+                -- The middle sample should be closest to base color.
+                -- The fac needs to be 0.0. That's why zigzag is
+                -- used to convert to an oscillation.
+                local lMixed <const> = srcLightWeight * lActive
+                    + cmpLightWeight * lItr
+                local lZig <const> = zigZag(lMixed)
+                local fac <const> = offsetScale * lZig
+                local hMixed <const> = lerpAngleNear(hActive, hAbs, fac, 1.0)
+
+                -- Desaturate brights and darks.
+                -- Min chroma gives even grays a slight chroma.
+                local chromaTarget = desatChromaLgt
+                if lMixed < 0.5 then chromaTarget = desatChromaShd end
+                local cMixed = (1.0 - lZig) * cVal + lZig * chromaTarget
+                cMixed = max(minChroma, cMixed)
+
+                local r8 <const>, g8 <const>, b8 <const> = okhslToRgb24(
+                    hMixed, cMixed, lMixed)
+
+                i = i + 1
+                byteStrArr[i] = strpack("B B B B", r8, g8, b8, 255)
+            end
+
+            active.byteStrHarmony = table.concat(byteStrArr)
         elseif isSplit then
             local lSpl <const> = (2.5 - lActive * 2.0) / 3.0
             local h150 = hActive + 0.41666666666667
@@ -1022,7 +1134,6 @@ local function onPaintHarmony(event)
     elseif isNone then
         wCanvasNative = 1
     elseif isShading then
-        -- TODO: This should be adjustable.
         wCanvasNative = defaults.shadingCount
     elseif isSplit then
         wCanvasNative = 2
@@ -1140,22 +1251,22 @@ local function genGradient()
     local aseColors <const> = {}
     local i = 0
     while i < swatchCount do
-        local t <const> = i * toFac
-        local u <const> = 1.0 - t
+        local fac <const> = i * toFac
+        local cmplFac <const> = 1.0 - fac
 
-        local tMix <const> = u * tOrig + t * tDest
+        local tMix <const> = cmplFac * tOrig + fac * tDest
 
         local r01, g01, b01 = 0.0, 0.0, 0.0
         if useLabMix then
-            local lMix <const> = u * lLabOrig + t * lLabDest
-            local aMix <const> = u * aLabOrig + t * aLabDest
-            local bMix <const> = u * bLabOrig + t * bLabDest
-            r01, g01, b01 = labToRgb(lMix, aMix, bMix)
+            r01, g01, b01 = labToRgb(
+                cmplFac * lLabOrig + fac * lLabDest,
+                cmplFac * aLabOrig + fac * aLabDest,
+                cmplFac * bLabOrig + fac * bLabDest)
         else
-            local hMix <const> = hueEasing(hOrig, hDest, t, 1.0)
-            local sMix <const> = u * sOrig + t * sDest
-            local lMix <const> = u * lOrig + t * lDest
-            r01, g01, b01 = hslToRgb(hMix, sMix, lMix)
+            r01, g01, b01 = hslToRgb(
+                hueEasing(hOrig, hDest, fac, 1.0),
+                cmplFac * sOrig + fac * sDest,
+                cmplFac * lOrig + fac * lDest)
         end
 
         local r01cl = min(max(r01, 0), 1)
@@ -1568,7 +1679,6 @@ local function onMouseUpHarmony(event)
     elseif isNone then
         shadingCount = 1
     elseif isShading then
-        -- TODO: This should be adjustable.
         shadingCount = defaults.shadingCount
     elseif isSplit then
         shadingCount = 2
