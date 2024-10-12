@@ -11,7 +11,7 @@ assignees: ''
 For example, Windows 11.
 
 **Aseprite version**
-The current supported version is 1.3.5.
+The current supported version is 1.3.9.
 
 **Sprite color mode**
 RGB, indexed or grayscale.
@@ -26,4 +26,4 @@ Steps to reproduce the behavior.
 A clear and concise description of expected behavior.
 
 **Screenshots**
-Add screenshots to illustrate the bug.
+If possible, show the bug with screenshots.

@@ -1,14 +1,12 @@
 # Okhsl for Aseprite
 
-This is a set of [Aseprite](https://www.aseprite.org/) dialogs that utilize [Okhsl](https://bottosson.github.io/posts/colorpicker/) to provide a color picker, gradient, color wheel generator and an adjustment filter.
+This is a set of [Aseprite](https://www.aseprite.org/) dialogs that utilize [Okhsl](https://bottosson.github.io/posts/colorpicker/) to provide a color picker and an adjustment filter.
 
 Aseprite is an "animated sprite editor & pixel art tool." Okhsl is a color representation developed by Bjorn Ottosson to create an alternative to HSL that is based on human perception. Those looking for an interactive online comparison between Okhsl, [HSLuv](https://www.hsluv.org/) and traditional HSL should refer to this [article](https://bottosson.github.io/misc/colorpicker/).
 
-_These scripts were tested with Aseprite version 1.3.5._
+_These scripts were tested with Aseprite version 1.3.9._
 
 [sRGB](https://www.wikiwand.com/en/SRGB) (standard RGB) is the assumed color profile. The sprite's profile can be changed under `Sprite > Properties`. Aseprite's color management settings are under `Edit > Preferences`, in the `Color` section.
-
-To modify these scripts, see Aseprite's [API Reference](https://github.com/aseprite/api). A [type definition](https://github.com/behreajj/aseprite-type-definition) for use with VS Code and the [Lua Language Server extension](https://github.com/LuaLS/lua-language-server) is also available.
 
 ## Installation
 
@@ -18,11 +16,11 @@ To install, open Aseprite, go to `File > Scripts > Open Scripts Folder`. Copy an
 
 Select `ok_picker` or `ok_hue_adj` to launch a dialog.
 
-If an error message in Aseprite's console appears, check if the script folder is on a file path that includes characters beyond ASCII, such as 'é' (e acute) or 'ö' (o umlaut). See this [thread](https://community.aseprite.org/t/script-folder-path-cannot-open-no-such-file-or-directory/16818) for discussion of the issue on the community forum.
+If an error message in Aseprite's console appears, check if the script folder is on a file path that includes characters beyond ASCII, such as 'é' (e acute) or 'ö' (o umlaut).
 
 To assign a hotkey to a dialog go to `Edit > Keyboard Shortcuts`.
  
-The underlined letters on each dialog button indicate that they work with keyboard shortcuts: `Alt+F` gets the foreground color, `Alt+B` gets the background color, `Alt+X` closes the dialog, `Alt+W` creates a wheel, `Alt+G` creates a gradient. When shading is active, `Alt+A` appends the swatches to the active palette.
+The underlined letters on each dialog button indicate that they work with keyboard shortcuts. For example, `Alt+X` closes the dialog.
 
 Left click on a color preview window to assign the color to the foreground. Right click to assign to the background. If the alpha channel slider is zero, the color assigned will be transparent black (`0x0` or `Color(0, 0, 0, 0)`).
 
@@ -82,9 +80,7 @@ The test image is one of the first images taken by [Nasa's Webb Telescope](https
 
 ## Changes
 
-Unused methods have been removed. The original code has been modified to handle edge cases for black, white and grays. There are some measures to prevent the passing of invalid values to division or square-root.
-
-The hue for grays is left at zero to follow convention. However, this will cause problems when, for example, creating a gradient from a gray to a saturated color or when sorting colors by hue.
+To modify these scripts, see Aseprite's [API Reference](https://github.com/aseprite/api). A [type definition](https://github.com/behreajj/aseprite-type-definition) for use with VS Code and the [Lua Language Server extension](https://github.com/LuaLS/lua-language-server) is also available.
 
 ## License
 
