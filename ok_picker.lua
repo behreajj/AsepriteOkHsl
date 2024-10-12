@@ -33,8 +33,6 @@ if app.preferences then
 end
 
 local defaults <const> = {
-    -- TODO: Bring back shading harmony?
-
     wCanvas = max(16, 180 // screenScale),
     hCanvasAxis = max(6, 12 // screenScale),
     hCanvasAlpha = max(6, 12 // screenScale),
@@ -155,10 +153,53 @@ local active <const> = {
     alphaBack = 1.0,
 }
 
+---@param a number value
+---@param levels number levels
+---@param delta number inverse levels
+---@return number
+---@nodiscard
+local function quantizeSignedInternal(a, levels, delta)
+    return math.floor(0.5 + a * levels) * delta
+end
+
+---@param a number value
+---@param levels number levels
+---@return number
+---@nodiscard
+local function quantizeSigned(a, levels)
+    if levels ~= 0 then
+        return quantizeSignedInternal(
+            a, levels, 1.0 / levels)
+    end
+    return a
+end
+
+---@param a number value
+---@param levels number levels
+---@param delta number inverse levels
+---@return number
+---@nodiscard
+local function quantizeUnsignedInternal(a, levels, delta)
+    return math.max(0.0, (math.ceil(a * levels) - 1.0) * delta)
+end
+
+---@param a number value
+---@param levels number levels
+---@return number
+---@nodiscard
+local function quantizeUnsigned(a, levels)
+    if levels > 1 then
+        return quantizeUnsignedInternal(
+            a, levels, 1.0 / (levels - 1.0))
+    end
+    return math.max(0.0, a)
+end
+
 ---@param a number
 ---@param b number
 ---@param range number
 ---@return number
+---@nodiscard
 local function distAngleUnsigned(a, b, range)
     local halfRange <const> = range * 0.5
     return halfRange - math.abs(math.abs(
@@ -257,6 +298,7 @@ end
 
 ---@param t number
 ---@return number
+---@nodiscard
 local function zigZag(t)
     local a <const> = t * 0.5
     local b <const> = a - math.floor(a)
@@ -1614,13 +1656,22 @@ local function onMouseMoveCircle(event)
     local radiansSigned <const> = math.atan(yNrm, xNrm)
     local rSgnOffset <const> = radiansSigned + radiansOffset
     local rUnsigned <const> = rSgnOffset % tau
-    local hueMouse <const> = rUnsigned * oneTau
+    local hueMouse = rUnsigned * oneTau
 
     local mag <const> = math.sqrt(min(sqMag, 1.0))
-    local lightMouse <const> = useSat and 1.0 - mag or lightAxis
-    local satMouse <const> = useSat and satAxis or mag
+    local lightMouse  = useSat and 1.0 - mag or lightAxis
+    local satMouse  = useSat and satAxis or mag
 
     local useBack <const> = active.useBack
+
+    local shiftKey <const> = event.shiftKey
+    local hLevels = shiftKey and 24 or 0
+    local sLevels = shiftKey and 10 or 0
+    local lLevels = shiftKey and 10 or 0
+
+    hueMouse = quantizeSigned(hueMouse, hLevels)
+    satMouse = quantizeUnsigned(satMouse, sLevels)
+    lightMouse = quantizeUnsigned(lightMouse, lLevels)
 
     local r8 <const>, g8 <const>, b8 <const>,
     r01 <const>, g01 <const>, b01 <const> = okhslToRgb24(
