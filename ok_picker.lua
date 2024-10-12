@@ -1690,11 +1690,9 @@ local function onMouseUpHarmony(event)
         shadingCount = 2
     end
 
-    local xCanvas <const> = min(max(event.x, 0), wCanvas - 1)
-    local xNrm <const> = event.ctrlKey
-        and 1.0
-        or xCanvas / (wCanvas - 1.0)
-    local xIdx <const> = floor(xNrm * (shadingCount - 1) + 0.5)
+    local xNrm <const> = event.x / (wCanvas - 1.0)
+    local xIdx <const> = min(max(floor(xNrm * shadingCount),
+        0), shadingCount - 1)
     local r8 <const>,
     g8 <const>,
     b8 <const> = string.byte(
