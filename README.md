@@ -1,12 +1,14 @@
 # Okhsl for Aseprite
 
+![Screen Cap](screenCap0.png)
+
 This is a set of [Aseprite](https://www.aseprite.org/) dialogs that utilize [Okhsl](https://bottosson.github.io/posts/colorpicker/) to provide a color picker and an adjustment filter.
 
 Aseprite is an "animated sprite editor & pixel art tool." Okhsl is a color representation developed by Bjorn Ottosson to create an alternative to HSL that is based on human perception. Those looking for an interactive online comparison between Okhsl, [HSLuv](https://www.hsluv.org/) and traditional HSL should refer to this [article](https://bottosson.github.io/misc/colorpicker/).
 
-_These scripts were tested with Aseprite version 1.3.9._
-
 [sRGB](https://www.wikiwand.com/en/SRGB) (standard RGB) is the assumed color profile. The sprite's profile can be changed under `Sprite > Properties`. Aseprite's color management settings are under `Edit > Preferences`, in the `Color` section.
+
+_These scripts were tested with Aseprite version 1.3.9.2 ._
 
 ## Installation
 
@@ -14,55 +16,37 @@ To install, open Aseprite, go to `File > Scripts > Open Scripts Folder`. Copy an
 
 ## Usage
 
-Select `ok_picker` or `ok_hue_adj` to launch a dialog.
+Select `ok_picker` or `ok_hue_adj` to launch a dialog. If an error message in Aseprite's console appears, check if the script folder is on a file path that includes characters beyond ASCII, such as 'é' (e acute) or 'ö' (o umlaut). To assign a hotkey to a dialog go to `Edit > Keyboard Shortcuts`. The underlined letters on each dialog button indicate that they work with keyboard shortcuts. For example, `Alt+X` closes the dialog.
 
-If an error message in Aseprite's console appears, check if the script folder is on a file path that includes characters beyond ASCII, such as 'é' (e acute) or 'ö' (o umlaut).
+![Diagnostic Text](screenCap1.png)
 
-To assign a hotkey to a dialog go to `Edit > Keyboard Shortcuts`.
- 
-The underlined letters on each dialog button indicate that they work with keyboard shortcuts. For example, `Alt+X` closes the dialog.
+When the dialog is wider than it is high, text will be shown to the left of the wheel, including the hue, saturation and lightness. Hues in Okhsl are not the same as in CIE LCH, HSLuv, or traditional HSL. For example, red (`#ff0000`) has a hue of approximately 29 degrees in Okhsl. Changing the colors in the dialog will change those in Aseprite's color bar. The opposite is not true; colors from the color bar can be retrieved with the `FORE` and `BACK` buttons.
 
-Left click on a color preview window to assign the color to the foreground. Right click to assign to the background. If the alpha channel slider is zero, the color assigned will be transparent black (`0x0` or `Color(0, 0, 0, 0)`).
+![Options Menu](screenCap2.png)
 
-Hues in Okhsl are not the same as in CIE LCH, HSLuv, or traditional HSL. For example, red (`#ff0000`) has a hue of approximately 29 degrees in Okhsl. Do not assume different color representations have the same primaries, or the same spatial relationships between colors.
+Clicking on the `+` button will open an options menu.
 
-Beware of drift in hue and other channels when getting and setting colors. For example, getting `#ff0000` will result in (29, 255, 145) in Okhsl. However, setting the picker's sliders to those values manually will yield the hexadecimal `#ff0205`.
+![Axis](screenCap3.png)
 
-Saturation and lightness sliders use the integer range [0, 255], not [0, 100], to mitigate this issue. The former allows for a finer granularity. I.e., 360 * 100 * 100 = 3600000 possibilities while 360 * 255 * 255 = 23409000 possibilities.
+The `Axis` option switches between saturation and lightness as the axis on the bottom slider.
 
-### Color Wheel
+![Harmonies](screenCap4.png)
 
-![Screen Cap 0](screenCap0.png)
+Harmonies will display reticles for analogous, complementary, split, square, tetradic and triadic color harmonies. Left clicking on the harmony bar will set the foreground color. Right clicking will set the background color.
 
-When the `WHL` button is clicked, a new sprite is created. When saturation varies with frames on the time axis, the wheel will be white at its center and black at its circumference. The color wheel's hue is shifted by 30 degrees to match the Aseprite convention.
+Bit depth will change the hexadecimal code display; for example, in the screen shot above, the hex code for RGB555 is shown.
 
-![Discrete Wheels](discreteWheels.png)
+![Buttons Gradient](screenCap5.png)
 
-Click on the `Settings` toggle for `Wheel` to show more options. For example, the `Sectors` and `Rings` sliders can be used to make the color wheel discrete in a fashion similar to Aseprite's built-in color wheels. The color property that varies by frame will depend on whether the `Mode` is `HSL` or `HSV`: the choice is between `SATURATION` and `LIGHTNESS` or between `SATURATION` and `VALUE`. 
+The buttons at the bottom of the dialog can also be changed. In the screen capture above, the gradient button appends to the palette 13 swatch sample from a fore- to background color gradien with furthest hue easing. The sample button samples a color from the sprite canvas at the mouse cursor when `Alt+A` is pressed.
 
-![Hue Remap Comparison](hueRemap.png)
+When the dialog wheel canvas has focus, arrow keys will nudge the color.
 
-The hue can also be remapped to one of three options: RGB, RYGB and RYB.
+To use the older version of the color picker, see `ok_picker_classic.lua`.
 
-### Gradient
-
-![Screen Cap 1](screenCap1.png)
-
-The `GRD` button creates a new sprite with a horizontal gradient starting with the background color at the left and ending with the foreground color at the right. The sprite's palette is set to a number of swatches. The gradient ignores source color alpha. The gradient responds to the `Mode`, where `HSV` and `HSL` provide the hue easing options of `NEAR`, `CCW` (counter-clockwise) and `CW` (clockwise). The discontinuity between saturated blue and teal means that hue-based gradients will require adjustment.
-
-### Harmonies
-
-Supported harmonies are: analogous, complementary, split, square and triadic. Shading swatches are grouped under harmonies to conserve screen space.
-
-![Shading](shading.png)
-
-This tool -- its harmony and shading features in particular -- is an imperfect aide to artistic judgment, not a replacement for it. See Pixel Parmesan's "[Color Theory for Pixel Artists: It's All Relative](https://pixelparmesan.com/color-theory-for-pixel-artists-its-all-relative/)" on the subject.
-
-### Color Adjustment
+## Color Adjustment
 
 A separate dialog allows for cel image adjustment with either `HSV` or `HSL`. `Alt+O` applies the adjustment, `Alt+X` cancels the dialog.
-
-_As of Aseprite version 1.3.2, all adjustments are made in-place. Indexed and grayscale color modes are also supported. When a tile map is selected, all tiles in the tile set that the map uses will be adjusted. To make this possible, a hacky unique ID is assigned to all tile sets in the sprite._
 
 ![Hue Adjustment](hueAdjust.png)
 
@@ -78,9 +62,9 @@ Above, the image was first de-saturated to grayscale. In the re-saturated versio
 
 The test image is one of the first images taken by [Nasa's Webb Telescope](https://www.nasa.gov/webbfirstimages/).
 
-## Changes
+## Modification
 
-To modify these scripts, see Aseprite's [API Reference](https://github.com/aseprite/api). A [type definition](https://github.com/behreajj/aseprite-type-definition) for use with VS Code and the [Lua Language Server extension](https://github.com/LuaLS/lua-language-server) is also available.
+To modify these scripts, see Aseprite's [API Reference](https://github.com/aseprite/api). A [type definition](https://github.com/behreajj/aseprite-type-definition) for use with VS Code and the [Lua Language Server extension](https://github.com/LuaLS/lua-language-server) is recommended.
 
 ## License
 
