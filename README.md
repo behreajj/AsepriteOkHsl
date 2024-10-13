@@ -20,7 +20,9 @@ Select `ok_picker` or `ok_hue_adj` to launch a dialog. If an error message in As
 
 ![Diagnostic Text](screenCap1.png)
 
-When the dialog is wider than it is high, text will be shown to the left of the wheel, including the hue, saturation and lightness. Hues in Okhsl are not the same as in CIE LCH, HSLuv, or traditional HSL. For example, red (`#ff0000`) has a hue of approximately 29 degrees in Okhsl. Changing the colors in the dialog will change those in Aseprite's color bar. The opposite is not true; colors from the color bar can be retrieved with the `FORE` and `BACK` buttons.
+When the dialog is wider than it is high, text will be shown to the left of the wheel, including the hue, saturation and lightness. Hues in Okhsl are not the same as in CIE LCH, HSLuv, or traditional HSL. For example, red (`#ff0000`) has a hue of approximately 29 degrees in Okhsl.
+
+Changing the colors in the dialog will change those in Aseprite's color bar. The opposite is not true; colors from the color bar can be retrieved with the `FORE` and `BACK` buttons.
 
 ![Options Menu](screenCap2.png)
 
@@ -34,13 +36,13 @@ The `Axis` option switches between saturation and lightness as the axis on the b
 
 Harmonies will display reticles for analogous, complementary, split, square, tetradic and triadic color harmonies. Left clicking on the harmony bar will set the foreground color. Right clicking will set the background color.
 
-Bit depth will change the hexadecimal code display; for example, in the screen shot above, the hex code for RGB555 is shown.
+Bit depth will quantize the 8bpp colors in the color bar and change the hexadecimal code display. For example, in the screen shot above, the hex code for RGB555 is shown.
 
 ![Buttons Gradient](screenCap5.png)
 
 The buttons at the bottom of the dialog can also be changed. In the screen capture above, the gradient button appends to the palette 13 swatch sample from a fore- to background color gradien with furthest hue easing. The sample button samples a color from the sprite canvas at the mouse cursor when `Alt+A` is pressed.
 
-When the dialog wheel canvas has focus, arrow keys will nudge the color.
+When the dialog wheel canvas has focus, arrow keys will nudge the color. Holding down the `Shift` key while dragging the mouse will pick colors in a discrete amount. Holding down `Ctrl` while dragging the mouse will reset the cursor to a default position at the wheel's center.
 
 To use the older version of the color picker, see `ok_picker_classic.lua`.
 

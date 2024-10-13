@@ -37,6 +37,8 @@ local tau <const> = 6.2831853071796
 local oneTau <const> = 0.1591549430919
 local sqrt32 <const> = 0.86602540378444
 
+local abs <const> = math.abs
+local ceil <const> = math.ceil
 local floor <const> = math.floor
 local max <const> = math.max
 local min <const> = math.min
@@ -117,7 +119,10 @@ local defaults <const> = {
     bBitDepth = 8,
     tBitDepth = 8,
 
-    keyShiftAmount = 0.01
+    keyShiftAmount = 0.01,
+    hLevels = 24,
+    sLevels = 12,
+    lLevels = 12,
 }
 
 local active <const> = {
@@ -174,6 +179,10 @@ local active <const> = {
     blueBack = 0.0,
 
     alphaBack = 1.0,
+
+    hLevels = defaults.hLevels,
+    sLevels = defaults.sLevels,
+    lLevels = defaults.lLevels,
 }
 
 ---@param a number value
@@ -182,7 +191,7 @@ local active <const> = {
 ---@return number
 ---@nodiscard
 local function quantizeSignedInternal(a, levels, delta)
-    return math.floor(0.5 + a * levels) * delta
+    return floor(0.5 + a * levels) * delta
 end
 
 ---@param a number value
@@ -203,7 +212,7 @@ end
 ---@return number
 ---@nodiscard
 local function quantizeUnsignedInternal(a, levels, delta)
-    return math.max(0.0, (math.ceil(a * levels) - 1.0) * delta)
+    return max(0.0, (ceil(a * levels) - 1.0) * delta)
 end
 
 ---@param a number value
@@ -215,7 +224,7 @@ local function quantizeUnsigned(a, levels)
         return quantizeUnsignedInternal(
             a, levels, 1.0 / (levels - 1.0))
     end
-    return math.max(0.0, a)
+    return max(0.0, a)
 end
 
 ---@param a number
@@ -225,7 +234,7 @@ end
 ---@nodiscard
 local function distAngleUnsigned(a, b, range)
     local halfRange <const> = range * 0.5
-    return halfRange - math.abs(math.abs(
+    return halfRange - abs(abs(
             (b % range) - (a % range))
         - halfRange)
 end
@@ -324,8 +333,8 @@ end
 ---@nodiscard
 local function zigZag(t)
     local a <const> = t * 0.5
-    local b <const> = a - math.floor(a)
-    return 1.0 - math.abs(b + b - 1.0)
+    local b <const> = a - floor(a)
+    return 1.0 - abs(b + b - 1.0)
 end
 
 ---@param h number hue
@@ -726,30 +735,46 @@ local function onPaintCircle(event)
     local swatchSize <const> = defaults.swatchSize
     local offset <const> = swatchSize // 2
 
+    local rBitDepth <const> = active.rBitDepth
+    local gBitDepth <const> = active.gBitDepth
+    local bBitDepth <const> = active.bBitDepth
+
+    local rLevels <const> = 1 << rBitDepth
+    local gLevels <const> = 1 << gBitDepth
+    local bLevels <const> = 1 << bBitDepth
+
     local redBack <const> = active.redBack
     local greenBack <const> = active.greenBack
     local blueBack <const> = active.blueBack
-
-    local r8Back <const> = floor(redBack * 255 + 0.5)
-    local g8Back <const> = floor(greenBack * 255 + 0.5)
-    local b8Back <const> = floor(blueBack * 255 + 0.5)
 
     local redFore <const> = active.redFore
     local greenFore <const> = active.greenFore
     local blueFore <const> = active.blueFore
 
-    local r8Fore <const> = floor(redFore * 255 + 0.5)
-    local g8Fore <const> = floor(greenFore * 255 + 0.5)
-    local b8Fore <const> = floor(blueFore * 255 + 0.5)
-
     -- Draw background color swatch.
-    ctx.color = Color { r = r8Back, g = g8Back, b = b8Back, a = 255 }
+    ctx.color = Color {
+        -- r = floor(quantizeUnsigned(redBack, rLevels) * 255 + 0.5),
+        -- g = floor(quantizeUnsigned(greenBack, gLevels) * 255 + 0.5),
+        -- b = floor(quantizeUnsigned(blueBack, bLevels) * 255 + 0.5),
+        r = floor(redBack * 255 + 0.5),
+        g = floor(greenBack * 255 + 0.5),
+        b = floor(blueBack * 255 + 0.5),
+        a = 255
+    }
     ctx:fillRect(Rectangle(
         offset, hCanvas - swatchSize - 1,
         swatchSize, swatchSize))
 
     -- Draw foreground color swatch.
-    ctx.color = Color { r = r8Fore, g = g8Fore, b = b8Fore, a = 255 }
+    ctx.color = Color {
+        -- r = floor(quantizeUnsigned(redFore, rLevels) * 255 + 0.5),
+        -- g = floor(quantizeUnsigned(greenFore, gLevels) * 255 + 0.5),
+        -- b = floor(quantizeUnsigned(blueFore, bLevels) * 255 + 0.5),
+        r = floor(redFore * 255 + 0.5),
+        g = floor(greenFore * 255 + 0.5),
+        b = floor(blueFore * 255 + 0.5),
+        a = 255
+    }
     ctx:fillRect(Rectangle(
         0, hCanvas - swatchSize - 1 - offset,
         swatchSize, swatchSize))
@@ -963,22 +988,14 @@ local function onPaintCircle(event)
         ctx:fillText(string.format(
             "A: %.2f%%", alphaActive * 100), 2, 2 + yIncr * 8)
 
-        local rBitDepth <const> = active.rBitDepth
-        local gBitDepth <const> = active.gBitDepth
-        local bBitDepth <const> = active.bBitDepth
-
         local bShift <const> = 0
         local gShift <const> = bShift + bBitDepth
         local rShift <const> = gShift + gBitDepth
-        local hexPad <const> = math.ceil((rShift + rBitDepth) * 0.25)
+        local hexPad <const> = ceil((rShift + rBitDepth) * 0.25)
 
-        local bMax <const> = (1 << bBitDepth) - 1
-        local gMax <const> = (1 << gBitDepth) - 1
-        local rMax <const> = (1 << rBitDepth) - 1
-
-        local hex <const> = floor(redActive * rMax + 0.5) << rShift
-            | floor(greenActive * gMax + 0.5) << gShift
-            | floor(blueActive * bMax + 0.5) << bShift
+        local hex <const> = floor(redActive * (rLevels - 1) + 0.5) << rShift
+            | floor(greenActive * (gLevels - 1) + 0.5) << gShift
+            | floor(blueActive * (bLevels - 1) + 0.5) << bShift
 
         ctx:fillText(string.format("#%0" .. hexPad .. "X", hex),
             2, 2 + yIncr * 10)
@@ -1256,6 +1273,51 @@ local function updateFromRgba8(r8, g8, b8, t8, useBack)
     end
 end
 
+local function updateColorBar()
+    local useBack <const> = active.useBack
+
+    local rBitDepth <const> = active.rBitDepth
+    local gBitDepth <const> = active.gBitDepth
+    local bBitDepth <const> = active.bBitDepth
+    local tBitDepth <const> = active.tBitDepth
+
+    local rLevels <const> = 1 << rBitDepth
+    local gLevels <const> = 1 << gBitDepth
+    local bLevels <const> = 1 << bBitDepth
+    local tLevels <const> = 1 << tBitDepth
+
+    local redActive <const> = useBack
+        and active.redBack
+        or active.redFore
+    local greenActive <const> = useBack
+        and active.greenBack
+        or active.greenFore
+    local blueActive <const> = useBack
+        and active.blueBack
+        or active.blueFore
+    local alphaActive <const> = useBack
+        and active.alphaBack
+        or active.alphaFore
+
+    local rq <const> = quantizeUnsigned(redActive, rLevels)
+    local gq <const> = quantizeUnsigned(greenActive, gLevels)
+    local bq <const> = quantizeUnsigned(blueActive, bLevels)
+    local tq <const> = quantizeUnsigned(alphaActive, tLevels)
+
+    local r8 <const> = floor(rq * 255 + 0.5)
+    local g8 <const> = floor(gq * 255 + 0.5)
+    local b8 <const> = floor(bq * 255 + 0.5)
+    local t8 <const> = floor(tq * 255 + 0.5)
+
+    if useBack then
+        app.command.SwitchColors()
+        app.fgColor = Color { r = r8, g = g8, b = b8, a = t8 }
+        app.command.SwitchColors()
+    else
+        app.fgColor = Color { r = r8, g = g8, b = b8, a = t8 }
+    end
+end
+
 local dlgMain <const> = Dialog { title = "OkHsl Color Picker" }
 
 local dlgOptions <const> = Dialog {
@@ -1467,29 +1529,7 @@ local function onMouseMoveAlpha(event)
     local useBack <const> = active.useBack
     active[useBack and "alphaBack" or "alphaFore"] = xNrm
 
-    local redActive <const> = useBack
-        and active.redBack
-        or active.redFore
-    local greenActive <const> = useBack
-        and active.greenBack
-        or active.greenFore
-    local blueActive <const> = useBack
-        and active.blueBack
-        or active.blueFore
-
-    local r8 <const> = floor(redActive * 255 + 0.5)
-    local g8 <const> = floor(greenActive * 255 + 0.5)
-    local b8 <const> = floor(blueActive * 255 + 0.5)
-    local a8 <const> = floor(xNrm * 255 + 0.5)
-
-    if useBack then
-        app.command.SwitchColors()
-        app.fgColor = Color { r = r8, g = g8, b = b8, a = a8 }
-        app.command.SwitchColors()
-    else
-        app.fgColor = Color { r = r8, g = g8, b = b8, a = a8 }
-    end
-
+    updateColorBar()
     dlgMain:repaint()
 end
 
@@ -1523,7 +1563,7 @@ local function onMouseMoveAxis(event)
     local sActive <const> = useBack and active.satBack or active.satFore
     local lActive <const> = useBack and active.lightBack or active.lightFore
 
-    local r8 <const>, g8 <const>, b8 <const>,
+    local _ <const>, _ <const>, _ <const>,
     r01 <const>, g01 <const>, b01 <const> = okhslToRgb24(
         hActive, sActive, lActive)
 
@@ -1531,19 +1571,7 @@ local function onMouseMoveAxis(event)
     active[useBack and "greenBack" or "greenFore"] = g01
     active[useBack and "blueBack" or "blueFore"] = b01
 
-    local alphaActive <const> = useBack
-        and active.alphaBack
-        or active.alphaFore
-    local a8 <const> = floor(alphaActive * 255 + 0.5)
-
-    if useBack then
-        app.command.SwitchColors()
-        app.fgColor = Color { r = r8, g = g8, b = b8, a = a8 }
-        app.command.SwitchColors()
-    else
-        app.fgColor = Color { r = r8, g = g8, b = b8, a = a8 }
-    end
-
+    updateColorBar()
     active.triggerCircleRepaint = true
     active.triggerAlphaRepaint = true
     active.triggerHarmonyRepaint = true
@@ -1606,7 +1634,7 @@ local function onKeyPressCircle(event)
     local lightKey <const> = useSat and 1.0 - mag or lightAxis
     local satKey <const> = useSat and satAxis or mag
 
-    local r8 <const>, g8 <const>, b8 <const>,
+    local _ <const>, _ <const>, _ <const>,
     r01 <const>, g01 <const>, b01 <const> = okhslToRgb24(
         hueKey, satKey, lightKey)
 
@@ -1618,19 +1646,7 @@ local function onKeyPressCircle(event)
     active[useBack and "greenBack" or "greenFore"] = g01
     active[useBack and "blueBack" or "blueFore"] = b01
 
-    local alphaActive <const> = useBack
-        and active.alphaBack
-        or active.alphaFore
-    local a8 <const> = floor(alphaActive * 255 + 0.5)
-
-    if useBack then
-        app.command.SwitchColors()
-        app.fgColor = Color { r = r8, g = g8, b = b8, a = a8 }
-        app.command.SwitchColors()
-    else
-        app.fgColor = Color { r = r8, g = g8, b = b8, a = a8 }
-    end
-
+    updateColorBar()
     active.triggerAxisRepaint = true
     active.triggerAlphaRepaint = true
     active.triggerHarmonyRepaint = true
@@ -1682,21 +1698,21 @@ local function onMouseMoveCircle(event)
     local hueMouse = rUnsigned * oneTau
 
     local mag <const> = math.sqrt(min(sqMag, 1.0))
-    local lightMouse  = useSat and 1.0 - mag or lightAxis
-    local satMouse  = useSat and satAxis or mag
+    local lightMouse = useSat and 1.0 - mag or lightAxis
+    local satMouse = useSat and satAxis or mag
 
     local useBack <const> = active.useBack
 
     local shiftKey <const> = event.shiftKey
-    local hLevels = shiftKey and 24 or 0
-    local sLevels = shiftKey and 10 or 0
-    local lLevels = shiftKey and 10 or 0
+    local hLevels = shiftKey and active.hLevels or 0
+    local sLevels = shiftKey and active.sLevels or 0
+    local lLevels = shiftKey and active.lLevels or 0
 
     hueMouse = quantizeSigned(hueMouse, hLevels)
     satMouse = quantizeUnsigned(satMouse, sLevels)
     lightMouse = quantizeUnsigned(lightMouse, lLevels)
 
-    local r8 <const>, g8 <const>, b8 <const>,
+    local _ <const>, _ <const>, _ <const>,
     r01 <const>, g01 <const>, b01 <const> = okhslToRgb24(
         hueMouse, satMouse, lightMouse)
 
@@ -1708,19 +1724,7 @@ local function onMouseMoveCircle(event)
     active[useBack and "greenBack" or "greenFore"] = g01
     active[useBack and "blueBack" or "blueFore"] = b01
 
-    local alphaActive <const> = useBack
-        and active.alphaBack
-        or active.alphaFore
-    local a8 <const> = floor(alphaActive * 255 + 0.5)
-
-    if useBack then
-        app.command.SwitchColors()
-        app.fgColor = Color { r = r8, g = g8, b = b8, a = a8 }
-        app.command.SwitchColors()
-    else
-        app.fgColor = Color { r = r8, g = g8, b = b8, a = a8 }
-    end
-
+    updateColorBar()
     active.triggerAxisRepaint = true
     active.triggerAlphaRepaint = true
     active.triggerHarmonyRepaint = true
@@ -1781,19 +1785,11 @@ local function onMouseUpHarmony(event)
     local t8 <const> = floor(alphaActive * 255.0 + 0.5)
 
     updateFromRgba8(r8, g8, b8, t8, useBack)
-
+    updateColorBar()
     active.triggerAlphaRepaint = true
     active.triggerAxisRepaint = true
     active.triggerCircleRepaint = true
     dlgMain:repaint()
-
-    if useBack then
-        app.command.SwitchColors()
-        app.fgColor = Color { r = r8, g = g8, b = b8, a = t8 }
-        app.command.SwitchColors()
-    else
-        app.fgColor = Color { r = r8, g = g8, b = b8, a = t8 }
-    end
 end
 
 ---@param event MouseEvent
@@ -1840,26 +1836,12 @@ local function onMouseUpCircle(event)
         active.lightAxis = lTemp
         active.satAxis = sTemp
 
+        updateColorBar()
         active.triggerAlphaRepaint = true
         active.triggerAxisRepaint = true
         active.triggerCircleRepaint = true
         active.triggerHarmonyRepaint = true
         dlgMain:repaint()
-
-        app.fgColor = Color {
-            r = floor(active.redFore * 255 + 0.5),
-            g = floor(active.greenFore * 255 + 0.5),
-            b = floor(active.blueFore * 255 + 0.5),
-            a = 255
-        }
-        app.command.SwitchColors()
-        app.fgColor = Color {
-            r = floor(active.redBack * 255 + 0.5),
-            g = floor(active.greenBack * 255 + 0.5),
-            b = floor(active.blueBack * 255 + 0.5),
-            a = 255
-        }
-        app.command.SwitchColors()
     end
 end
 
@@ -2067,7 +2049,7 @@ dlgOptions:combobox {
     visible = defaults.showGradientButton
 }
 
-dlgOptions:separator { text = "Hex Depth" }
+dlgOptions:separator { text = "Bit Depth" }
 
 dlgOptions:slider {
     id = "rBitDepth",
@@ -2109,8 +2091,6 @@ dlgOptions:slider {
     min = 1,
     max = 8,
     focus = false,
-    -- TODO: For now this is unused.
-    visible = false,
 }
 
 dlgOptions:separator {}
@@ -2205,6 +2185,8 @@ dlgOptions:button {
         dlgMain:modify { id = "sampleButton", visible = showSample }
         dlgMain:modify { id = "exitMainButton", visible = showExit }
         dlgMain:modify { id = "harmonyCanvas", visible = harmonyType ~= "NONE" }
+
+        updateColorBar()
 
         dlgOptions:close()
     end
