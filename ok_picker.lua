@@ -1273,9 +1273,8 @@ local function updateFromRgba8(r8, g8, b8, t8, useBack)
     end
 end
 
-local function updateColorBar()
-    local useBack <const> = active.useBack
-
+---@param useBack boolean
+local function updateColorBar(useBack)
     local rBitDepth <const> = active.rBitDepth
     local gBitDepth <const> = active.gBitDepth
     local bBitDepth <const> = active.bBitDepth
@@ -1529,7 +1528,7 @@ local function onMouseMoveAlpha(event)
     local useBack <const> = active.useBack
     active[useBack and "alphaBack" or "alphaFore"] = xNrm
 
-    updateColorBar()
+    updateColorBar(false)
     dlgMain:repaint()
 end
 
@@ -1571,7 +1570,7 @@ local function onMouseMoveAxis(event)
     active[useBack and "greenBack" or "greenFore"] = g01
     active[useBack and "blueBack" or "blueFore"] = b01
 
-    updateColorBar()
+    updateColorBar(false)
     active.triggerCircleRepaint = true
     active.triggerAlphaRepaint = true
     active.triggerHarmonyRepaint = true
@@ -1646,7 +1645,7 @@ local function onKeyPressCircle(event)
     active[useBack and "greenBack" or "greenFore"] = g01
     active[useBack and "blueBack" or "blueFore"] = b01
 
-    updateColorBar()
+    updateColorBar(false)
     active.triggerAxisRepaint = true
     active.triggerAlphaRepaint = true
     active.triggerHarmonyRepaint = true
@@ -1724,7 +1723,7 @@ local function onMouseMoveCircle(event)
     active[useBack and "greenBack" or "greenFore"] = g01
     active[useBack and "blueBack" or "blueFore"] = b01
 
-    updateColorBar()
+    updateColorBar(false)
     active.triggerAxisRepaint = true
     active.triggerAlphaRepaint = true
     active.triggerHarmonyRepaint = true
@@ -1785,7 +1784,7 @@ local function onMouseUpHarmony(event)
     local t8 <const> = floor(alphaActive * 255.0 + 0.5)
 
     updateFromRgba8(r8, g8, b8, t8, useBack)
-    updateColorBar()
+    updateColorBar(false)
     active.triggerAlphaRepaint = true
     active.triggerAxisRepaint = true
     active.triggerCircleRepaint = true
@@ -1836,7 +1835,9 @@ local function onMouseUpCircle(event)
         active.lightAxis = lTemp
         active.satAxis = sTemp
 
-        updateColorBar()
+        updateColorBar(false)
+        updateColorBar(true)
+
         active.triggerAlphaRepaint = true
         active.triggerAxisRepaint = true
         active.triggerCircleRepaint = true
@@ -2186,7 +2187,7 @@ dlgOptions:button {
         dlgMain:modify { id = "exitMainButton", visible = showExit }
         dlgMain:modify { id = "harmonyCanvas", visible = harmonyType ~= "NONE" }
 
-        updateColorBar()
+        updateColorBar(false)
 
         dlgOptions:close()
     end
