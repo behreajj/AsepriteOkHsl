@@ -1784,7 +1784,7 @@ local function onMouseUpHarmony(event)
     local t8 <const> = floor(alphaActive * 255.0 + 0.5)
 
     updateFromRgba8(r8, g8, b8, t8, useBack)
-    updateColorBar(false)
+    updateColorBar(useBack)
     active.triggerAlphaRepaint = true
     active.triggerAxisRepaint = true
     active.triggerCircleRepaint = true
