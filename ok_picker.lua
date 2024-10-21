@@ -99,7 +99,7 @@ local defaults <const> = {
     lgtDesatFac = 0.75,
     shdDesatFac = 0.75,
 
-    foreKey = "&FORE",
+    foreKey = "F&ORE",
     backKey = "&BACK",
     sampleKey = "S&AMPLE",
     gradientKey = "&GRADIENT",
