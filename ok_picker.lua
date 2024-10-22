@@ -58,10 +58,10 @@ local defaults <const> = {
     -- TODO: Ultimately, this would work better as a single canvas,
     -- not muliple ones, unless you can figure out how to make them
     -- not rescale.
-    wCanvas = max(16, 180 // screenScale),
+    wCanvas = max(16, 200 // screenScale),
     hCanvasAxis = max(6, 12 // screenScale),
     hCanvasAlpha = max(6, 12 // screenScale),
-    hCanvasCircle = max(16, 180 // screenScale),
+    hCanvasCircle = max(16, 200 // screenScale),
     hCanvasHarmony = max(6, 12 // screenScale),
 
     aCheck = 0.5,
