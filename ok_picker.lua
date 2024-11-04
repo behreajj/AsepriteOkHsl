@@ -1856,6 +1856,8 @@ dlgMain:canvas {
     onmousemove = onMouseMoveCircle,
     onmouseup = onMouseUpCircle,
     onpaint = onPaintCircle,
+    hexpand = true,
+    vexpand = true,
 }
 
 dlgMain:newrow { always = false }
@@ -1868,6 +1870,8 @@ dlgMain:canvas {
     onmousedown = onMouseMoveAxis,
     onmousemove = onMouseMoveAxis,
     onpaint = onPaintAxis,
+    hexpand = true,
+    vexpand = false,
 }
 
 dlgMain:newrow { always = false }
@@ -1880,6 +1884,8 @@ dlgMain:canvas {
     onmousedown = onMouseMoveAlpha,
     onmousemove = onMouseMoveAlpha,
     onpaint = onPaintAlpha,
+    hexpand = true,
+    vexpand = false,
 }
 
 dlgMain:newrow { always = false }
@@ -1892,6 +1898,8 @@ dlgMain:canvas {
     visible = defaults.harmonyType ~= "NONE",
     onmouseup = onMouseUpHarmony,
     onpaint = onPaintHarmony,
+    hexpand = true,
+    vexpand = false,
 }
 
 dlgMain:newrow { always = false }
