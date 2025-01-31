@@ -55,7 +55,7 @@ if app.preferences then
 end
 
 local defaults <const> = {
-    wCanvas = max(16, 200 // screenScale),
+    wCanvas = max(16, 350 // screenScale),
     hCanvasAxis = max(6, 12 // screenScale),
     hCanvasAlpha = max(6, 12 // screenScale),
     hCanvasCircle = max(16, 200 // screenScale),
@@ -71,6 +71,7 @@ local defaults <const> = {
     harmonyReticleSize = max(2, 4 // screenScale),
     harmonyReticleStroke = 1,
     swatchSize = max(4, 17 // screenScale),
+    swatchMargin = max(3, 6 // screenScale),
     textDisplayLimit = 50,
     radiansOffset = math.rad(60),
 
@@ -727,7 +728,10 @@ local function onPaintCircle(event)
     ctx:drawImage(img, drawRect, drawRect)
 
     local swatchSize <const> = defaults.swatchSize
+    local swatchMargin <const> = defaults.swatchMargin
     local offset <const> = swatchSize // 2
+    local xSwatch <const> = wCanvas - swatchSize - swatchMargin
+    local ySwatch <const> = hCanvas - swatchSize - swatchMargin
 
     local rBitDepth <const> = active.rBitDepth
     local gBitDepth <const> = active.gBitDepth
@@ -755,10 +759,8 @@ local function onPaintCircle(event)
         b = floor(blueBack * 255 + 0.5),
         a = 255
     }
-
-    -- TODO: Move this to the right side of the canvas.
     ctx:fillRect(Rectangle(
-        offset, hCanvas - swatchSize - 1,
+        xSwatch - offset, ySwatch,
         swatchSize, swatchSize))
 
     -- Draw foreground color swatch.
@@ -771,10 +773,8 @@ local function onPaintCircle(event)
         b = floor(blueFore * 255 + 0.5),
         a = 255
     }
-
-    -- TODO: Move this to the right side of the canvas.
     ctx:fillRect(Rectangle(
-        0, hCanvas - swatchSize - 1 - offset,
+        xSwatch, ySwatch - offset,
         swatchSize, swatchSize))
 
     -- Draw reticle.
@@ -991,7 +991,7 @@ local function onPaintCircle(event)
         local bShift <const> = 0
         local gShift <const> = bShift + bBitDepth
         local rShift <const> = gShift + gBitDepth
-        local hexPad <const> = ceil((rShift + rBitDepth) * 0.25)
+        local hexPad <const> = ceil((bBitDepth + gBitDepth + rBitDepth) * 0.25)
 
         local hex <const> = floor(redActive * (rLevels - 1) + 0.5) << rShift
             | floor(greenActive * (gLevels - 1) + 0.5) << gShift
@@ -1797,11 +1797,19 @@ local function onMouseUpCircle(event)
     local yMouseUp <const> = event.y
 
     local swatchSize <const> = defaults.swatchSize
-    local offset <const> = swatchSize // 2
+    local swatchMargin <const> = defaults.swatchMargin
+    local wCanvas <const> = active.wCanvasCircle
     local hCanvas <const> = active.hCanvasCircle
-    if xMouseUp >= 0 and xMouseUp < offset + swatchSize
-        and yMouseUp >= hCanvas - swatchSize - 1 - offset
-        and yMouseUp < hCanvas then
+
+    local offset <const> = swatchSize // 2
+    local xSwatch <const> = wCanvas - swatchSize - swatchMargin
+    local ySwatch <const> = hCanvas - swatchSize - swatchMargin
+    local offSizeSum <const> = offset + swatchSize - swatchMargin
+
+    if xMouseUp >= xSwatch - offset
+        and xMouseUp < xSwatch + offSizeSum
+        and yMouseUp >= ySwatch - offset
+        and yMouseUp < ySwatch + offSizeSum then
         local hTemp <const> = active.hueBack
         local sTemp <const> = active.satBack
         local lTemp <const> = active.lightBack
