@@ -55,17 +55,14 @@ if app.preferences then
 end
 
 local defaults <const> = {
-    -- TODO: Ultimately, this would work better as a single canvas,
-    -- not muliple ones, unless you can figure out how to make them
-    -- not rescale.
     wCanvas = max(16, 200 // screenScale),
     hCanvasAxis = max(6, 12 // screenScale),
     hCanvasAlpha = max(6, 12 // screenScale),
     hCanvasCircle = max(16, 200 // screenScale),
     hCanvasHarmony = max(6, 12 // screenScale),
 
-    aCheck = 0.5,
-    bCheck = 0.8,
+    aCheck = 0.5, -- 0x80 / 0xff
+    bCheck = 0.8, -- 0xca / 0xff
     wCheck = max(1, 6 // screenScale),
     hCheck = max(1, 6 // screenScale),
 
@@ -373,12 +370,6 @@ local function onPaintAlpha(event)
     local hCanvas <const> = ctx.height
     if wCanvas <= 1 or hCanvas <= 1 then return end
 
-    local useBack <const> = active.useBack
-
-    local alphaActive <const> = useBack
-        and active.alphaBack
-        or active.alphaFore
-
     local needsRepaint <const> = active.triggerAlphaRepaint
         or active.wCanvasAlpha ~= wCanvas
         or active.hCanvasAlpha ~= hCanvas
@@ -386,6 +377,7 @@ local function onPaintAlpha(event)
     active.wCanvasAlpha = wCanvas
     active.hCanvasAlpha = hCanvas
 
+    local useBack <const> = active.useBack
     if needsRepaint then
         ---@type string[]
         local byteStrs <const> = {}
@@ -404,8 +396,6 @@ local function onPaintAlpha(event)
 
         local wCheck <const> = defaults.wCheck
         local hCheck <const> = defaults.hCheck
-        -- local aCheck <const> = 0x80 / 0xff
-        -- local bCheck <const> = 0xca / 0xff
         local aCheck <const> = defaults.aCheck
         local bCheck <const> = defaults.bCheck
         local xToFac <const> = 1.0 / (wCanvas - 1.0)
@@ -453,12 +443,16 @@ local function onPaintAlpha(event)
     local drawRect <const> = Rectangle(0, 0, wCanvas, hCanvas)
     ctx:drawImage(img, drawRect, drawRect)
 
+    local alphaActive <const> = useBack
+        and active.alphaBack
+        or active.alphaFore
     local xReticle <const> = floor(alphaActive * (wCanvas - 1.0) + 0.5)
     local yReticle <const> = hCanvas // 2
 
+    -- TODO: Make reticle respond to color luminance.
     local reticleSize <const> = defaults.reticleSize
     local reticleHalf <const> = reticleSize // 2
-    local reticleColor <const> = Color(255, 255, 255, 255)
+    local reticleColor <const> = Color { r = 255, g = 255, b = 255, a = 255 }
     ctx.color = reticleColor
     ctx.strokeWidth = defaults.reticleStroke
     ctx:strokeRect(Rectangle(
@@ -761,6 +755,8 @@ local function onPaintCircle(event)
         b = floor(blueBack * 255 + 0.5),
         a = 255
     }
+
+    -- TODO: Move this to the right side of the canvas.
     ctx:fillRect(Rectangle(
         offset, hCanvas - swatchSize - 1,
         swatchSize, swatchSize))
@@ -775,6 +771,8 @@ local function onPaintCircle(event)
         b = floor(blueFore * 255 + 0.5),
         a = 255
     }
+
+    -- TODO: Move this to the right side of the canvas.
     ctx:fillRect(Rectangle(
         0, hCanvas - swatchSize - 1 - offset,
         swatchSize, swatchSize))
@@ -798,8 +796,8 @@ local function onPaintCircle(event)
     ctx.color = reticleColor
     ctx.strokeWidth = defaults.reticleStroke
     ctx:strokeRect(Rectangle(
-        (xCenter + xReticle * magCanvas) - reticleHalf,
-        (yCenter - yReticle * magCanvas) - reticleHalf,
+        floor(0.5 + (xCenter + xReticle * magCanvas) - reticleHalf),
+        floor(0.5 + (yCenter - yReticle * magCanvas) - reticleHalf),
         reticleSize, reticleSize))
 
     -- Draw harmony reticles.
@@ -828,11 +826,11 @@ local function onPaintCircle(event)
                 or magCanvas
 
             pts[1] = Point(
-                (xCenter + xAna0 * lAna) - harmRetHalf,
-                (yCenter - yAna0 * lAna) - harmRetHalf)
+                floor(0.5 + (xCenter + xAna0 * lAna) - harmRetHalf),
+                floor(0.5 + (yCenter - yAna0 * lAna) - harmRetHalf))
             pts[2] = Point(
-                (xCenter + xAna1 * lAna) - harmRetHalf,
-                (yCenter - yAna1 * lAna) - harmRetHalf)
+                floor(0.5 + (xCenter + xAna1 * lAna) - harmRetHalf),
+                floor(0.5 + (yCenter - yAna1 * lAna) - harmRetHalf))
         elseif harmonyType == "COMPLEMENT" then
             -- 180 degrees
             local lCmp <const> = useSat
@@ -840,8 +838,8 @@ local function onPaintCircle(event)
                 or magCanvas
 
             pts[1] = Point(
-                (xCenter - xReticle * lCmp) - harmRetHalf,
-                (yCenter + yReticle * lCmp) - harmRetHalf)
+                floor(0.5 + (xCenter - xReticle * lCmp) - harmRetHalf),
+                floor(0.5 + (yCenter + yReticle * lCmp) - harmRetHalf))
         elseif harmonyType == "SPLIT" then
             -- 150, 210 degrees
             local rt32x <const> = -sqrt32 * xReticle
@@ -857,11 +855,11 @@ local function onPaintCircle(event)
                 or magCanvas
 
             pts[1] = Point(
-                (xCenter + xSpl0 * lSpl) - harmRetHalf,
-                (yCenter - ySpl0 * lSpl) - harmRetHalf)
+                floor(0.5 + (xCenter + xSpl0 * lSpl) - harmRetHalf),
+                floor(0.5 + (yCenter - ySpl0 * lSpl) - harmRetHalf))
             pts[2] = Point(
-                (xCenter + xSpl1 * lSpl) - harmRetHalf,
-                (yCenter - ySpl1 * lSpl) - harmRetHalf)
+                floor(0.5 + (xCenter + xSpl1 * lSpl) - harmRetHalf),
+                floor(0.5 + (yCenter - ySpl1 * lSpl) - harmRetHalf))
         elseif harmonyType == "SQUARE" then
             -- 90, 180, 270 degrees
             local lCmp <const> = useSat
@@ -872,14 +870,14 @@ local function onPaintCircle(event)
                 or magCanvas
 
             pts[1] = Point(
-                (xCenter - yReticle * lSqr) - harmRetHalf,
-                (yCenter - xReticle * lSqr) - harmRetHalf)
+                floor(0.5 + (xCenter - yReticle * lSqr) - harmRetHalf),
+                floor(0.5 + (yCenter - xReticle * lSqr) - harmRetHalf))
             pts[2] = Point(
-                (xCenter - xReticle * lCmp) - harmRetHalf,
-                (yCenter + yReticle * lCmp) - harmRetHalf)
+                floor(0.5 + (xCenter - xReticle * lCmp) - harmRetHalf),
+                floor(0.5 + (yCenter + yReticle * lCmp) - harmRetHalf))
             pts[3] = Point(
-                (xCenter + yReticle * lSqr) - harmRetHalf,
-                (yCenter + xReticle * lSqr) - harmRetHalf)
+                floor(0.5 + (xCenter + yReticle * lSqr) - harmRetHalf),
+                floor(0.5 + (yCenter + xReticle * lSqr) - harmRetHalf))
         elseif harmonyType == "TETRADIC" then
             -- 120, 300 degrees
             local rt32x <const> = sqrt32 * xReticle
@@ -901,14 +899,14 @@ local function onPaintCircle(event)
                 or magCanvas
 
             pts[1] = Point(
-                (xCenter + xTet0 * lTri) - harmRetHalf,
-                (yCenter - yTet0 * lTri) - harmRetHalf)
+                floor(0.5 + (xCenter + xTet0 * lTri) - harmRetHalf),
+                floor(0.5 + (yCenter - yTet0 * lTri) - harmRetHalf))
             pts[2] = Point(
-                (xCenter - xReticle * lCmp) - harmRetHalf,
-                (yCenter + yReticle * lCmp) - harmRetHalf)
+                floor(0.5 + (xCenter - xReticle * lCmp) - harmRetHalf),
+                floor(0.5 + (yCenter + yReticle * lCmp) - harmRetHalf))
             pts[3] = Point(
-                (xCenter + xTet2 * lTet) - harmRetHalf,
-                (yCenter - yTet2 * lTet) - harmRetHalf)
+                floor(0.5 + (xCenter + xTet2 * lTet) - harmRetHalf),
+                floor(0.5 + (yCenter - yTet2 * lTet) - harmRetHalf))
         elseif harmonyType == "TRIADIC" then
             -- 120, 240 degrees
             local rt32x <const> = sqrt32 * xReticle
@@ -924,17 +922,19 @@ local function onPaintCircle(event)
                 or magCanvas
 
             pts[1] = Point(
-                (xCenter + xTri0 * lTri) - harmRetHalf,
-                (yCenter - yTri0 * lTri) - harmRetHalf)
+                floor(0.5 + (xCenter + xTri0 * lTri) - harmRetHalf),
+                floor(0.5 + (yCenter - yTri0 * lTri) - harmRetHalf))
             pts[2] = Point(
-                (xCenter + xTri1 * lTri) - harmRetHalf,
-                (yCenter - yTri1 * lTri) - harmRetHalf)
+                floor(0.5 + (xCenter + xTri1 * lTri) - harmRetHalf),
+                floor(0.5 + (yCenter - yTri1 * lTri) - harmRetHalf))
         end
+
         local harmRetColor <const> = lightActive < 0.5
             and aseBlack
             or aseWhite
         ctx.color = harmRetColor
         ctx.strokeWidth = defaults.harmonyReticleStroke
+
         local lenPts <const> = #pts
         local i = 0
         while i < lenPts do
@@ -1320,7 +1320,7 @@ end
 local dlgMain <const> = Dialog { title = "OkHsl Color Picker" }
 
 local dlgOptions <const> = Dialog {
-    title = "Options",
+    title = "Okhsl Options",
     parent = dlgMain
 }
 
@@ -1846,6 +1846,8 @@ local function onMouseUpCircle(event)
     end
 end
 
+-- region Main Dialog
+
 dlgMain:canvas {
     id = "circleCanvas",
     focus = true,
@@ -1983,6 +1985,10 @@ dlgMain:button {
         dlgMain:close()
     end
 }
+
+-- endregion
+
+-- region Options Menu
 
 dlgOptions:slider {
     id = "degreesOffset",
@@ -2213,6 +2219,8 @@ dlgOptions:button {
         dlgOptions:close()
     end
 }
+
+-- endregion
 
 do
     local fgColor <const> = app.fgColor
