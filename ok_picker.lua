@@ -988,14 +988,21 @@ local function onPaintCircle(event)
         ctx:fillText(string.format(
             "A: %.2f%%", alphaActive * 100), 2, 2 + yIncr * 8)
 
-        local bShift <const> = 0
-        local gShift <const> = bShift + bBitDepth
-        local rShift <const> = gShift + gBitDepth
-        local hexPad <const> = ceil((bBitDepth + gBitDepth + rBitDepth) * 0.25)
+        local is555 <const> = rBitDepth == 5
+            and gBitDepth == 5
+            and bBitDepth == 5
 
-        local hex <const> = floor(redActive * (rLevels - 1) + 0.5) << rShift
-            | floor(greenActive * (gLevels - 1) + 0.5) << gShift
-            | floor(blueActive * (bLevels - 1) + 0.5) << bShift
+        local shift0 <const> = is555 and 0 or bBitDepth + gBitDepth
+        local shift1 <const> = bBitDepth
+        local shift2 <const> = is555 and bBitDepth + gBitDepth or 0
+
+        local hex <const> = math.floor(redActive * (rLevels - 1) + 0.5) << shift0
+            | math.floor(greenActive * (gLevels - 1) + 0.5) << shift1
+            | math.floor(blueActive * (bLevels - 1) + 0.5) << shift2
+
+        local hexPad <const> = math.ceil((rBitDepth
+            + gBitDepth
+            + bBitDepth) * 0.25)
 
         ctx:fillText(string.format("#%0" .. hexPad .. "X", hex),
             2, 2 + yIncr * 10)
