@@ -159,8 +159,8 @@ local active <const> = {
     tBitDepth = defaults.tBitDepth,
 
     hueFore = 0.0,
-    satFore = 1.0,
-    lightFore = 0.5,
+    satFore = 0.0,
+    lightFore = 1.0,
 
     redFore = 1.0,
     greenFore = 1.0,
@@ -168,9 +168,9 @@ local active <const> = {
 
     alphaFore = 1.0,
 
-    hueBack = 0.5,
-    satBack = 1.0,
-    lightBack = 0.5,
+    hueBack = 0.0,
+    satBack = 0.0,
+    lightBack = 0.0,
 
     redBack = 0.0,
     greenBack = 0.0,
@@ -2245,13 +2245,19 @@ do
     local t8fg <const> = fgColor.alpha
     updateFromRgba8(r8fg, g8fg, b8fg, t8fg, false)
 
-    app.command.SwitchColors()
-    local bgColor <const> = app.fgColor
-    local r8bg <const> = bgColor.red
-    local g8bg <const> = bgColor.green
-    local b8bg <const> = bgColor.blue
-    local t8bg <const> = bgColor.alpha
-    app.command.SwitchColors()
+    local r8bg = 255 - r8fg
+    local g8bg = 255 - g8fg
+    local b8bg = 255 - b8fg
+    local t8bg = t8fg
+    if app.sprite then
+        app.command.SwitchColors()
+        local bgColor <const> = app.fgColor
+        r8bg = bgColor.red
+        g8bg = bgColor.green
+        b8bg = bgColor.blue
+        t8bg = bgColor.alpha
+        app.command.SwitchColors()
+    end
     updateFromRgba8(r8bg, g8bg, b8bg, t8bg, true)
 
     active.triggerAlphaRepaint = true
