@@ -439,10 +439,11 @@ local function onPaintAlpha(event)
     local xReticle <const> = floor(alphaActive * (wCanvas - 1.0) + 0.5)
     local yReticle <const> = hCanvas // 2
 
-    -- TODO: Make reticle respond to color luminance.
     local reticleSize <const> = defaults.reticleSize
     local reticleHalf <const> = reticleSize // 2
-    local reticleColor <const> = Color { r = 255, g = 255, b = 255, a = 255 }
+    local reticleColor <const> = active.lightFore < 0.5
+        and Color { r = 255, g = 255, b = 255, a = 255 }
+        or Color { r = 0, g = 0, b = 0, a = 255 }
     ctx.color = reticleColor
     ctx.strokeWidth = defaults.reticleStroke
     ctx:strokeRect(Rectangle(
@@ -1404,6 +1405,11 @@ local function genGradient()
 end
 
 local function getFromCanvas()
+    -- TODO: If you ever wanted to sample from just the
+    -- active layer, see app.preferences.eyedropper.sample.
+    -- However, this raises numerous problems, e.g., with
+    -- tile map layers, hidden layers, etc.
+
     local editor <const> = app.editor
     if not editor then return end
 
@@ -1416,7 +1422,8 @@ local function getFromCanvas()
     local x = mouse.x
     local y = mouse.y
 
-    local docPrefs <const> = app.preferences.document(sprite)
+    local prefs <const> = app.preferences
+    local docPrefs <const> = prefs.document(sprite)
     local tiledMode <const> = docPrefs.tiled.mode
 
     if tiledMode == 3 then
