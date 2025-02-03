@@ -75,7 +75,6 @@ local defaults <const> = {
     textDisplayLimit = 50,
     radiansOffset = math.rad(60),
 
-    useBack = false,
     useSat = false,
     satAxis = 1.0,
     lightAxis = 0.5,
@@ -149,7 +148,6 @@ local active <const> = {
     harmonyType = defaults.harmonyType,
     showHarmonyOnWheel = defaults.showHarmonyOnWheel,
 
-    useBack = defaults.useBack,
     satAxis = defaults.satAxis,
     lightAxis = defaults.lightAxis,
 
@@ -378,22 +376,15 @@ local function onPaintAlpha(event)
     active.wCanvasAlpha = wCanvas
     active.hCanvasAlpha = hCanvas
 
-    local useBack <const> = active.useBack
     if needsRepaint then
         ---@type string[]
         local byteStrs <const> = {}
 
         local strpack <const> = string.pack
 
-        local redActive <const> = useBack
-            and active.redBack
-            or active.redFore
-        local greenActive <const> = useBack
-            and active.greenBack
-            or active.greenFore
-        local blueActive <const> = useBack
-            and active.blueBack
-            or active.blueFore
+        local redActive <const> = active.redFore
+        local greenActive <const> = active.greenFore
+        local blueActive <const> = active.blueFore
 
         local wCheck <const> = defaults.wCheck
         local hCheck <const> = defaults.hCheck
@@ -444,9 +435,7 @@ local function onPaintAlpha(event)
     local drawRect <const> = Rectangle(0, 0, wCanvas, hCanvas)
     ctx:drawImage(img, drawRect, drawRect)
 
-    local alphaActive <const> = useBack
-        and active.alphaBack
-        or active.alphaFore
+    local alphaActive <const> = active.alphaFore
     local xReticle <const> = floor(alphaActive * (wCanvas - 1.0) + 0.5)
     local yReticle <const> = hCanvas // 2
 
@@ -472,8 +461,6 @@ local function onPaintAxis(event)
     if wCanvas <= 1 or hCanvas <= 1 then return end
 
     local useSat <const> = active.useSat
-    local useBack <const> = active.useBack
-
     local satAxis <const> = active.satAxis
     local lightAxis <const> = active.lightAxis
 
@@ -481,13 +468,9 @@ local function onPaintAxis(event)
     local satFore <const> = active.satFore
     local lightFore <const> = active.lightFore
 
-    local hueBack <const> = active.hueBack
-    local satBack <const> = active.satBack
-    local lightBack <const> = active.lightBack
-
-    local hueActive <const> = useBack and hueBack or hueFore
-    local satActive <const> = useBack and satBack or satFore
-    local lightActive <const> = useBack and lightBack or lightFore
+    local hueActive <const> = hueFore
+    local satActive <const> = satFore
+    local lightActive <const> = lightFore
 
     local needsRepaint <const> = active.triggerAxisRepaint
         or active.wCanvasAxis ~= wCanvas
@@ -649,19 +632,14 @@ local function onPaintCircle(event)
     local radiansOffset <const> = active.radiansOffset
 
     local useSat <const> = active.useSat
-    local useBack <const> = active.useBack
 
     local hueFore <const> = active.hueFore
     local satFore <const> = active.satFore
     local lightFore <const> = active.lightFore
 
-    local hueBack <const> = active.hueBack
-    local satBack <const> = active.satBack
-    local lightBack <const> = active.lightBack
-
-    local hueActive <const> = useBack and hueBack or hueFore
-    local satActive <const> = useBack and satBack or satFore
-    local lightActive <const> = useBack and lightBack or lightFore
+    local hueActive <const> = hueFore
+    local satActive <const> = satFore
+    local lightActive <const> = lightFore
 
     if needsRepaint then
         ---@type string[]
@@ -966,18 +944,10 @@ local function onPaintCircle(event)
         ctx:fillText(string.format(
             "L: %.2f%%", lightActive * 100), 2, 2 + yIncr * 2)
 
-        local redActive <const> = useBack
-            and redBack
-            or redFore
-        local greenActive <const> = useBack
-            and greenBack
-            or greenFore
-        local blueActive <const> = useBack
-            and blueBack
-            or blueFore
-        local alphaActive <const> = useBack
-            and active.alphaBack
-            or active.alphaFore
+        local redActive <const> = redFore
+        local greenActive <const> = greenFore
+        local blueActive <const> = blueFore
+        local alphaActive <const> = active.alphaFore
 
         ctx:fillText(string.format(
             "R: %.2f%%", redActive * 100), 2, 2 + yIncr * 4)
@@ -1037,17 +1007,9 @@ local function onPaintHarmony(event)
     local isTriadic <const> = harmonyType == "TRIADIC"
 
     if needsRepaint then
-        local useBack <const> = active.useBack
-
-        local hActive <const> = useBack
-            and active.hueBack
-            or active.hueFore
-        local sActive <const> = useBack
-            and active.satBack
-            or active.satFore
-        local lActive <const> = useBack
-            and active.lightBack
-            or active.lightFore
+        local hActive <const> = active.hueFore
+        local sActive <const> = active.satFore
+        local lActive <const> = active.lightFore
 
         if isAnalog then
             local lAna <const> = (lActive * 2.0 + 0.5) / 3.0
@@ -1252,8 +1214,10 @@ end
 ---@param g8 integer
 ---@param b8 integer
 ---@param t8 integer
----@param useBack boolean
-local function updateFromRgba8(r8, g8, b8, t8, useBack)
+---@param isBackActive boolean
+local function updateFromRgba8(r8, g8, b8, t8, isBackActive)
+    -- Keep usage of isBackActive here.
+
     local r01 <const>,
     g01 <const>,
     b01 <const> = r8 / 255.0, g8 / 255.0, b8 / 255.0
@@ -1263,25 +1227,27 @@ local function updateFromRgba8(r8, g8, b8, t8, useBack)
 
     if l > 0.0 and l < 1.0 then
         if s > 0.0 then
-            active[useBack and "hueBack" or "hueFore"] = h
+            active[isBackActive and "hueBack" or "hueFore"] = h
         end
-        active[useBack and "satBack" or "satFore"] = s
+        active[isBackActive and "satBack" or "satFore"] = s
     end
-    active[useBack and "lightBack" or "lightFore"] = l
+    active[isBackActive and "lightBack" or "lightFore"] = l
 
-    active[useBack and "redBack" or "redFore"] = r01
-    active[useBack and "greenBack" or "greenFore"] = g01
-    active[useBack and "blueBack" or "blueFore"] = b01
-    active[useBack and "alphaBack" or "alphaFore"] = t8 / 255.0
+    active[isBackActive and "redBack" or "redFore"] = r01
+    active[isBackActive and "greenBack" or "greenFore"] = g01
+    active[isBackActive and "blueBack" or "blueFore"] = b01
+    active[isBackActive and "alphaBack" or "alphaFore"] = t8 / 255.0
 
-    if not useBack then
+    if not isBackActive then
         active.satAxis = s
         active.lightAxis = l
     end
 end
 
----@param useBack boolean
-local function updateColorBar(useBack)
+---@param isBackActive boolean
+local function updateColorBar(isBackActive)
+    -- Keep usage of isBackActive here.
+
     local rBitDepth <const> = active.rBitDepth
     local gBitDepth <const> = active.gBitDepth
     local bBitDepth <const> = active.bBitDepth
@@ -1292,16 +1258,16 @@ local function updateColorBar(useBack)
     local bLevels <const> = 1 << bBitDepth
     local tLevels <const> = 1 << tBitDepth
 
-    local redActive <const> = useBack
+    local redActive <const> = isBackActive
         and active.redBack
         or active.redFore
-    local greenActive <const> = useBack
+    local greenActive <const> = isBackActive
         and active.greenBack
         or active.greenFore
-    local blueActive <const> = useBack
+    local blueActive <const> = isBackActive
         and active.blueBack
         or active.blueFore
-    local alphaActive <const> = useBack
+    local alphaActive <const> = isBackActive
         and active.alphaBack
         or active.alphaFore
 
@@ -1315,7 +1281,7 @@ local function updateColorBar(useBack)
     local b8 <const> = floor(bq * 255 + 0.5)
     local t8 <const> = floor(tq * 255 + 0.5)
 
-    if useBack then
+    if isBackActive then
         app.command.SwitchColors()
         app.fgColor = Color { r = r8, g = g8, b = b8, a = t8 }
         app.command.SwitchColors()
@@ -1531,9 +1497,7 @@ local function onMouseMoveAlpha(event)
     local xNrm <const> = event.ctrlKey
         and 1.0
         or xCanvas / (wCanvas - 1.0)
-
-    local useBack <const> = active.useBack
-    active[useBack and "alphaBack" or "alphaFore"] = xNrm
+    active["alphaFore"] = xNrm
 
     updateColorBar(false)
     dlgMain:repaint()
@@ -1548,7 +1512,6 @@ local function onMouseMoveAxis(event)
     if wCanvas <= 1 or hCanvas <= 1 then return end
 
     local useSat <const> = active.useSat
-    local useBack <const> = active.useBack
 
     local xCanvas <const> = min(max(event.x, 0), wCanvas - 1)
     local xNew <const> = event.ctrlKey
@@ -1559,23 +1522,23 @@ local function onMouseMoveAxis(event)
     -- for both key down and mouse move.
     if useSat then
         active.satAxis = xNew
-        active[useBack and "satBack" or "satFore"] = xNew
+        active["satFore"] = xNew
     else
         active.lightAxis = xNew
-        active[useBack and "lightBack" or "lightFore"] = xNew
+        active["lightFore"] = xNew
     end
 
-    local hActive <const> = useBack and active.hueBack or active.hueFore
-    local sActive <const> = useBack and active.satBack or active.satFore
-    local lActive <const> = useBack and active.lightBack or active.lightFore
+    local hActive <const> = active.hueFore
+    local sActive <const> = active.satFore
+    local lActive <const> = active.lightFore
 
     local _ <const>, _ <const>, _ <const>,
     r01 <const>, g01 <const>, b01 <const> = okhslToRgb24(
         hActive, sActive, lActive)
 
-    active[useBack and "redBack" or "redFore"] = r01
-    active[useBack and "greenBack" or "greenFore"] = g01
-    active[useBack and "blueBack" or "blueFore"] = b01
+    active["redFore"] = r01
+    active["greenFore"] = g01
+    active["blueFore"] = b01
 
     updateColorBar(false)
     active.triggerCircleRepaint = true
@@ -1599,21 +1562,14 @@ local function onKeyPressCircle(event)
 
     if not recognized then return end
 
-    local useBack <const> = active.useBack
     local useSat <const> = active.useSat
     local radiansOffset <const> = active.radiansOffset
     local satAxis <const> = active.satAxis
     local lightAxis <const> = active.lightAxis
 
-    local hueActive <const> = useBack
-        and active.hueBack
-        or active.hueFore
-    local satActive <const> = useBack
-        and active.satBack
-        or active.satFore
-    local lightActive <const> = useBack
-        and active.lightBack
-        or active.lightFore
+    local hueActive <const> = active.hueFore
+    local satActive <const> = active.satFore
+    local lightActive <const> = active.lightFore
 
     local magActive <const> = useSat
         and 1.0 - lightActive
@@ -1644,13 +1600,13 @@ local function onKeyPressCircle(event)
     r01 <const>, g01 <const>, b01 <const> = okhslToRgb24(
         hueKey, satKey, lightKey)
 
-    active[useBack and "hueBack" or "hueFore"] = hueKey
-    active[useBack and "satBack" or "satFore"] = satKey
-    active[useBack and "lightBack" or "lightFore"] = lightKey
+    active["hueFore"] = hueKey
+    active["satFore"] = satKey
+    active["lightFore"] = lightKey
 
-    active[useBack and "redBack" or "redFore"] = r01
-    active[useBack and "greenBack" or "greenFore"] = g01
-    active[useBack and "blueBack" or "blueFore"] = b01
+    active["redFore"] = r01
+    active["greenFore"] = g01
+    active["blueFore"] = b01
 
     updateColorBar(false)
     active.triggerAxisRepaint = true
@@ -1707,8 +1663,6 @@ local function onMouseMoveCircle(event)
     local lightMouse = useSat and 1.0 - mag or lightAxis
     local satMouse = useSat and satAxis or mag
 
-    local useBack <const> = active.useBack
-
     local shiftKey <const> = event.shiftKey
     local hLevels = shiftKey and active.hLevels or 0
     local sLevels = shiftKey and active.sLevels or 0
@@ -1722,13 +1676,13 @@ local function onMouseMoveCircle(event)
     r01 <const>, g01 <const>, b01 <const> = okhslToRgb24(
         hueMouse, satMouse, lightMouse)
 
-    active[useBack and "hueBack" or "hueFore"] = hueMouse
-    active[useBack and "satBack" or "satFore"] = satMouse
-    active[useBack and "lightBack" or "lightFore"] = lightMouse
+    active["hueFore"] = hueMouse
+    active["satFore"] = satMouse
+    active["lightFore"] = lightMouse
 
-    active[useBack and "redBack" or "redFore"] = r01
-    active[useBack and "greenBack" or "greenFore"] = g01
-    active[useBack and "blueBack" or "blueFore"] = b01
+    active["redFore"] = r01
+    active["greenFore"] = g01
+    active["blueFore"] = b01
 
     updateColorBar(false)
     active.triggerAxisRepaint = true
@@ -1782,16 +1736,11 @@ local function onMouseUpHarmony(event)
     b8 <const> = string.byte(
         active.byteStrHarmony, 1 + xIdx * 4, 3 + xIdx * 4)
 
-    local useBack <const> = event.button == MouseButton.RIGHT
-        or (event.button == MouseButton.LEFT
-            and event.ctrlKey)
-    local alphaActive <const> = useBack
-        and active.alphaBack
-        or active.alphaFore
+    local alphaActive <const> = active.alphaFore
     local t8 <const> = floor(alphaActive * 255.0 + 0.5)
 
-    updateFromRgba8(r8, g8, b8, t8, useBack)
-    updateColorBar(useBack)
+    updateFromRgba8(r8, g8, b8, t8, false)
+    updateColorBar(false)
     active.triggerAlphaRepaint = true
     active.triggerAxisRepaint = true
     active.triggerCircleRepaint = true
