@@ -68,6 +68,8 @@ The test image is one of the first images taken by [Nasa's Webb Telescope](https
 
 To modify these scripts, see Aseprite's [API Reference](https://github.com/aseprite/api). A [type definition](https://github.com/behreajj/aseprite-type-definition) for use with VS Code and the [Lua Language Server extension](https://github.com/LuaLS/lua-language-server) is recommended.
 
+🇹🇼 🇺🇦
+
 ## License
 
 This repository uses the MIT License associated with the original implementation in C++ in Ottosson's article.
@@ -91,3 +93,4 @@ This repository uses the MIT License associated with the original implementation
 > LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 > OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 > SOFTWARE.
+> 

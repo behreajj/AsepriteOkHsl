@@ -1471,11 +1471,11 @@ local function getFromCanvas()
             t8 = aseColor.alpha
         end
     elseif colorMode == ColorMode.GRAY then
-        local v8 <const> = pixel >> 0x00 & 0xff
+        local v8 <const> = pixel & 0xff
         r8, g8, b8 = v8, v8, v8
         t8 = pixel >> 0x08 & 0xff
     else
-        r8 = pixel >> 0x00 & 0xff
+        r8 = pixel & 0xff
         g8 = pixel >> 0x08 & 0xff
         b8 = pixel >> 0x10 & 0xff
         t8 = pixel >> 0x18 & 0xff
@@ -1706,32 +1706,23 @@ local function onMouseUpHarmony(event)
     local hCanvas <const> = active.hCanvasHarmony
     if wCanvas <= 1 or hCanvas <= 1 then return end
 
-    local harmonyType <const> = active.harmonyType
-    local isAnalog <const> = harmonyType == "ANALOGOUS"
-    local isCompl <const> = harmonyType == "COMPLEMENT"
-    local isNone <const> = harmonyType == "NONE"
-    local isShading <const> = harmonyType == "SHADING"
-    local isSplit <const> = harmonyType == "SPLIT"
-    local isSquare <const> = harmonyType == "SQUARE"
-    local isTetradic <const> = harmonyType == "TETRADIC"
-    local isTriadic <const> = harmonyType == "TRIADIC"
-
     local shadingCount = 1
-    if isAnalog then
+    local harmonyType <const> = active.harmonyType
+    if harmonyType == "ANALOGOUS" then
         shadingCount = 2
-    elseif isCompl then
+    elseif harmonyType == "COMPLEMENT" then
         shadingCount = 1
-    elseif isNone then
+    elseif harmonyType == "NONE" then
         shadingCount = 1
-    elseif isShading then
+    elseif harmonyType == "SHADING" then
         shadingCount = defaults.shadingCount
-    elseif isSplit then
+    elseif harmonyType == "SPLIT" then
         shadingCount = 2
-    elseif isSquare then
+    elseif harmonyType == "SQUARE" then
         shadingCount = 3
-    elseif isTetradic then
+    elseif harmonyType == "TETRADIC" then
         shadingCount = 3
-    elseif isTriadic then
+    elseif harmonyType == "TRIADIC" then
         shadingCount = 2
     end
 
@@ -1742,9 +1733,7 @@ local function onMouseUpHarmony(event)
     g8 <const>,
     b8 <const> = string.byte(
         active.byteStrHarmony, 1 + xIdx * 4, 3 + xIdx * 4)
-
-    local alphaActive <const> = active.alphaFore
-    local t8 <const> = floor(alphaActive * 255.0 + 0.5)
+    local t8 <const> = floor(active.alphaFore * 255.0 + 0.5)
 
     updateFromRgba8(r8, g8, b8, t8, false)
     updateColorBar(false)
