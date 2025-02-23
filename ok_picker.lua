@@ -55,6 +55,9 @@ if app.preferences then
 end
 
 local defaults <const> = {
+    -- TODO: Allow for keyboard movement to handle multiple simultaneous
+    -- key presses for diagonals?
+
     wCanvas = max(16, 350 // screenScale),
     hCanvasAxis = max(6, 12 // screenScale),
     hCanvasAlpha = max(6, 12 // screenScale),
@@ -147,6 +150,7 @@ local active <const> = {
     byteStrHarmony = "",
     harmonyType = defaults.harmonyType,
     showHarmonyOnWheel = defaults.showHarmonyOnWheel,
+    shadingCount = defaults.shadingCount,
 
     satAxis = defaults.satAxis,
     lightAxis = defaults.lightAxis,
@@ -1041,7 +1045,7 @@ local function onPaintHarmony(event)
         elseif isShading then
             ---@type string[]
             local byteStrArr <const> = {}
-            local shadingCount <const> = defaults.shadingCount
+            local shadingCount <const> = active.shadingCount
             local iToFac <const> = 1.0 / (shadingCount - 1.0)
             local lOrig <const> = defaults.shadowLight
             local lDest <const> = defaults.dayLight
@@ -1186,7 +1190,7 @@ local function onPaintHarmony(event)
     elseif isNone then
         wCanvasNative = 1
     elseif isShading then
-        wCanvasNative = defaults.shadingCount
+        wCanvasNative = active.shadingCount
     elseif isSplit then
         wCanvasNative = 2
     elseif isSquare then
@@ -1715,7 +1719,7 @@ local function onMouseUpHarmony(event)
     elseif harmonyType == "NONE" then
         shadingCount = 1
     elseif harmonyType == "SHADING" then
-        shadingCount = defaults.shadingCount
+        shadingCount = active.shadingCount
     elseif harmonyType == "SPLIT" then
         shadingCount = 2
     elseif harmonyType == "SQUARE" then
@@ -1984,11 +1988,15 @@ dlgOptions:combobox {
     onchange = function()
         local args <const> = dlgOptions.data
         local harmonyType <const> = args.harmonyType --[[@as string]]
-        local displayOption = harmonyType ~= "SHADING"
-            and harmonyType ~= "NONE"
+        local isShading = harmonyType == "SHADING"
+        local displayOption = (not isShading) and harmonyType ~= "NONE"
         dlgOptions:modify {
             id = "showHarmonyOnWheel",
             visible = displayOption
+        }
+        dlgOptions:modify {
+            id = "shadingCount",
+            visible = isShading
         }
     end
 }
@@ -2008,24 +2016,13 @@ dlgOptions:check {
 dlgOptions:newrow { always = false }
 
 dlgOptions:slider {
-    id = "swatchCount",
-    label = "Swatches:",
-    value = defaults.swatchCount,
+    id = "shadingCount",
+    label = "Shades:",
+    value = defaults.shadingCount,
     min = 3,
-    max = 64,
+    max = 15,
     focus = false,
-    visible = defaults.showGradientButton
-}
-
-dlgOptions:newrow { always = false }
-
-dlgOptions:combobox {
-    id = "huePreset",
-    label = "Easing:",
-    option = defaults.huePreset,
-    options = huePresets,
-    focus = false,
-    visible = defaults.showGradientButton
+    visible = defaults.harmonyType == "SHADING"
 }
 
 dlgOptions:separator { text = "Bit Depth" }
@@ -2120,6 +2117,29 @@ dlgOptions:check {
 
 dlgOptions:newrow { always = false }
 
+dlgOptions:slider {
+    id = "swatchCount",
+    label = "Swatches:",
+    value = defaults.swatchCount,
+    min = 3,
+    max = 64,
+    focus = false,
+    visible = defaults.showGradientButton
+}
+
+dlgOptions:newrow { always = false }
+
+dlgOptions:combobox {
+    id = "huePreset",
+    label = "Easing:",
+    option = defaults.huePreset,
+    options = huePresets,
+    focus = false,
+    visible = defaults.showGradientButton
+}
+
+dlgOptions:newrow { always = false }
+
 dlgOptions:button {
     id = "confirmOptionsButton",
     text = "&OK",
@@ -2130,6 +2150,7 @@ dlgOptions:button {
         local axis <const> = args.axis --[[@as string]]
         local harmonyType <const> = args.harmonyType --[[@as string]]
         local showHarmonyOnWheel <const> = args.showHarmonyOnWheel --[[@as boolean]]
+        local shadingCount <const> = args.shadingCount --[[@as integer]]
 
         local showFore <const> = args.showFore --[[@as boolean]]
         local showBack <const> = args.showBack --[[@as boolean]]
@@ -2146,6 +2167,8 @@ dlgOptions:button {
         active.useSat = axis == "SATURATION"
         active.harmonyType = harmonyType
         active.showHarmonyOnWheel = showHarmonyOnWheel
+        active.shadingCount = shadingCount
+
         active.rBitDepth = rBitDepth
         active.gBitDepth = gBitDepth
         active.bBitDepth = bBitDepth
