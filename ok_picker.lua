@@ -2010,7 +2010,8 @@ dlgOptions:check {
     selected = defaults.showHarmonyOnWheel,
     focus = false,
     visible = defaults.harmonyType ~= "SHADING"
-        and defaults.harmonyType ~= "NONE"
+        and defaults.harmonyType ~= "NONE",
+    hexpand = false,
 }
 
 dlgOptions:newrow { always = false }
@@ -2076,21 +2077,24 @@ dlgOptions:check {
     label = "Buttons:",
     text = "Fore",
     selected = defaults.showForeButton,
-    focus = false
+    focus = false,
+    hexpand = false,
 }
 
 dlgOptions:check {
     id = "showBack",
     text = "Back",
     selected = defaults.showBackButton,
-    focus = false
+    focus = false,
+    hexpand = false,
 }
 
 dlgOptions:check {
     id = "showExit",
     text = "X",
     selected = defaults.showExitButton,
-    focus = false
+    focus = false,
+    hexpand = false,
 }
 
 dlgOptions:newrow { always = false }
@@ -2099,7 +2103,8 @@ dlgOptions:check {
     id = "showSample",
     text = "Sample",
     selected = defaults.showSampleButton,
-    focus = false
+    focus = false,
+    hexpand = false,
 }
 
 dlgOptions:check {
@@ -2107,6 +2112,7 @@ dlgOptions:check {
     text = "Gradient",
     selected = defaults.showGradientButton,
     focus = false,
+    hexpand = false,
     onclick = function()
         local args <const> = dlgOptions.data
         local showGradient <const> = args.showGradient --[[@as boolean]]
@@ -2199,10 +2205,9 @@ dlgOptions:button {
     text = "&CANCEL",
     focus = false,
     onclick = function()
-        -- TODO: If show gradient button check box is ticked when dialog is
-        -- open, then it is closed and reopened, the button check is still
-        -- ticked, even though OK hasn't been pressed and the option has not
-        -- been applied to the main dialog.
+        -- TODO: Modify as many dlgOptions widgets as you can to reset them to
+        -- active when dialog is canceled.
+
         dlgOptions:close()
     end
 }
