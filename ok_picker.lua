@@ -1974,7 +1974,8 @@ dlgOptions:combobox {
     label = "Axis:",
     option = "LIGHTNESS",
     options = axes,
-    focus = false
+    focus = false,
+    hexpand = false,
 }
 
 dlgOptions:newrow { always = false }
@@ -1985,6 +1986,7 @@ dlgOptions:combobox {
     option = defaults.harmonyType,
     options = harmonyTypes,
     focus = false,
+    hexpand = false,
     onchange = function()
         local args <const> = dlgOptions.data
         local harmonyType <const> = args.harmonyType --[[@as string]]
@@ -2141,7 +2143,8 @@ dlgOptions:combobox {
     option = defaults.huePreset,
     options = huePresets,
     focus = false,
-    visible = defaults.showGradientButton
+    visible = defaults.showGradientButton,
+    hexpand = false,
 }
 
 dlgOptions:newrow { always = false }
