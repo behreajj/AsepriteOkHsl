@@ -101,6 +101,7 @@ local defaults <const> = {
 
     foreKey = "FO&RE",
     backKey = "&BACK",
+    palAppendKey = "A&PPEND",
     sampleKey = "S&AMPLE",
     gradientKey = "&GRADIENT",
     optionsKey = "&+",
@@ -108,6 +109,7 @@ local defaults <const> = {
 
     showForeButton = true,
     showBackButton = true,
+    showPalAppendButton = false,
     showSampleButton = false,
     showGradientButton = false,
     showExitButton = true,
@@ -1919,6 +1921,71 @@ dlgMain:button {
 }
 
 dlgMain:button {
+    id = "palAppendButton",
+    text = defaults.palAppendKey,
+    focus = false,
+    visible = defaults.showPalAppendButton,
+    onclick = function()
+        local sprite <const> = app.sprite
+        if not sprite then return end
+
+        local activeFrIdx = 1
+        local activeFrObj <const> = app.frame
+        if activeFrObj then
+            activeFrIdx = activeFrObj.frameNumber
+        end
+
+        local palettes <const> = sprite.palettes
+        local lenPalettes <const> = #palettes
+        local palIdx <const> = (activeFrIdx >= 1
+                and activeFrIdx <= lenPalettes)
+            and activeFrIdx
+            or 1
+        local palette <const> = palettes[palIdx]
+        local lenPalette <const> = #palette
+
+        -- TODO: This duplicates a lot of info from update color bar,
+        -- consider creating a method that returns an Ase Color.
+        local rBitDepth <const> = active.rBitDepth
+        local gBitDepth <const> = active.gBitDepth
+        local bBitDepth <const> = active.bBitDepth
+        local tBitDepth <const> = active.tBitDepth
+
+        local rLevels <const> = 1 << rBitDepth
+        local gLevels <const> = 1 << gBitDepth
+        local bLevels <const> = 1 << bBitDepth
+        local tLevels <const> = 1 << tBitDepth
+
+        local isBackActive <const> = false
+        local redActive <const> = isBackActive
+            and active.redBack
+            or active.redFore
+        local greenActive <const> = isBackActive
+            and active.greenBack
+            or active.greenFore
+        local blueActive <const> = isBackActive
+            and active.blueBack
+            or active.blueFore
+        local alphaActive <const> = isBackActive
+            and active.alphaBack
+            or active.alphaFore
+
+        local rq <const> = quantizeUnsigned(redActive, rLevels)
+        local gq <const> = quantizeUnsigned(greenActive, gLevels)
+        local bq <const> = quantizeUnsigned(blueActive, bLevels)
+        local tq <const> = quantizeUnsigned(alphaActive, tLevels)
+
+        local r8 <const> = floor(rq * 255 + 0.5)
+        local g8 <const> = floor(gq * 255 + 0.5)
+        local b8 <const> = floor(bq * 255 + 0.5)
+        local t8 <const> = floor(tq * 255 + 0.5)
+
+        palette:resize(lenPalette + 1)
+        palette:setColor(lenPalette, Color { r = r8, g = g8, b = b8, a = t8 })
+    end
+}
+
+dlgMain:button {
     id = "sampleButton",
     text = defaults.sampleKey,
     focus = false,
@@ -2102,6 +2169,14 @@ dlgOptions:check {
 dlgOptions:newrow { always = false }
 
 dlgOptions:check {
+    id = "showPalAppendButton",
+    text = "Append",
+    selected = defaults.showPalAppendButton,
+    focus = false,
+    hexpand = false,
+}
+
+dlgOptions:check {
     id = "showSample",
     text = "Sample",
     selected = defaults.showSampleButton,
@@ -2164,6 +2239,7 @@ dlgOptions:button {
         local showFore <const> = args.showFore --[[@as boolean]]
         local showBack <const> = args.showBack --[[@as boolean]]
         local showGradient <const> = args.showGradient --[[@as boolean]]
+        local showPalAppend <const> = args.showPalAppendButton --[[@as boolean]]
         local showSample <const> = args.showSample --[[@as boolean]]
         local showExit <const> = args.showExit --[[@as boolean]]
 
@@ -2192,6 +2268,7 @@ dlgOptions:button {
 
         dlgMain:modify { id = "getForeButton", visible = showFore }
         dlgMain:modify { id = "getBackButton", visible = showBack }
+        dlgMain:modify { id = "palAppendButton", visible = showPalAppend }
         dlgMain:modify { id = "gradientButton", visible = showGradient }
         dlgMain:modify { id = "sampleButton", visible = showSample }
         dlgMain:modify { id = "exitMainButton", visible = showExit }
