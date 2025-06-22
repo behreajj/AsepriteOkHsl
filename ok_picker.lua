@@ -1509,9 +1509,12 @@ local function onMouseMoveAlpha(event)
     if wCanvas <= 1 or hCanvas <= 1 then return end
 
     local xCanvas <const> = min(max(event.x, 0), wCanvas - 1)
-    local xNrm <const> = event.ctrlKey
-        and 1.0
-        or xCanvas / (wCanvas - 1.0)
+    local xNrm = xCanvas / (wCanvas - 1.0)
+    if event.ctrlKey then
+        xNrm = 1.0
+    elseif event.shiftKey then
+        xNrm = quantizeUnsigned(xNrm, active.axisLevels)
+    end
     active["alphaFore"] = xNrm
 
     updateColorBar(false)
@@ -1529,13 +1532,13 @@ local function onMouseMoveAxis(event)
     local useSat <const> = active.useSat
 
     local xCanvas <const> = min(max(event.x, 0), wCanvas - 1)
-    local xNorm = xCanvas / (wCanvas - 1.0)
+    local xNrm = xCanvas / (wCanvas - 1.0)
     if event.shiftKey then
-        xNorm = quantizeUnsigned(xNorm, active.axisLevels)
+        xNrm = quantizeUnsigned(xNrm, active.axisLevels)
     end
     local xNew <const> = event.ctrlKey
         and (useSat and 1.0 or 0.5)
-        or xNorm
+        or xNrm
 
     -- TODO: All that follows here can become its own function and be used
     -- for both key down and mouse move.
