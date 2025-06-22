@@ -101,7 +101,8 @@ local defaults <const> = {
 
     foreKey = "FO&RE",
     backKey = "&BACK",
-    palAppendKey = "A&PPEND",
+    -- palAppendKey = "A&PPEND",
+    palAppendKey = "&!",
     sampleKey = "S&AMPLE",
     gradientKey = "&GRADIENT",
     optionsKey = "&+",
