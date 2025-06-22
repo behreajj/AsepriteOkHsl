@@ -101,7 +101,6 @@ local defaults <const> = {
 
     foreKey = "FO&RE",
     backKey = "&BACK",
-    -- palAppendKey = "A&PPEND",
     palAppendKey = "&!",
     sampleKey = "S&AMPLE",
     gradientKey = "&GRADIENT",
@@ -126,6 +125,7 @@ local defaults <const> = {
     hLevels = 24,
     sLevels = 12,
     lLevels = 12,
+    axisLevels = 21,
 }
 
 local active <const> = {
@@ -186,6 +186,7 @@ local active <const> = {
     hLevels = defaults.hLevels,
     sLevels = defaults.sLevels,
     lLevels = defaults.lLevels,
+    axisLevels = defaults.axisLevels,
 }
 
 ---@param a number value
@@ -1528,9 +1529,13 @@ local function onMouseMoveAxis(event)
     local useSat <const> = active.useSat
 
     local xCanvas <const> = min(max(event.x, 0), wCanvas - 1)
+    local xNorm = xCanvas / (wCanvas - 1.0)
+    if event.shiftKey then
+        xNorm = quantizeUnsigned(xNorm, active.axisLevels)
+    end
     local xNew <const> = event.ctrlKey
         and (useSat and 1.0 or 0.5)
-        or xCanvas / (wCanvas - 1.0)
+        or xNorm
 
     -- TODO: All that follows here can become its own function and be used
     -- for both key down and mouse move.
