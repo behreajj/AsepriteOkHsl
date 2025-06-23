@@ -1254,7 +1254,8 @@ local function updateFromRgba8(r8, g8, b8, t8, isBackActive)
 end
 
 ---@param isBackActive boolean
-local function updateColorBar(isBackActive)
+---@return Color
+local function toAseColor(isBackActive)
     -- Keep usage of isBackActive here.
 
     local rBitDepth <const> = active.rBitDepth
@@ -1290,12 +1291,18 @@ local function updateColorBar(isBackActive)
     local b8 <const> = floor(bq * 255 + 0.5)
     local t8 <const> = floor(tq * 255 + 0.5)
 
+    return Color { r = r8, g = g8, b = b8, a = t8 }
+end
+
+---@param isBackActive boolean
+local function updateColorBar(isBackActive)
+    local aseColor <const> = toAseColor(isBackActive)
     if isBackActive then
         app.command.SwitchColors()
-        app.fgColor = Color { r = r8, g = g8, b = b8, a = t8 }
+        app.fgColor = aseColor
         app.command.SwitchColors()
     else
-        app.fgColor = Color { r = r8, g = g8, b = b8, a = t8 }
+        app.fgColor = aseColor
     end
 end
 
@@ -1953,44 +1960,9 @@ dlgMain:button {
         local palette <const> = palettes[palIdx]
         local lenPalette <const> = #palette
 
-        -- TODO: This duplicates a lot of info from update color bar,
-        -- consider creating a method that returns an Ase Color.
-        local rBitDepth <const> = active.rBitDepth
-        local gBitDepth <const> = active.gBitDepth
-        local bBitDepth <const> = active.bBitDepth
-        local tBitDepth <const> = active.tBitDepth
-
-        local rLevels <const> = 1 << rBitDepth
-        local gLevels <const> = 1 << gBitDepth
-        local bLevels <const> = 1 << bBitDepth
-        local tLevels <const> = 1 << tBitDepth
-
-        local isBackActive <const> = false
-        local redActive <const> = isBackActive
-            and active.redBack
-            or active.redFore
-        local greenActive <const> = isBackActive
-            and active.greenBack
-            or active.greenFore
-        local blueActive <const> = isBackActive
-            and active.blueBack
-            or active.blueFore
-        local alphaActive <const> = isBackActive
-            and active.alphaBack
-            or active.alphaFore
-
-        local rq <const> = quantizeUnsigned(redActive, rLevels)
-        local gq <const> = quantizeUnsigned(greenActive, gLevels)
-        local bq <const> = quantizeUnsigned(blueActive, bLevels)
-        local tq <const> = quantizeUnsigned(alphaActive, tLevels)
-
-        local r8 <const> = floor(rq * 255 + 0.5)
-        local g8 <const> = floor(gq * 255 + 0.5)
-        local b8 <const> = floor(bq * 255 + 0.5)
-        local t8 <const> = floor(tq * 255 + 0.5)
-
+        local aseColor <const> = toAseColor(false)
         palette:resize(lenPalette + 1)
-        palette:setColor(lenPalette, Color { r = r8, g = g8, b = b8, a = t8 })
+        palette:setColor(lenPalette, aseColor)
     end
 }
 
