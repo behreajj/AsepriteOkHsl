@@ -121,10 +121,11 @@ local defaults <const> = {
     bBitDepth = 8,
     tBitDepth = 8,
 
+    -- For unsigned quantize levels, add one.
     keyShiftAmount = 0.01,
     hLevels = 24,
-    sLevels = 12,
-    lLevels = 12,
+    sLevels = 13,
+    lLevels = 13,
     axisLevels = 21,
 }
 
