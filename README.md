@@ -36,8 +36,6 @@ The `Axis` option switches between saturation and lightness as the axis on the b
 
 Harmonies will display reticles for analogous, complementary, split, square, tetradic and triadic color harmonies. Left clicking on the harmony bar will set the foreground color. Right clicking will set the background color.
 
-Bit depth will quantize the 8bpp colors in the color bar and change the hexadecimal code display. For example, in the screen shot above, the hex code for RGB555 is shown.
-
 ![Buttons Gradient](screenCap5.png)
 
 The buttons at the bottom of the dialog can also be changed. In the screen capture above, the gradient button appends to the palette 13 swatch sample from a fore- to background color gradien with furthest hue easing. The sample button samples a color from the sprite canvas at the mouse cursor when `Alt+A` is pressed.
