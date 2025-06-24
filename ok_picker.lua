@@ -116,10 +116,6 @@ local defaults <const> = {
 
     swatchCount = 5,
     huePreset = "NEAR",
-    rBitDepth = 8,
-    gBitDepth = 8,
-    bBitDepth = 8,
-    tBitDepth = 8,
 
     -- For unsigned quantize levels, add one.
     keyShiftAmount = 0.01,
@@ -158,11 +154,6 @@ local active <const> = {
 
     satAxis = defaults.satAxis,
     lightAxis = defaults.lightAxis,
-
-    rBitDepth = defaults.rBitDepth,
-    gBitDepth = defaults.gBitDepth,
-    bBitDepth = defaults.bBitDepth,
-    tBitDepth = defaults.tBitDepth,
 
     hueFore = 0.0,
     satFore = 0.0,
@@ -721,14 +712,6 @@ local function onPaintCircle(event)
     local xSwatch <const> = wCanvas - swatchSize - swatchMargin
     local ySwatch <const> = hCanvas - swatchSize - swatchMargin
 
-    local rBitDepth <const> = active.rBitDepth
-    local gBitDepth <const> = active.gBitDepth
-    local bBitDepth <const> = active.bBitDepth
-
-    local rLevels <const> = 1 << rBitDepth
-    local gLevels <const> = 1 << gBitDepth
-    local bLevels <const> = 1 << bBitDepth
-
     local redBack <const> = active.redBack
     local greenBack <const> = active.greenBack
     local blueBack <const> = active.blueBack
@@ -739,9 +722,6 @@ local function onPaintCircle(event)
 
     -- Draw background color swatch.
     ctx.color = Color {
-        -- r = floor(quantizeUnsigned(redBack, rLevels) * 255 + 0.5),
-        -- g = floor(quantizeUnsigned(greenBack, gLevels) * 255 + 0.5),
-        -- b = floor(quantizeUnsigned(blueBack, bLevels) * 255 + 0.5),
         r = floor(redBack * 255 + 0.5),
         g = floor(greenBack * 255 + 0.5),
         b = floor(blueBack * 255 + 0.5),
@@ -753,9 +733,6 @@ local function onPaintCircle(event)
 
     -- Draw foreground color swatch.
     ctx.color = Color {
-        -- r = floor(quantizeUnsigned(redFore, rLevels) * 255 + 0.5),
-        -- g = floor(quantizeUnsigned(greenFore, gLevels) * 255 + 0.5),
-        -- b = floor(quantizeUnsigned(blueFore, bLevels) * 255 + 0.5),
         r = floor(redFore * 255 + 0.5),
         g = floor(greenFore * 255 + 0.5),
         b = floor(blueFore * 255 + 0.5),
@@ -968,21 +945,11 @@ local function onPaintCircle(event)
         ctx:fillText(string.format(
             "A: %.2f%%", alphaActive * 100), 2, 2 + yIncr * 8)
 
-        local is555 <const> = rBitDepth == 5
-            and gBitDepth == 5
-            and bBitDepth == 5
+        local hex <const> = math.floor(redActive * 255 + 0.5) << 0x10
+            | math.floor(greenActive * 255 + 0.5) << 0x08
+            | math.floor(blueActive * 255 + 0.5) << 0x00
 
-        local shift0 <const> = is555 and 0 or bBitDepth + gBitDepth
-        local shift1 <const> = bBitDepth
-        local shift2 <const> = is555 and bBitDepth + gBitDepth or 0
-
-        local hex <const> = math.floor(redActive * (rLevels - 1) + 0.5) << shift0
-            | math.floor(greenActive * (gLevels - 1) + 0.5) << shift1
-            | math.floor(blueActive * (bLevels - 1) + 0.5) << shift2
-
-        local hexPad <const> = math.ceil((rBitDepth
-            + gBitDepth
-            + bBitDepth) * 0.25)
+        local hexPad <const> = 6
 
         ctx:fillText(string.format("#%0" .. hexPad .. "X", hex),
             2, 2 + yIncr * 10)
@@ -1259,16 +1226,6 @@ end
 local function toAseColor(isBackActive)
     -- Keep usage of isBackActive here.
 
-    local rBitDepth <const> = active.rBitDepth
-    local gBitDepth <const> = active.gBitDepth
-    local bBitDepth <const> = active.bBitDepth
-    local tBitDepth <const> = active.tBitDepth
-
-    local rLevels <const> = 1 << rBitDepth
-    local gLevels <const> = 1 << gBitDepth
-    local bLevels <const> = 1 << bBitDepth
-    local tLevels <const> = 1 << tBitDepth
-
     local redActive <const> = isBackActive
         and active.redBack
         or active.redFore
@@ -1282,17 +1239,12 @@ local function toAseColor(isBackActive)
         and active.alphaBack
         or active.alphaFore
 
-    local rq <const> = quantizeUnsigned(redActive, rLevels)
-    local gq <const> = quantizeUnsigned(greenActive, gLevels)
-    local bq <const> = quantizeUnsigned(blueActive, bLevels)
-    local tq <const> = quantizeUnsigned(alphaActive, tLevels)
-
-    local r8 <const> = floor(rq * 255 + 0.5)
-    local g8 <const> = floor(gq * 255 + 0.5)
-    local b8 <const> = floor(bq * 255 + 0.5)
-    local t8 <const> = floor(tq * 255 + 0.5)
-
-    return Color { r = r8, g = g8, b = b8, a = t8 }
+    return Color {
+        r = floor(redActive * 255 + 0.5),
+        g = floor(greenActive * 255 + 0.5),
+        b = floor(blueActive * 255 + 0.5),
+        a = floor(alphaActive * 255 + 0.5),
+    }
 end
 
 ---@param isBackActive boolean
@@ -2077,50 +2029,6 @@ dlgOptions:slider {
     visible = defaults.harmonyType == "SHADING"
 }
 
-dlgOptions:separator { text = "Bit Depth" }
-
-dlgOptions:slider {
-    id = "rBitDepth",
-    label = "Red:",
-    value = defaults.rBitDepth,
-    min = 1,
-    max = 8,
-    focus = false
-}
-
-dlgOptions:newrow { always = false }
-
-dlgOptions:slider {
-    id = "gBitDepth",
-    label = "Green:",
-    value = defaults.gBitDepth,
-    min = 1,
-    max = 8,
-    focus = false
-}
-
-dlgOptions:newrow { always = false }
-
-dlgOptions:slider {
-    id = "bBitDepth",
-    label = "Blue:",
-    value = defaults.bBitDepth,
-    min = 1,
-    max = 8,
-    focus = false
-}
-
-dlgOptions:newrow { always = false }
-
-dlgOptions:slider {
-    id = "tBitDepth",
-    label = "Alpha:",
-    value = defaults.tBitDepth,
-    min = 1,
-    max = 8,
-    focus = false,
-}
-
 dlgOptions:separator {}
 
 dlgOptions:check {
@@ -2225,21 +2133,11 @@ dlgOptions:button {
         local showSample <const> = args.showSample --[[@as boolean]]
         local showExit <const> = args.showExit --[[@as boolean]]
 
-        local rBitDepth <const> = args.rBitDepth --[[@as integer]]
-        local gBitDepth <const> = args.gBitDepth --[[@as integer]]
-        local bBitDepth <const> = args.bBitDepth --[[@as integer]]
-        local tBitDepth <const> = args.tBitDepth --[[@as integer]]
-
         active.radiansOffset = (-math.rad(degreesOffset)) % tau
         active.useSat = axis == "SATURATION"
         active.harmonyType = harmonyType
         active.showHarmonyOnWheel = showHarmonyOnWheel
         active.shadingCount = shadingCount
-
-        active.rBitDepth = rBitDepth
-        active.gBitDepth = gBitDepth
-        active.bBitDepth = bBitDepth
-        active.tBitDepth = tBitDepth
 
         active.triggerAlphaRepaint = true
         active.triggerAxisRepaint = true
