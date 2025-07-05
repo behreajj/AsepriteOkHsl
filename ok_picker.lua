@@ -2165,8 +2165,9 @@ dlgOptions:button {
     text = "&CANCEL",
     focus = false,
     onclick = function()
-        -- TODO: Modify as many dlgOptions widgets as you can to reset them to
-        -- active when dialog is canceled.
+        -- TODO: Modify as many dlgOptions widgets as you can to reset
+        -- them to active when dialog is canceled. Unfortunately, this
+        -- doesn't work with the top right x button.
 
         dlgOptions:close()
     end
