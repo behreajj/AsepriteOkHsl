@@ -8,7 +8,7 @@ Aseprite is an "animated sprite editor & pixel art tool." Okhsl is a color repre
 
 [sRGB](https://www.wikiwand.com/en/SRGB) (standard RGB) is the color profile assumed by this script. The sprite's profile can be changed under `Sprite > Properties`. Aseprite's color management settings are under `Edit > Preferences`, in the `Color` section.
 
-_These scripts were tested with Aseprite version 1.3.13-beta1 on Windows 11._
+_These scripts were tested with Aseprite version 1.3.15 on Windows 11._
 
 ## Installation
 
