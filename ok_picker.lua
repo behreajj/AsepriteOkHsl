@@ -1373,11 +1373,6 @@ local function genGradient()
 end
 
 local function getFromCanvas()
-    -- TODO: If you ever wanted to sample from just the
-    -- active layer, see app.preferences.eyedropper.sample.
-    -- However, this raises numerous problems, e.g., with
-    -- tile map layers, hidden layers, etc.
-
     local editor <const> = app.editor
     if not editor then return end
 
@@ -2135,6 +2130,9 @@ dlgOptions:button {
 
         active.radiansOffset = (-math.rad(degreesOffset)) % tau
         active.useSat = axis == "SATURATION"
+        active.satAxis = active["satFore"]
+        active.lightAxis = active["lightFore"]
+
         active.harmonyType = harmonyType
         active.showHarmonyOnWheel = showHarmonyOnWheel
         active.shadingCount = shadingCount
