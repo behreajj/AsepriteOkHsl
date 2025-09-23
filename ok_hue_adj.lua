@@ -134,9 +134,25 @@ local function adjustColor(
 end
 
 ---@param srcImg Image
+---@param xtl integer
+---@param ytl integer
+---@param mask Selection
+---@param hScl number
+---@param sScl number
+---@param lScl number
+---@param vScl number
+---@param aAdj integer
+---@param useHsv boolean
+---@param useCool boolean
+---@param useOmit boolean
+---@param useZero boolean
+---@param useWarm boolean
+---@param hVio number
+---@param hYel number
+---@param hZero number
 ---@return Image
 local function adjustImage(
-    srcImg,
+    srcImg, xtl, ytl, mask,
     hScl, sScl, lScl, vScl, aAdj,
     useHsv,
     useCool, useOmit, useZero, useWarm,
@@ -153,13 +169,13 @@ local function adjustImage(
     local srcHeight <const> = srcSpec.height
     local srcBpp <const> = srcImg.bytesPerPixel
     local srcBytes <const> = srcImg.bytes
-    local fmtUnpack <const> = "<I" .. srcBpp
+    local fmt <const> = "<I" .. srcBpp
 
     local srcArea <const> = srcWidth * srcHeight
     local i = 0
     while i < srcArea do
         local iBpp <const> = i * srcBpp
-        local srcPixel <const> = strunpack(fmtUnpack, strsub(
+        local srcPixel <const> = strunpack(fmt, strsub(
             srcBytes, 1 + iBpp, srcBpp + iBpp))
         local arr <const> = srcDict[srcPixel]
         if arr then
@@ -192,15 +208,21 @@ local function adjustImage(
                 useHsv,
                 false, true, false, false,
                 hVio, hYel, hZero)
+            local n <const> = composeGray(b8n, a8n)
 
             local lenSrcIndices <const> = #srcIndices
             local j = 0
             while j < lenSrcIndices do
                 j = j + 1
                 local index <const> = srcIndices[j]
-                trgByteArr[1 + index] = strpack(
-                    fmtUnpack,
-                    composeGray(b8n, a8n))
+                local x <const> = index % srcWidth
+                local y <const> = index // srcWidth
+
+                if mask:contains(xtl + x, ytl + y) then
+                    trgByteArr[1 + index] = strpack(fmt, n)
+                else
+                    trgByteArr[1 + index] = strpack(fmt, srcPixel)
+                end
             end
         end
     else
@@ -225,15 +247,21 @@ local function adjustImage(
                 useHsv,
                 useCool, useOmit, useZero, useWarm,
                 hVio, hYel, hZero)
+            local n <const> = composeRgba(r8n, g8n, b8n, a8n)
 
             local lenSrcIndices <const> = #srcIndices
             local j = 0
             while j < lenSrcIndices do
                 j = j + 1
                 local index <const> = srcIndices[j]
-                trgByteArr[1 + index] = strpack(
-                    fmtUnpack,
-                    composeRgba(r8n, g8n, b8n, a8n))
+                local x <const> = index % srcWidth
+                local y <const> = index // srcWidth
+
+                if mask:contains(xtl + x, ytl + y) then
+                    trgByteArr[1 + index] = strpack(fmt, n)
+                else
+                    trgByteArr[1 + index] = strpack(fmt, srcPixel)
+                end
             end
         end
     end
@@ -515,6 +543,11 @@ dlg:button {
         local usedTilesets <const> = {}
         local lenTsUsed = 0
 
+        local mask = activeSprite.selection
+        if mask == nil or mask.isEmpty then
+            mask = Selection(activeSprite.bounds)
+        end
+
         app.transaction("OKHSL Adjust Cels", function()
             local h = 0
             while h < lenChosenCels do
@@ -533,12 +566,13 @@ dlg:button {
                     -- Prevent background images from containing transparency.
                     local aAdjCurr <const> = srcLayer.isBackground
                         and 0 or aAdj
-                    local srcImg <const> = srcCel.image
-                    local trgImg <const> = adjustImage(
-                        srcImg, hScl, sScl, lScl, vScl, aAdjCurr,
-                        useHsv, useCool, useOmit, useZero, useWarm,
-                        hVio, hYel, hZero)
-                    srcCel.image = trgImg
+                    local srcPos <const> = srcCel.position
+                    local xtlSrc <const> = srcPos.x
+                    local ytlSrc <const> = srcPos.y
+                    srcCel.image = adjustImage(
+                        srcCel.image, xtlSrc, ytlSrc, mask, hScl, sScl, lScl,
+                        vScl, aAdjCurr, useHsv, useCool, useOmit, useZero,
+                        useWarm, hVio, hYel, hZero)
                 end
             end
         end)
@@ -546,17 +580,21 @@ dlg:button {
         if lenTsUsed > 0 then
             app.transaction("OKHSL Adjust Tilesets", function()
                 for _, tileset in pairs(usedTilesets) do
+                    local tileSize <const> = tileset.grid.tileSize
+                    local wTile <const> = tileSize.width
+                    local hTile <const> = tileSize.height
+                    local tileMask <const> = Selection(Rectangle(
+                        0, 0, wTile, hTile))
+
                     local lenTileset <const> = #tileset
                     local i = 0
                     while i < lenTileset do
                         local tile <const> = tileset:tile(i)
                         if tile then
-                            local srcImg <const> = tile.image
-                            local trgImg <const> = adjustImage(
-                                srcImg, hScl, sScl, lScl, vScl, aAdj,
-                                useHsv, useCool, useOmit, useZero, useWarm,
-                                hVio, hYel, hZero)
-                            tile.image = trgImg
+                            tile.image = adjustImage(
+                                tile.image, 0, 0, tileMask, hScl, sScl, lScl,
+                                vScl, aAdj, useHsv, useCool, useOmit, useZero,
+                                useWarm, hVio, hYel, hZero)
                         end
                         i = i + 1
                     end
