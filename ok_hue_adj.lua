@@ -136,7 +136,7 @@ end
 ---@param srcImg Image
 ---@param xtl integer
 ---@param ytl integer
----@param mask Selection
+---@param mask Selection|nil
 ---@param hScl number
 ---@param sScl number
 ---@param lScl number
@@ -218,7 +218,7 @@ local function adjustImage(
                 local x <const> = index % srcWidth
                 local y <const> = index // srcWidth
 
-                if mask:contains(xtl + x, ytl + y) then
+                if mask == nil or mask:contains(xtl + x, ytl + y) then
                     trgByteArr[1 + index] = strpack(fmt, n)
                 else
                     trgByteArr[1 + index] = strpack(fmt, srcPixel)
@@ -257,7 +257,7 @@ local function adjustImage(
                 local x <const> = index % srcWidth
                 local y <const> = index // srcWidth
 
-                if mask:contains(xtl + x, ytl + y) then
+                if mask == nil or mask:contains(xtl + x, ytl + y) then
                     trgByteArr[1 + index] = strpack(fmt, n)
                 else
                     trgByteArr[1 + index] = strpack(fmt, srcPixel)
@@ -543,9 +543,10 @@ dlg:button {
         local usedTilesets <const> = {}
         local lenTsUsed = 0
 
-        local mask = activeSprite.selection
-        if mask == nil or mask.isEmpty then
-            mask = Selection(activeSprite.bounds)
+        local mask = nil
+        local spriteMask <const> = activeSprite.selection
+        if spriteMask and (not spriteMask.isEmpty) then
+            mask = spriteMask
         end
 
         app.transaction("OKHSL Adjust Cels", function()
@@ -580,19 +581,13 @@ dlg:button {
         if lenTsUsed > 0 then
             app.transaction("OKHSL Adjust Tilesets", function()
                 for _, tileset in pairs(usedTilesets) do
-                    local tileSize <const> = tileset.grid.tileSize
-                    local wTile <const> = tileSize.width
-                    local hTile <const> = tileSize.height
-                    local tileMask <const> = Selection(Rectangle(
-                        0, 0, wTile, hTile))
-
                     local lenTileset <const> = #tileset
-                    local i = 0
+                    local i = 1
                     while i < lenTileset do
                         local tile <const> = tileset:tile(i)
                         if tile then
                             tile.image = adjustImage(
-                                tile.image, 0, 0, tileMask, hScl, sScl, lScl,
+                                tile.image, 0, 0, nil, hScl, sScl, lScl,
                                 vScl, aAdj, useHsv, useCool, useOmit, useZero,
                                 useWarm, hVio, hYel, hZero)
                         end
