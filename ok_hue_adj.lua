@@ -141,25 +141,47 @@ local function adjustImage(
     useHsv,
     useCool, useOmit, useZero, useWarm,
     hVio, hYel, hZero)
-    local srcpxitr <const> = srcImg:pixels()
-    ---@type table<integer, boolean>
+    ---@type table<integer, integer[]>
     local srcDict <const> = {}
-    for pixel in srcpxitr do
-        srcDict[pixel()] = true
+
+    local strpack <const> = string.pack
+    local strsub <const> = string.sub
+    local strunpack <const> = string.unpack
+
+    local srcSpec <const> = srcImg.spec
+    local srcWidth <const> = srcSpec.width
+    local srcHeight <const> = srcSpec.height
+    local srcBpp <const> = srcImg.bytesPerPixel
+    local srcBytes <const> = srcImg.bytes
+    local fmtUnpack <const> = "<I" .. srcBpp
+
+    local srcArea <const> = srcWidth * srcHeight
+    local i = 0
+    while i < srcArea do
+        local iBpp <const> = i * srcBpp
+        local srcPixel <const> = strunpack(fmtUnpack, strsub(
+            srcBytes, 1 + iBpp, srcBpp + iBpp))
+        local arr <const> = srcDict[srcPixel]
+        if arr then
+            arr[#arr + 1] = i
+        else
+            srcDict[srcPixel] = { i }
+        end
+        i = i + 1
     end
 
-    ---@type table<integer, integer>
-    local trgDict <const> = {}
+    ---@type string[]
+    local trgByteArr <const> = {}
     local pixelColor <const> = app.pixelColor
-
-    if srcImg.colorMode == ColorMode.GRAY then
+    local srcColorMode <const> = srcSpec.colorMode
+    if srcColorMode == ColorMode.GRAY then
         local decompAGray <const> = pixelColor.grayaA
         local decompVGray <const> = pixelColor.grayaV
         local composeGray <const> = pixelColor.graya
 
-        for k, _ in pairs(srcDict) do
-            local v8 <const> = decompVGray(k)
-            local a8 <const> = decompAGray(k)
+        for srcPixel, srcIndices in pairs(srcDict) do
+            local v8 <const> = decompVGray(srcPixel)
+            local a8 <const> = decompAGray(srcPixel)
 
             local r8n <const>,
             g8n <const>,
@@ -171,7 +193,15 @@ local function adjustImage(
                 false, true, false, false,
                 hVio, hYel, hZero)
 
-            trgDict[k] = composeGray(b8n, a8n)
+            local lenSrcIndices <const> = #srcIndices
+            local j = 0
+            while j < lenSrcIndices do
+                j = j + 1
+                local index <const> = srcIndices[j]
+                trgByteArr[1 + index] = strpack(
+                    fmtUnpack,
+                    composeGray(b8n, a8n))
+            end
         end
     else
         local decompA <const> = pixelColor.rgbaA
@@ -180,11 +210,11 @@ local function adjustImage(
         local decompR <const> = pixelColor.rgbaR
         local composeRgba <const> = pixelColor.rgba
 
-        for k, _ in pairs(srcDict) do
-            local r8 <const> = decompR(k)
-            local g8 <const> = decompG(k)
-            local b8 <const> = decompB(k)
-            local a8 <const> = decompA(k)
+        for srcPixel, srcIndices in pairs(srcDict) do
+            local r8 <const> = decompR(srcPixel)
+            local g8 <const> = decompG(srcPixel)
+            local b8 <const> = decompB(srcPixel)
+            local a8 <const> = decompA(srcPixel)
 
             local r8n <const>,
             g8n <const>,
@@ -196,15 +226,20 @@ local function adjustImage(
                 useCool, useOmit, useZero, useWarm,
                 hVio, hYel, hZero)
 
-            trgDict[k] = composeRgba(r8n, g8n, b8n, a8n)
+            local lenSrcIndices <const> = #srcIndices
+            local j = 0
+            while j < lenSrcIndices do
+                j = j + 1
+                local index <const> = srcIndices[j]
+                trgByteArr[1 + index] = strpack(
+                    fmtUnpack,
+                    composeRgba(r8n, g8n, b8n, a8n))
+            end
         end
     end
 
-    local trgImg <const> = srcImg:clone()
-    local trgPxItr <const> = trgImg:pixels()
-    for pixel in trgPxItr do
-        pixel(trgDict[pixel()])
-    end
+    local trgImg <const> = Image(srcImg.spec)
+    trgImg.bytes = table.concat(trgByteArr)
     return trgImg
 end
 
