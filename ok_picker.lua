@@ -1198,6 +1198,9 @@ local function updateFromRgba8(r8, g8, b8, t8, isBackActive)
     local r01 <const>,
     g01 <const>,
     b01 <const> = r8 / 255.0, g8 / 255.0, b8 / 255.0
+
+    -- In some cases, as with white and black, saturation may be negative,
+    -- e.g., -13.37%.
     local h <const>,
     s <const>,
     l <const> = ok_color.srgb_to_okhsl(r01, g01, b01)
@@ -1206,7 +1209,7 @@ local function updateFromRgba8(r8, g8, b8, t8, isBackActive)
         if s > 0.0 then
             active[isBackActive and "hueBack" or "hueFore"] = h
         end
-        active[isBackActive and "satBack" or "satFore"] = s
+        active[isBackActive and "satBack" or "satFore"] = max(0.0, s)
     end
     active[isBackActive and "lightBack" or "lightFore"] = l
 
@@ -1216,7 +1219,7 @@ local function updateFromRgba8(r8, g8, b8, t8, isBackActive)
     active[isBackActive and "alphaBack" or "alphaFore"] = t8 / 255.0
 
     if not isBackActive then
-        active.satAxis = s
+        active.satAxis = max(0.0, s)
         active.lightAxis = l
     end
 end
